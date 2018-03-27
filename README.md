@@ -22,7 +22,7 @@
 
 ## Language
 
-The default language is just English, the file is called `PreventLooting.json` and can be found under: `oxide/lang/en`.
+The default language is just English, the file is called `PlayerAdministration.json` and can be found under: `oxide/lang/en`.
 
 ```json
 {
