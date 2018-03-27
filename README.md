@@ -35,7 +35,7 @@ The default language is just English, the file is called `PreventLooting.json` a
   "Banned Label Text": " (Banned)",
   "Dev Label Text": " (Developer)",
   "Connected Label Text": "Connected",
-  "Disconnected Label Text", "Disconnected",
+  "Disconnected Label Text": "Disconnected",
   "Sleeping Label Text": "Sleeping",
   "Awake Label Text": "Awake",
   "Alive Label Text": "Alive",
