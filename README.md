@@ -14,15 +14,15 @@
 
 ## Permissions
 
-- **playeradministration.show** -- Required to be able to use the plugin
+- **playeradministration.show** -- Required to be able to use the `/padmin` command and plugin
 
 ## Chat Commands
 
 - **/padmin** -- Show the player administration menu ***(requires `playeradministration.show` permission)***
 
-## Language
+## Localization
 
-The default language is just English, the file is called `PlayerAdministration.json` and can be found under: `oxide/lang/en`.
+The default messages are in the `PlayerAdministration.json` file under the `oxide/lang/en` directory. To add support for another language, create a new language folder (ex. de for German) if not already created, copy the default language file to the new folder, and then customize the messages.
 
 ```json
 {
