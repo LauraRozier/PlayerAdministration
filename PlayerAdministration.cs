@@ -246,8 +246,7 @@ namespace Oxide.Plugins
                     CursorEnabled = cursorEnabled
                 };
 
-                if (!string.IsNullOrEmpty(png) ||
-                    (color != null)) {
+                if (!string.IsNullOrEmpty(png) || (color != null)) {
                     panel.Image = new CuiImageComponent() {
                         Color = color.ToString(),
                         Png = png
