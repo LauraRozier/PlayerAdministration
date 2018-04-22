@@ -20,6 +20,22 @@
 
 - **/padmin** -- Show the player administration menu ***(requires `playeradministration.show` permission)***
 
+## Configuration
+
+```json
+{
+  "Enable ban action": true,
+  "Enable blueprint resetaction": true,
+  "Enable heal action": true,
+  "Enable hurt action": true,
+  "Enable inventory clear action": true,
+  "Enable kick action": true,
+  "Enable kill action": true,
+  "Enable metabolism reset action": true,
+  "Enable unban action": true
+}
+```
+
 ## Localization
 
 The default messages are in the `PlayerAdministration.json` file under the `oxide/lang/en` directory. To add support for another language, create a new language folder (ex. de for German) if not already created, copy the default language file to the new folder, and then customize the messages.
