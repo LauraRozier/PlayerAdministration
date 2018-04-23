@@ -87,7 +87,8 @@ The default messages are in the `PlayerAdministration.json` file under the `oxid
   "Radiation Protection Label Format": "Protection: {0}",
 
   "Main Tab Text": "Main",
-  "Player Tab Text": "Players",
+  "Online Player Tab Text": "Online Players",
+  "Offline Player Tab Text": "Offline Players",
   "Banned Player Tab Text": "Banned Players",
 
   "Clear Inventory Button Text": "Clear Inventory",
