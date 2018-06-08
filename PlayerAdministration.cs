@@ -8,7 +8,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.3.0", ResourceId = 0)]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.3.1", ResourceId = 0)]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : RustPlugin
     {
@@ -590,6 +590,28 @@ namespace Oxide.Plugins
         /// <returns></returns>
         private bool GetIsChatMuted(ref BasePlayer aPlayer) => aPlayer.HasPlayerFlag(BasePlayer.PlayerFlags.ChatMute);
         #endregion Utility methods
+
+        #region Upgrade methods
+        private void UpgradeTo1_3_0()
+        {
+            Config.Load();
+
+            if (Config["Enable voice mute action"] == null)
+                Config["Enable voice mute action"] = true;
+
+            if (Config["Enable voice unmute action"] == null)
+                Config["Enable voice unmute action"] = true;
+
+            if (Config["Enable chat mute action"] == null)
+                Config["Enable chat mute action"] = true;
+
+            if (Config["Enable chat unmute action"] == null)
+                Config["Enable chat unmute action"] = true;
+
+            Config.Save();
+            Config.Clear();
+        }
+        #endregion
 
         #region GUI build methods
         /// <summary>
@@ -1196,6 +1218,7 @@ namespace Oxide.Plugins
         #region Hooks
         void Loaded()
         {
+            UpgradeTo1_3_0();
             configData = Config.ReadObject<ConfigData>();
             permission.RegisterPermission("playeradministration.show", this);
         }
@@ -1227,9 +1250,13 @@ namespace Oxide.Plugins
                 EnableResetBP = true,
                 EnableResetMetabolism = true,
                 EnableHurt = true,
-                EnableHeal = true
+                EnableHeal = true,
+                EnableVMute = true,
+                EnableVUnmute = true,
+                EnableCMute = true,
+                EnableCUnmute = true
             };
-            Config.WriteObject(config, true);
+            Config.WriteObject(config);
         }
 
         protected override void LoadDefaultMessages()
@@ -1565,7 +1592,7 @@ namespace Oxide.Plugins
             ulong targetId;
 
             if (!VerifyPermission(ref player, "playeradministration.show") || !GetTargetFromArg(ref arg, out targetId) ||
-                !configData.EnableCUnmMute)
+                !configData.EnableCUnmute)
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, false);
