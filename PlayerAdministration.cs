@@ -79,9 +79,12 @@ namespace Oxide.Plugins
             public static CuiColor Background { get; } = new CuiColor(240, 240, 240, 0.3f);
             public static CuiColor BackgroundMedium { get; } = new CuiColor(76, 74, 72, 0.83f);
             public static CuiColor BackgroundDark { get; } = new CuiColor(42, 42, 42, 0.93f);
-            public static CuiColor Button { get; } = new CuiColor(42, 42, 42, 0.9f);
-            public static CuiColor ButtonInactive { get; } = new CuiColor(168, 168, 168, 0.9f);
-            public static CuiColor ButtonDecline { get; } = new CuiColor(192, 0, 0, 0.9f);
+            public static CuiColor Button { get; } = new CuiColor(42, 42, 42, 1f);
+            public static CuiColor ButtonInactive { get; } = new CuiColor(168, 168, 168, 1f);
+            public static CuiColor ButtonDecline { get; } = new CuiColor(192, 0, 0, 1f);
+            public static CuiColor ButtonDanger { get; } = new CuiColor(193, 46, 42, 1f);
+            public static CuiColor ButtonWarning { get; } = new CuiColor(213, 133, 18, 1f);
+            public static CuiColor ButtonSuccess { get; } = new CuiColor(57, 132, 57, 1f);
             public static CuiColor Text { get; } = new CuiColor(0, 0, 0, 1f);
             public static CuiColor TextAlt { get; } = new CuiColor(255, 255, 255, 1f);
             public static CuiColor TextTitle { get; } = new CuiColor(206, 66, 43, 1f);
@@ -661,7 +664,7 @@ namespace Oxide.Plugins
                                  "padm_mainpagebanidinputtext");
 
             if (configData.EnableBan) {
-                aUIObj.AddButton(panel, MainPageBtnBanByIdLBAnchor, MainPageBtnBanByIdRTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt, "Ban",
+                aUIObj.AddButton(panel, MainPageBtnBanByIdLBAnchor, MainPageBtnBanByIdRTAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt, "Ban",
                                  "padm_mainpagebanbyid");
             } else {
                 aUIObj.AddButton(panel, MainPageBtnBanByIdLBAnchor, MainPageBtnBanByIdRTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.TextAlt, "Ban");
@@ -842,7 +845,7 @@ namespace Oxide.Plugins
 
                 /* Build player action panel */
                 if (configData.EnableBan) {
-                    aUIObj.AddButton(actionPanel, UserPageBtnBanLBAnchor, UserPageBtnBanRTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(actionPanel, UserPageBtnBanLBAnchor, UserPageBtnBanRTAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
                                      _("Ban Button Text", uiUserId), $"padm_banuser {aPlayerId}");
                 } else {
                     aUIObj.AddButton(actionPanel, UserPageBtnBanLBAnchor, UserPageBtnBanRTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
@@ -850,7 +853,7 @@ namespace Oxide.Plugins
                 };
 
                 if (configData.EnableKick && playerConnected) {
-                    aUIObj.AddButton(actionPanel, UserPageBtnKickLBAnchor, UserPageBtnKickRTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(actionPanel, UserPageBtnKickLBAnchor, UserPageBtnKickRTAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
                                      _("Kick Button Text", uiUserId), $"padm_kickuser {aPlayerId}");
                 } else {
                     aUIObj.AddButton(actionPanel, UserPageBtnKickLBAnchor, UserPageBtnKickRTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
@@ -858,7 +861,7 @@ namespace Oxide.Plugins
                 };
 
                 if (configData.EnableKill) {
-                    aUIObj.AddButton(actionPanel, UserPageBtnKillLBAnchor, UserPageBtnKillRTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(actionPanel, UserPageBtnKillLBAnchor, UserPageBtnKillRTAnchor, CuiDefaultColors.ButtonWarning, CuiDefaultColors.TextAlt,
                                      _("Kill Button Text", uiUserId), $"padm_killuser {aPlayerId}");
                 } else {
                     aUIObj.AddButton(actionPanel, UserPageBtnKillLBAnchor, UserPageBtnKillRTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
@@ -866,7 +869,7 @@ namespace Oxide.Plugins
                 };
 
                 if (configData.EnableVMute && playerConnected && !GetIsVoiceMuted(ref player)) {
-                    aUIObj.AddButton(actionPanel, UserPageBtnVMuteLBAnchor, UserPageBtnVMuteRTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(actionPanel, UserPageBtnVMuteLBAnchor, UserPageBtnVMuteRTAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
                                      _("Voice Mute Button Text", uiUserId), $"padm_vmuteuser {aPlayerId}");
                 } else {
                     aUIObj.AddButton(actionPanel, UserPageBtnVMuteLBAnchor, UserPageBtnVMuteRTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
@@ -874,7 +877,7 @@ namespace Oxide.Plugins
                 };
 
                 if (configData.EnableVUnmute && playerConnected && GetIsVoiceMuted(ref player)) {
-                    aUIObj.AddButton(actionPanel, UserPageBtnVUnmuteLBAnchor, UserPageBtnVUnmuteRTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(actionPanel, UserPageBtnVUnmuteLBAnchor, UserPageBtnVUnmuteRTAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
                                      _("Voice Unmute Button Text", uiUserId), $"padm_vunmuteuser {aPlayerId}");
                 } else {
                     aUIObj.AddButton(actionPanel, UserPageBtnVUnmuteLBAnchor, UserPageBtnVUnmuteRTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
@@ -882,7 +885,7 @@ namespace Oxide.Plugins
                 };
 
                 if (configData.EnableCMute && playerConnected && !GetIsChatMuted(ref player)) {
-                    aUIObj.AddButton(actionPanel, UserPageBtnCMuteLBAnchor, UserPageBtnCMuteRTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(actionPanel, UserPageBtnCMuteLBAnchor, UserPageBtnCMuteRTAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
                                      _("Chat Mute Button Text", uiUserId), $"padm_cmuteuser {aPlayerId}");
                 } else {
                     aUIObj.AddButton(actionPanel, UserPageBtnCMuteLBAnchor, UserPageBtnCMuteRTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
@@ -890,7 +893,7 @@ namespace Oxide.Plugins
                 };
 
                 if (configData.EnableCUnmute && playerConnected && GetIsChatMuted(ref player)) {
-                    aUIObj.AddButton(actionPanel, UserPageBtnCUnmuteLBAnchor, UserPageBtnCUnmuteRTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(actionPanel, UserPageBtnCUnmuteLBAnchor, UserPageBtnCUnmuteRTAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
                                      _("Chat Unmute Button Text", uiUserId), $"padm_cunmuteuser {aPlayerId}");
                 } else {
                     aUIObj.AddButton(actionPanel, UserPageBtnCUnmuteLBAnchor, UserPageBtnCUnmuteRTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
@@ -899,7 +902,7 @@ namespace Oxide.Plugins
 
                 // Add reset buttons
                 if (configData.EnableClearInv) {
-                    aUIObj.AddButton(actionPanel, UserPageBtnClearInventoryLBAnchor, UserPageBtnClearInventoryRTAnchor, CuiDefaultColors.Button,
+                    aUIObj.AddButton(actionPanel, UserPageBtnClearInventoryLBAnchor, UserPageBtnClearInventoryRTAnchor, CuiDefaultColors.ButtonWarning,
                                      CuiDefaultColors.TextAlt, _("Clear Inventory Button Text", uiUserId), $"padm_clearuserinventory {aPlayerId}");
                 } else {
                     aUIObj.AddButton(actionPanel, UserPageBtnClearInventoryLBAnchor, UserPageBtnClearInventoryRTAnchor, CuiDefaultColors.ButtonInactive,
@@ -907,15 +910,15 @@ namespace Oxide.Plugins
                 };
 
                 if (configData.EnableResetBP) {
-                    aUIObj.AddButton(actionPanel, UserPageBtnResetBPLBAnchor, UserPageBtnResetBPRTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
-                                     _("Reset Blueprints Button Text", uiUserId), $"padm_resetuserblueprints {aPlayerId}");
+                    aUIObj.AddButton(actionPanel, UserPageBtnResetBPLBAnchor, UserPageBtnResetBPRTAnchor, CuiDefaultColors.ButtonWarning,
+                                     CuiDefaultColors.TextAlt, _("Reset Blueprints Button Text", uiUserId), $"padm_resetuserblueprints {aPlayerId}");
                 } else {
                     aUIObj.AddButton(actionPanel, UserPageBtnResetBPLBAnchor, UserPageBtnResetBPRTAnchor, CuiDefaultColors.ButtonInactive,
                                      CuiDefaultColors.Text, _("Reset Blueprints Button Text", uiUserId));
                 };
 
                 if (configData.EnableResetMetabolism) {
-                    aUIObj.AddButton(actionPanel, UserPageBtnResetMetabolismLBAnchor, UserPageBtnResetMetabolismRTAnchor, CuiDefaultColors.Button,
+                    aUIObj.AddButton(actionPanel, UserPageBtnResetMetabolismLBAnchor, UserPageBtnResetMetabolismRTAnchor, CuiDefaultColors.ButtonWarning,
                                      CuiDefaultColors.TextAlt, _("Reset Metabolism Button Text", uiUserId), $"padm_resetusermetabolism {aPlayerId}");
                 } else {
                     aUIObj.AddButton(actionPanel, UserPageBtnResetMetabolismLBAnchor, UserPageBtnResetMetabolismRTAnchor, CuiDefaultColors.ButtonInactive,
@@ -924,13 +927,13 @@ namespace Oxide.Plugins
 
                 // Add hurt buttons
                 if (configData.EnableHurt) {
-                    aUIObj.AddButton(actionPanel, UserPageBtnHurt25LBAnchor, UserPageBtnHurt25RTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(actionPanel, UserPageBtnHurt25LBAnchor, UserPageBtnHurt25RTAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
                                      _("Hurt 25 Button Text", uiUserId), $"padm_hurtuser {aPlayerId} 25");
-                    aUIObj.AddButton(actionPanel, UserPageBtnHurt50LBAnchor, UserPageBtnHurt50RTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(actionPanel, UserPageBtnHurt50LBAnchor, UserPageBtnHurt50RTAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
                                      _("Hurt 50 Button Text", uiUserId), $"padm_hurtuser {aPlayerId} 50");
-                    aUIObj.AddButton(actionPanel, UserPageBtnHurt75LBAnchor, UserPageBtnHurt75RTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(actionPanel, UserPageBtnHurt75LBAnchor, UserPageBtnHurt75RTAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
                                      _("Hurt 75 Button Text", uiUserId), $"padm_hurtuser {aPlayerId} 75");
-                    aUIObj.AddButton(actionPanel, UserPageBtnHurt100LBAnchor, UserPageBtnHurt100RTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(actionPanel, UserPageBtnHurt100LBAnchor, UserPageBtnHurt100RTAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
                                      _("Hurt 100 Button Text", uiUserId), $"padm_hurtuser {aPlayerId} 100");
                 } else {
                     aUIObj.AddButton(actionPanel, UserPageBtnHurt25LBAnchor, UserPageBtnHurt25RTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
@@ -945,13 +948,13 @@ namespace Oxide.Plugins
 
                 // Add heal buttons
                 if (configData.EnableHeal) {
-                    aUIObj.AddButton(actionPanel, UserPageBtnHeal25LBAnchor, UserPageBtnHeal25RTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(actionPanel, UserPageBtnHeal25LBAnchor, UserPageBtnHeal25RTAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
                                      _("Heal 25 Button Text", uiUserId), $"padm_healuser {aPlayerId} 25");
-                    aUIObj.AddButton(actionPanel, UserPageBtnHeal50LBAnchor, UserPageBtnHeal50RTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(actionPanel, UserPageBtnHeal50LBAnchor, UserPageBtnHeal50RTAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
                                      _("Heal 50 Button Text", uiUserId), $"padm_healuser {aPlayerId} 50");
-                    aUIObj.AddButton(actionPanel, UserPageBtnHeal75LBAnchor, UserPageBtnHeal75RTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(actionPanel, UserPageBtnHeal75LBAnchor, UserPageBtnHeal75RTAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
                                      _("Heal 75 Button Text", uiUserId), $"padm_healuser {aPlayerId} 75");
-                    aUIObj.AddButton(actionPanel, UserPageBtnHeal100LBAnchor, UserPageBtnHeal100RTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(actionPanel, UserPageBtnHeal100LBAnchor, UserPageBtnHeal100RTAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
                                      _("Heal 100 Button Text", uiUserId), $"padm_healuser {aPlayerId} 100");
                 } else {
                     aUIObj.AddButton(actionPanel, UserPageBtnHeal25LBAnchor, UserPageBtnHeal25RTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
