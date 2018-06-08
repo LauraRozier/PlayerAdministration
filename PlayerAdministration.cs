@@ -8,7 +8,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.2.0", ResourceId = 0)]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.3.0", ResourceId = 0)]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : RustPlugin
     {
@@ -575,6 +575,20 @@ namespace Oxide.Plugins
 
             return true;
         }
+
+        /// <summary>
+        /// Check if the player has the VoiceMuted flag set
+        /// </summary>
+        /// <param name="aPlayer">The player</param>
+        /// <returns></returns>
+        private bool GetIsVoiceMuted(ref BasePlayer aPlayer) => aPlayer.HasPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted);
+
+        /// <summary>
+        /// Check if the player has the ChatMute flag set
+        /// </summary>
+        /// <param name="aPlayer">The player</param>
+        /// <returns></returns>
+        private bool GetIsChatMuted(ref BasePlayer aPlayer) => aPlayer.HasPlayerFlag(BasePlayer.PlayerFlags.ChatMute);
         #endregion Utility methods
 
         #region GUI build methods
@@ -811,15 +825,7 @@ namespace Oxide.Plugins
                 } else {
                     aUIObj.AddButton(actionPanel, UserPageBtnBanLBAnchor, UserPageBtnBanRTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                      _("Ban Button Text", uiUserId));
-                }
-
-                if (configData.EnableKill) {
-                    aUIObj.AddButton(actionPanel, UserPageBtnKillLBAnchor, UserPageBtnKillRTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
-                                     _("Kill Button Text", uiUserId), $"padm_killuser {aPlayerId}");
-                } else {
-                    aUIObj.AddButton(actionPanel, UserPageBtnKillLBAnchor, UserPageBtnKillRTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
-                                     _("Kill Button Text", uiUserId));
-                }
+                };
 
                 if (configData.EnableKick && playerConnected) {
                     aUIObj.AddButton(actionPanel, UserPageBtnKickLBAnchor, UserPageBtnKickRTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
@@ -829,6 +835,46 @@ namespace Oxide.Plugins
                                      _("Kick Button Text", uiUserId));
                 };
 
+                if (configData.EnableKill) {
+                    aUIObj.AddButton(actionPanel, UserPageBtnKillLBAnchor, UserPageBtnKillRTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                                     _("Kill Button Text", uiUserId), $"padm_killuser {aPlayerId}");
+                } else {
+                    aUIObj.AddButton(actionPanel, UserPageBtnKillLBAnchor, UserPageBtnKillRTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                                     _("Kill Button Text", uiUserId));
+                };
+
+                if (configData.EnableVMute && playerConnected && !GetIsVoiceMuted(ref player)) {
+                    aUIObj.AddButton(actionPanel, UserPageBtnVMuteLBAnchor, UserPageBtnVMuteRTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                                     _("Voice Mute Button Text", uiUserId), $"padm_vmuteuser {aPlayerId}");
+                } else {
+                    aUIObj.AddButton(actionPanel, UserPageBtnVMuteLBAnchor, UserPageBtnVMuteRTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                                     _("Voice Mute Button Text", uiUserId));
+                };
+
+                if (configData.EnableVUnmute && playerConnected && GetIsVoiceMuted(ref player)) {
+                    aUIObj.AddButton(actionPanel, UserPageBtnVUnmuteLBAnchor, UserPageBtnVUnmuteRTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                                     _("Voice Unmute Button Text", uiUserId), $"padm_vunmuteuser {aPlayerId}");
+                } else {
+                    aUIObj.AddButton(actionPanel, UserPageBtnVUnmuteLBAnchor, UserPageBtnVUnmuteRTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                                     _("Voice Unmute Button Text", uiUserId));
+                };
+
+                if (configData.EnableCMute && playerConnected && !GetIsChatMuted(ref player)) {
+                    aUIObj.AddButton(actionPanel, UserPageBtnCMuteLBAnchor, UserPageBtnCMuteRTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                                     _("Chat Mute Button Text", uiUserId), $"padm_cmuteuser {aPlayerId}");
+                } else {
+                    aUIObj.AddButton(actionPanel, UserPageBtnCMuteLBAnchor, UserPageBtnCMuteRTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                                     _("Chat Mute Button Text", uiUserId));
+                };
+
+                if (configData.EnableCUnmute && playerConnected && GetIsChatMuted(ref player)) {
+                    aUIObj.AddButton(actionPanel, UserPageBtnCUnmuteLBAnchor, UserPageBtnCUnmuteRTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                                     _("Chat Unmute Button Text", uiUserId), $"padm_cunmuteuser {aPlayerId}");
+                } else {
+                    aUIObj.AddButton(actionPanel, UserPageBtnCUnmuteLBAnchor, UserPageBtnCUnmuteRTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                                     _("Chat Unmute Button Text", uiUserId));
+                };
+
                 // Add reset buttons
                 if (configData.EnableClearInv) {
                     aUIObj.AddButton(actionPanel, UserPageBtnClearInventoryLBAnchor, UserPageBtnClearInventoryRTAnchor, CuiDefaultColors.Button,
@@ -836,7 +882,7 @@ namespace Oxide.Plugins
                 } else {
                     aUIObj.AddButton(actionPanel, UserPageBtnClearInventoryLBAnchor, UserPageBtnClearInventoryRTAnchor, CuiDefaultColors.ButtonInactive,
                                      CuiDefaultColors.Text, _("Clear Inventory Button Text", uiUserId));
-                }
+                };
 
                 if (configData.EnableResetBP) {
                     aUIObj.AddButton(actionPanel, UserPageBtnResetBPLBAnchor, UserPageBtnResetBPRTAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
@@ -844,7 +890,7 @@ namespace Oxide.Plugins
                 } else {
                     aUIObj.AddButton(actionPanel, UserPageBtnResetBPLBAnchor, UserPageBtnResetBPRTAnchor, CuiDefaultColors.ButtonInactive,
                                      CuiDefaultColors.Text, _("Reset Blueprints Button Text", uiUserId));
-                }
+                };
 
                 if (configData.EnableResetMetabolism) {
                     aUIObj.AddButton(actionPanel, UserPageBtnResetMetabolismLBAnchor, UserPageBtnResetMetabolismRTAnchor, CuiDefaultColors.Button,
@@ -852,7 +898,7 @@ namespace Oxide.Plugins
                 } else {
                     aUIObj.AddButton(actionPanel, UserPageBtnResetMetabolismLBAnchor, UserPageBtnResetMetabolismRTAnchor, CuiDefaultColors.ButtonInactive,
                                      CuiDefaultColors.Text, _("Reset Metabolism Button Text", uiUserId));
-                }
+                };
 
                 // Add hurt buttons
                 if (configData.EnableHurt) {
@@ -873,7 +919,7 @@ namespace Oxide.Plugins
                                      _("Hurt 75 Button Text", uiUserId));
                     aUIObj.AddButton(actionPanel, UserPageBtnHurt100LBAnchor, UserPageBtnHurt100RTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                      _("Hurt 100 Button Text", uiUserId));
-                }
+                };
 
                 // Add heal buttons
                 if (configData.EnableHeal) {
@@ -894,7 +940,7 @@ namespace Oxide.Plugins
                                      _("Heal 75 Button Text", uiUserId));
                     aUIObj.AddButton(actionPanel, UserPageBtnHeal100LBAnchor, UserPageBtnHeal100RTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                      _("Heal 100 Button Text", uiUserId));
-                }
+                };
             } else {
                 ServerUsers.User serverUser = ServerUsers.Get(aPlayerId);
                 aUIObj.AddLabel(panel, UserPageLblLBAnchor, UserPageLblRTAnchor, CuiDefaultColors.TextAlt,
@@ -910,8 +956,8 @@ namespace Oxide.Plugins
                 } else {
                     aUIObj.AddButton(actionPanel, UserPageBtnBanLBAnchor, UserPageBtnBanRTAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                      _("Unban Button Text", uiUserId));
-                }
-            }
+                };
+            };
         }
 
         /// <summary>
@@ -966,33 +1012,45 @@ namespace Oxide.Plugins
         #region Config
         private class ConfigData
         {
-            [DefaultValue("true")]
+            [DefaultValue(true)]
             [JsonProperty("Enable kick action")]
             public bool EnableKick { get; set; }
-            [DefaultValue("true")]
+            [DefaultValue(true)]
             [JsonProperty("Enable ban action")]
             public bool EnableBan { get; set; }
-            [DefaultValue("true")]
+            [DefaultValue(true)]
             [JsonProperty("Enable unban action")]
             public bool EnableUnban { get; set; }
-            [DefaultValue("true")]
+            [DefaultValue(true)]
             [JsonProperty("Enable kill action")]
             public bool EnableKill { get; set; }
-            [DefaultValue("true")]
+            [DefaultValue(true)]
             [JsonProperty("Enable inventory clear action")]
             public bool EnableClearInv { get; set; }
-            [DefaultValue("true")]
+            [DefaultValue(true)]
             [JsonProperty("Enable blueprint resetaction")]
             public bool EnableResetBP { get; set; }
-            [DefaultValue("true")]
+            [DefaultValue(true)]
             [JsonProperty("Enable metabolism reset action")]
             public bool EnableResetMetabolism { get; set; }
-            [DefaultValue("true")]
+            [DefaultValue(true)]
             [JsonProperty("Enable hurt action")]
             public bool EnableHurt { get; set; }
-            [DefaultValue("true")]
+            [DefaultValue(true)]
             [JsonProperty("Enable heal action")]
             public bool EnableHeal { get; set; }
+            [DefaultValue(true)]
+            [JsonProperty("Enable voice mute action")]
+            public bool EnableVMute { get; set; }
+            [DefaultValue(true)]
+            [JsonProperty("Enable voice unmute action")]
+            public bool EnableVUnmute { get; set; }
+            [DefaultValue(true)]
+            [JsonProperty("Enable chat mute action")]
+            public bool EnableCMute { get; set; }
+            [DefaultValue(true)]
+            [JsonProperty("Enable chat unmute action")]
+            public bool EnableCUnmute { get; set; }
         }
         #endregion
 
@@ -1093,32 +1151,40 @@ namespace Oxide.Plugins
         // User page button bounds
         private readonly CuiPoint UserPageBtnBanLBAnchor = new CuiPoint(0.01f, 0.85f);
         private readonly CuiPoint UserPageBtnBanRTAnchor = new CuiPoint(0.16f, 0.92f);
-        private readonly CuiPoint UserPageBtnKillLBAnchor = new CuiPoint(0.01f, 0.76f);
-        private readonly CuiPoint UserPageBtnKillRTAnchor = new CuiPoint(0.16f, 0.83f);
-        private readonly CuiPoint UserPageBtnKickLBAnchor = new CuiPoint(0.17f, 0.76f);
-        private readonly CuiPoint UserPageBtnKickRTAnchor = new CuiPoint(0.32f, 0.83f);
-        private readonly CuiPoint UserPageBtnClearInventoryLBAnchor = new CuiPoint(0.01f, 0.67f);
-        private readonly CuiPoint UserPageBtnClearInventoryRTAnchor = new CuiPoint(0.16f, 0.74f);
-        private readonly CuiPoint UserPageBtnResetBPLBAnchor = new CuiPoint(0.17f, 0.67f);
-        private readonly CuiPoint UserPageBtnResetBPRTAnchor = new CuiPoint(0.32f, 0.74f);
-        private readonly CuiPoint UserPageBtnResetMetabolismLBAnchor = new CuiPoint(0.33f, 0.67f);
-        private readonly CuiPoint UserPageBtnResetMetabolismRTAnchor = new CuiPoint(0.48f, 0.74f);
-        private readonly CuiPoint UserPageBtnHurt25LBAnchor = new CuiPoint(0.01f, 0.49f);
-        private readonly CuiPoint UserPageBtnHurt25RTAnchor = new CuiPoint(0.16f, 0.56f);
-        private readonly CuiPoint UserPageBtnHurt50LBAnchor = new CuiPoint(0.17f, 0.49f);
-        private readonly CuiPoint UserPageBtnHurt50RTAnchor = new CuiPoint(0.32f, 0.56f);
-        private readonly CuiPoint UserPageBtnHurt75LBAnchor = new CuiPoint(0.33f, 0.49f);
-        private readonly CuiPoint UserPageBtnHurt75RTAnchor = new CuiPoint(0.48f, 0.56f);
-        private readonly CuiPoint UserPageBtnHurt100LBAnchor = new CuiPoint(0.49f, 0.49f);
-        private readonly CuiPoint UserPageBtnHurt100RTAnchor = new CuiPoint(0.64f, 0.56f);
-        private readonly CuiPoint UserPageBtnHeal25LBAnchor = new CuiPoint(0.01f, 0.40f);
-        private readonly CuiPoint UserPageBtnHeal25RTAnchor = new CuiPoint(0.16f, 0.47f);
-        private readonly CuiPoint UserPageBtnHeal50LBAnchor = new CuiPoint(0.17f, 0.40f);
-        private readonly CuiPoint UserPageBtnHeal50RTAnchor = new CuiPoint(0.32f, 0.47f);
-        private readonly CuiPoint UserPageBtnHeal75LBAnchor = new CuiPoint(0.33f, 0.40f);
-        private readonly CuiPoint UserPageBtnHeal75RTAnchor = new CuiPoint(0.48f, 0.47f);
-        private readonly CuiPoint UserPageBtnHeal100LBAnchor = new CuiPoint(0.49f, 0.40f);
-        private readonly CuiPoint UserPageBtnHeal100RTAnchor = new CuiPoint(0.64f, 0.47f);
+        private readonly CuiPoint UserPageBtnKickLBAnchor = new CuiPoint(0.17f, 0.85f);
+        private readonly CuiPoint UserPageBtnKickRTAnchor = new CuiPoint(0.32f, 0.92f);
+        private readonly CuiPoint UserPageBtnKillLBAnchor = new CuiPoint(0.33f, 0.85f);
+        private readonly CuiPoint UserPageBtnKillRTAnchor = new CuiPoint(0.48f, 0.92f);
+        private readonly CuiPoint UserPageBtnVMuteLBAnchor = new CuiPoint(0.01f, 0.76f);
+        private readonly CuiPoint UserPageBtnVMuteRTAnchor = new CuiPoint(0.16f, 0.83f);
+        private readonly CuiPoint UserPageBtnVUnmuteLBAnchor = new CuiPoint(0.17f, 0.76f);
+        private readonly CuiPoint UserPageBtnVUnmuteRTAnchor = new CuiPoint(0.32f, 0.83f);
+        private readonly CuiPoint UserPageBtnCMuteLBAnchor = new CuiPoint(0.01f, 0.67f);
+        private readonly CuiPoint UserPageBtnCMuteRTAnchor = new CuiPoint(0.16f, 0.74f);
+        private readonly CuiPoint UserPageBtnCUnmuteLBAnchor = new CuiPoint(0.17f, 0.67f);
+        private readonly CuiPoint UserPageBtnCUnmuteRTAnchor = new CuiPoint(0.32f, 0.74f);
+        private readonly CuiPoint UserPageBtnClearInventoryLBAnchor = new CuiPoint(0.01f, 0.58f);
+        private readonly CuiPoint UserPageBtnClearInventoryRTAnchor = new CuiPoint(0.16f, 0.65f);
+        private readonly CuiPoint UserPageBtnResetBPLBAnchor = new CuiPoint(0.17f, 0.58f);
+        private readonly CuiPoint UserPageBtnResetBPRTAnchor = new CuiPoint(0.32f, 0.65f);
+        private readonly CuiPoint UserPageBtnResetMetabolismLBAnchor = new CuiPoint(0.33f, 0.58f);
+        private readonly CuiPoint UserPageBtnResetMetabolismRTAnchor = new CuiPoint(0.48f, 0.65f);
+        private readonly CuiPoint UserPageBtnHurt25LBAnchor = new CuiPoint(0.01f, 0.40f);
+        private readonly CuiPoint UserPageBtnHurt25RTAnchor = new CuiPoint(0.16f, 0.47f);
+        private readonly CuiPoint UserPageBtnHurt50LBAnchor = new CuiPoint(0.17f, 0.40f);
+        private readonly CuiPoint UserPageBtnHurt50RTAnchor = new CuiPoint(0.32f, 0.47f);
+        private readonly CuiPoint UserPageBtnHurt75LBAnchor = new CuiPoint(0.33f, 0.40f);
+        private readonly CuiPoint UserPageBtnHurt75RTAnchor = new CuiPoint(0.48f, 0.47f);
+        private readonly CuiPoint UserPageBtnHurt100LBAnchor = new CuiPoint(0.49f, 0.40f);
+        private readonly CuiPoint UserPageBtnHurt100RTAnchor = new CuiPoint(0.64f, 0.47f);
+        private readonly CuiPoint UserPageBtnHeal25LBAnchor = new CuiPoint(0.01f, 0.31f);
+        private readonly CuiPoint UserPageBtnHeal25RTAnchor = new CuiPoint(0.16f, 0.38f);
+        private readonly CuiPoint UserPageBtnHeal50LBAnchor = new CuiPoint(0.17f, 0.31f);
+        private readonly CuiPoint UserPageBtnHeal50RTAnchor = new CuiPoint(0.32f, 0.38f);
+        private readonly CuiPoint UserPageBtnHeal75LBAnchor = new CuiPoint(0.33f, 0.31f);
+        private readonly CuiPoint UserPageBtnHeal75RTAnchor = new CuiPoint(0.48f, 0.38f);
+        private readonly CuiPoint UserPageBtnHeal100LBAnchor = new CuiPoint(0.49f, 0.31f);
+        private readonly CuiPoint UserPageBtnHeal100RTAnchor = new CuiPoint(0.64f, 0.38f);
         #endregion Constants
 
         #region Variables
@@ -1235,7 +1301,12 @@ namespace Oxide.Plugins
                 { "Ban Button Text", "Ban" },
                 { "Kick Button Text", "Kick" },
                 { "Kill Button Text", "Kill" },
-                { "Unban Button Text", "Unban" }
+                { "Unban Button Text", "Unban" },
+
+                { "Voice Mute Button Text", "Mute Voice" },
+                { "Voice Unmute Button Text", "Unmute Voice" },
+                { "Chat Mute Button Text", "Mute Chat" },
+                { "Chat Unmute Button Text", "Unmute Chat" }
             }, this, "en");
         }
         #endregion Hooks
@@ -1439,6 +1510,66 @@ namespace Oxide.Plugins
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Heal(amount);
             LogInfo($"{player.displayName}: Healed user ID {targetId} for {amount} points");
+            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+        }
+
+        [ConsoleCommand("padm_vmuteuser")]
+        void PlayerManagerVoiceMuteUserCallback(ConsoleSystem.Arg arg)
+        {
+            BasePlayer player = arg.Player();
+            ulong targetId;
+
+            if (!VerifyPermission(ref player, "playeradministration.show") || !GetTargetFromArg(ref arg, out targetId) ||
+                !configData.EnableVMute)
+                return;
+
+            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, true);
+            LogInfo($"{player.displayName}: Voice muted user ID {targetId}");
+            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+        }
+
+        [ConsoleCommand("padm_vunmuteuser")]
+        void PlayerManagerVoiceUnmuteUserCallback(ConsoleSystem.Arg arg)
+        {
+            BasePlayer player = arg.Player();
+            ulong targetId;
+
+            if (!VerifyPermission(ref player, "playeradministration.show") || !GetTargetFromArg(ref arg, out targetId) ||
+                !configData.EnableVUnmute)
+                return;
+
+            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, false);
+            LogInfo($"{player.displayName}: Voice unmuted user ID {targetId}");
+            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+        }
+
+        [ConsoleCommand("padm_cmuteuser")]
+        void PlayerManagerChatMuteUserCallback(ConsoleSystem.Arg arg)
+        {
+            BasePlayer player = arg.Player();
+            ulong targetId;
+
+            if (!VerifyPermission(ref player, "playeradministration.show") || !GetTargetFromArg(ref arg, out targetId) ||
+                !configData.EnableCMute)
+                return;
+
+            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, true);
+            LogInfo($"{player.displayName}: Chat muted user ID {targetId}");
+            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+        }
+
+        [ConsoleCommand("padm_cunmuteuser")]
+        void PlayerManagerChatUnmuteUserCallback(ConsoleSystem.Arg arg)
+        {
+            BasePlayer player = arg.Player();
+            ulong targetId;
+
+            if (!VerifyPermission(ref player, "playeradministration.show") || !GetTargetFromArg(ref arg, out targetId) ||
+                !configData.EnableCUnmMute)
+                return;
+
+            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, false);
+            LogInfo($"{player.displayName}: Chat unmuted user ID {targetId}");
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
         #endregion Command Callbacks

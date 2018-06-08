@@ -3,8 +3,10 @@
 ## Features
 
 - Banning/unbanning users
-- Killing users
 - Kicking users
+- Killing users
+- Muting/unmuting a player's voice chat
+- Muting/unmuting a player's text chat
 - Clearing the user's inventory
 - Resetting a user's blueprints
 - Resetting a user's metabolism
@@ -32,7 +34,11 @@
   "Enable kick action": true,
   "Enable kill action": true,
   "Enable metabolism reset action": true,
-  "Enable unban action": true
+  "Enable unban action": true,
+  "Enable voice mute action": true,
+  "Enable voice unmute action": true,
+  "Enable chat mute action": true,
+  "Enable chat unmute action": true
 }
 ```
 
@@ -108,6 +114,11 @@ The default messages are in the `PlayerAdministration.json` file under the `oxid
   "Ban Button Text": "Ban",
   "Kick Button Text": "Kick",
   "Kill Button Text": "Kill",
-  "Unban Button Text": "Unban"
+  "Unban Button Text": "Unban",
+
+  "Voice Mute Button Text": "Mute Voice",
+  "Voice Unmute Button Text": "Unmute Voice",
+  "Chat Mute Button Text": "Mute Chat",
+  "Chat Unmute Button Text": "Unmute Chat"
 }
 ```
