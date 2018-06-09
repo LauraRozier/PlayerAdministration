@@ -8,7 +8,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.3.1", ResourceId = 0)]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.3.3", ResourceId = 0)]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : RustPlugin
     {
@@ -595,24 +595,39 @@ namespace Oxide.Plugins
         #endregion Utility methods
 
         #region Upgrade methods
-        private void UpgradeTo1_3_0()
+        /// <summary>
+        /// Upgrade the config to 1.3.x if needed
+        /// </summary>
+        /// <returns></returns>
+        private bool UpgradeTo1_3_0()
         {
+            bool result = false;
+
             Config.Load();
 
-            if (Config["Enable voice mute action"] == null)
+            if (Config["Enable voice mute action"] == null) {
                 Config["Enable voice mute action"] = true;
+                result = true;
+            };
 
-            if (Config["Enable voice unmute action"] == null)
+            if (Config["Enable voice unmute action"] == null) {
                 Config["Enable voice unmute action"] = true;
+                result = true;
+            };
 
-            if (Config["Enable chat mute action"] == null)
+            if (Config["Enable chat mute action"] == null) {
                 Config["Enable chat mute action"] = true;
+                result = true;
+            };
 
-            if (Config["Enable chat unmute action"] == null)
+            if (Config["Enable chat unmute action"] == null) {
                 Config["Enable chat unmute action"] = true;
+                result = true;
+            };
 
             Config.Save();
             Config.Clear();
+            return result;
         }
         #endregion
 
@@ -1221,9 +1236,12 @@ namespace Oxide.Plugins
         #region Hooks
         void Loaded()
         {
-            UpgradeTo1_3_0();
             configData = Config.ReadObject<ConfigData>();
             permission.RegisterPermission("playeradministration.show", this);
+
+            // Reload the config object if any upgrade was required
+            if (UpgradeTo1_3_0())
+                configData = Config.ReadObject<ConfigData>();
         }
 
         void Unload()
