@@ -8,7 +8,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.3.4", ResourceId = 0)]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.3.5", ResourceId = 0)]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : RustPlugin
     {
@@ -141,8 +141,8 @@ namespace Oxide.Plugins
         /// </summary>
         private class Cui
         {
-            public static readonly string PARENTHUD = "Hud";
-            public static readonly string PARENTOVERLAY = "Overlay";
+            public const string PARENTHUD = "Hud";
+            public const string PARENTOVERLAY = "Overlay";
 
             public string MainPanelName { get; set; }
 
@@ -874,7 +874,7 @@ namespace Oxide.Plugins
                 string authLevel = ServerUsers.Get(aPlayerId)?.group.ToString() ?? "None";
 
                 // Pre-calc last admin cheat
-                if (player.lastAdminCheatTime != 0f) {
+                if (player.lastAdminCheatTime > 0f) {
                     TimeSpan lastCheatSinceStart = new TimeSpan(0, 0, (int)(Time.realtimeSinceStartup - player.lastAdminCheatTime));
                     DateTime lastCheat = DateTime.UtcNow.Subtract(lastCheatSinceStart);
                     lastCheatStr = $"{lastCheat.ToString(@"yyyy\/MM\/dd HH:mm:ss")} UTC";
