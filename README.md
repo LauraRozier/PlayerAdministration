@@ -26,15 +26,15 @@
 
 ```json
 {
-  "Enable ban action": true,
-  "Enable blueprint resetaction": true,
-  "Enable heal action": true,
-  "Enable hurt action": true,
-  "Enable inventory clear action": true,
   "Enable kick action": true,
-  "Enable kill action": true,
-  "Enable metabolism reset action": true,
+  "Enable ban action": true,
   "Enable unban action": true,
+  "Enable kill action": true,
+  "Enable inventory clear action": true,
+  "Enable blueprint reset action": true,
+  "Enable metabolism reset action": true,
+  "Enable hurt action": true,
+  "Enable heal action": true,
   "Enable voice mute action": true,
   "Enable voice unmute action": true,
   "Enable chat mute action": true,
