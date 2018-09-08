@@ -13,6 +13,9 @@
 - Hurting a user
 - Healing a user
 - The ability to see a user's vitals, status and steamID64
+- Use of PermissionsManager plugin to edit Oxide user permissions on a user
+- Use of Freeze plugin to freeze/unfreeze user position (Only for English language users, Freeze uses localized commands!!!)
+- Use of Economics plugin to show player's current balance
 
 ## Permissions
 
@@ -82,6 +85,7 @@ The default messages are in the `PlayerAdministration.json` file under the `oxid
   "Rotation Label Format": "Rotation: {0}",
   "Last Admin Cheat Label Format": "Last admin cheat: {0}",
   "Idle Time Label Format": "Idle time: {0} seconds",
+  "Economics Balance Label Format": "Balance: {0} coins",
   "Health Label Format": "Health: {0}",
   "Calories Label Format": "Calories: {0}",
   "Hydration Label Format": "Hydration: {0}",
@@ -115,6 +119,10 @@ The default messages are in the `PlayerAdministration.json` file under the `oxid
   "Kick Button Text": "Kick",
   "Kill Button Text": "Kill",
   "Unban Button Text": "Unban",
+
+  "Perms Button Text": "Permissions",
+  "Freeze Button Text": "Freeze",
+  "UnFreeze Button Text": "UnFreeze",
 
   "Voice Mute Button Text": "Mute Voice",
   "Voice Unmute Button Text": "Unmute Voice",
