@@ -39,9 +39,9 @@
   "Enable hurt action": true,
   "Enable heal action": true,
   "Enable voice mute action": true,
-  "Enable voice unmute action": true,
   "Enable chat mute action": true,
-  "Enable chat unmute action": true
+  "Enable perms action": true,
+  "Enable freeze action": true
 }
 ```
 
