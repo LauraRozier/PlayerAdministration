@@ -27,12 +27,12 @@
 - **playeradministration.clearinventory** -- Allows the user to clear any player's inventory
 - **playeradministration.resetblueprint** -- Allows the user to reset any player's blueprints
 - **playeradministration.resetmetabolism** -- Allows the user to reset any player's metabolism
-- **playeradministration.hurt** -- Required to be able to use the `/padmin` command and plugin
-- **playeradministration.heal** -- Required to be able to use the `/padmin` command and plugin
-- **playeradministration.voicemute** -- Required to be able to use the `/padmin` command and plugin
-- **playeradministration.chatmute** -- Required to be able to use the `/padmin` command and plugin
-- **playeradministration.perms** -- Required to be able to use the `/padmin` command and plugin
-- **playeradministration.freeze** -- Required to be able to use the `/padmin` command and plugin
+- **playeradministration.hurt** -- Allows the user to hurt any player
+- **playeradministration.heal** -- Allows the user to heal any player
+- **playeradministration.voicemute** -- Allows the user to mute the voice chat of any player
+- **playeradministration.chatmute** -- Allows the user to mute the text chat of any player
+- **playeradministration.perms** -- Allows the user to use the "Permissions" button for any player
+- **playeradministration.freeze** -- Allows the user to freeze and unfreeze any player
 
 ## Chat Commands
 
