@@ -33,19 +33,19 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.3.8", ResourceId = 0)]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.3.9", ResourceId = 0)]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : RustPlugin
     {
         #region Plugin References
-#pragma warning disable IDE0044
+#pragma warning disable IDE0044, CS0649
         [PluginReference]
         private Plugin Economics;
         [PluginReference]
         private Plugin Freeze;
         [PluginReference]
         private Plugin PermissionsManager;
-#pragma warning restore IDE0044
+#pragma warning restore IDE0044, CS0649
         #endregion Plugin References
 
         #region GUI
