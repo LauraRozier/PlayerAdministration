@@ -33,7 +33,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.3.9", ResourceId = 0)]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.3.10", ResourceId = 0)]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : RustPlugin
     {
@@ -612,39 +612,34 @@ namespace Oxide.Plugins
         /// Verify if a user has the specified permission
         /// </summary>
         /// <param name="aPlayer">The player</param>
-        /// <param name="aPermission"></param>
+        /// <param name="aPermission">Pass <see cref="string.Empty"/> to only verify <see cref="CPermUiShow"/></param>
+        /// <param name="aIndReport">Indicates that issues should be reported</param>
         /// <returns></returns>
-        private bool VerifyPermission(ref BasePlayer aPlayer, string aPermission)
+        private bool VerifyPermission(ref BasePlayer aPlayer, string aPermission, bool aIndReport = false)
         {
-            if (permission.UserHasPermission(aPlayer.UserIDString, aPermission)) // User MUST have the required permission
-                return true;
+            bool result = permission.UserHasPermission(aPlayer.UserIDString, CPermUiShow);
+            aPermission = aPermission ?? string.Empty; // We need to get rid of possible null values
+            
+            if (FConfigData.UsePermSystem && result && aPermission.Length > 0)
+                result = permission.UserHasPermission(aPlayer.UserIDString, aPermission);
 
-            SendMessage(ref aPlayer, GetMessage("Permission Error Text", aPlayer.UserIDString));
-            LogError(GetMessage("Permission Error Log Text", aPlayer.UserIDString, aPlayer.displayName, aPermission));
-            return false;
+            if (aIndReport && !result) {
+                SendMessage(ref aPlayer, GetMessage("Permission Error Text", aPlayer.UserIDString));
+                LogError(GetMessage("Permission Error Log Text", aPlayer.UserIDString, aPlayer.displayName, aPermission));
+            }
+
+            return result;
         }
 
         /// <summary>
         /// Verify if a user has the specified permission
         /// </summary>
         /// <param name="aPlayerId">The player's ID</param>
-        /// <param name="aPermission"></param>
+        /// <param name="aPermission">Pass <see cref="string.Empty"/> to only verify <see cref="CPermUiShow"/></param>
         /// <returns></returns>
         private bool VerifyPermission(string aPlayerId, string aPermission)
         {
             BasePlayer player = BasePlayer.Find(aPlayerId);
-            return VerifyPermission(ref player, aPermission);
-        }
-
-        /// <summary>
-        /// Verify if a user has the specified permission
-        /// </summary>
-        /// <param name="aPlayerId">The player's ID</param>
-        /// <param name="aPermission"></param>
-        /// <returns></returns>
-        private bool VerifyPermission(ulong aPlayerId, string aPermission)
-        {
-            BasePlayer player = BasePlayer.FindByID(aPlayerId);
             return VerifyPermission(ref player, aPermission);
         }
 
@@ -780,75 +775,25 @@ namespace Oxide.Plugins
 
         #region Upgrade methods
         /// <summary>
-        /// Upgrade the config to 1.3.0 if needed
+        /// Upgrade the config to 1.3.10 if needed
         /// </summary>
         /// <returns></returns>
-        private bool UpgradeTo130()
+        private bool UpgradeTo1310()
         {
             bool result = false;
             Config.Load();
 
-            if (Config["Enable chat mute action"] == null) {
-                FConfigData.EnableCMute = true;
-                result = true;
-            }
-
-            if (Config["Enable voice mute action"] == null) {
-                FConfigData.EnableVMute = true;
-                result = true;
-            }
-
-            Config.Clear();
-
-            if (result)
-                Config.WriteObject(FConfigData);
-
-            return result;
-        }
-
-        /// <summary>
-        /// Upgrade the config to 1.3.6 if needed
-        /// </summary>
-        /// <returns></returns>
-        private bool UpgradeTo136()
-        {
-            bool result = false;
-            Config.Load();
-
-            if (Config["Enable blueprint reset action"] == null) {
-                FConfigData.EnableResetBP = Config.ConvertValue<bool>(Config["Enable blueprint resetaction"]);
-                result = true;
-            }
-
-            Config.Clear();
-
-            if (result)
-                Config.WriteObject(FConfigData);
-
-            return result;
-        }
-
-        /// <summary>
-        /// Upgrade the config to 1.3.7 if needed
-        /// </summary>
-        /// <returns></returns>
-        private bool UpgradeTo137()
-        {
-            bool result = false;
-            Config.Load();
-
-            if (Config["Enable perms action"] == null) {
-                FConfigData.EnablePerms = true;
-                result = true;
-            }
-
-            if (Config["Enable freeze action"] == null) {
-                FConfigData.EnableFreeze = true;
+            if (Config["Use Permission System"] == null) {
+                FConfigData.UsePermSystem = true;
                 result = true;
             }
 
             // Remove legacy config items
-            if (Config["Enable voice unmute action"] != null || Config["Enable chat unmute action"] != null)
+            if (Config["Enable kick action"] != null || Config["Enable ban action"] != null || Config["Enable unban action"] != null ||
+                Config["Enable kill action"] != null || Config["Enable inventory clear action"] != null || Config["Enable blueprint reset action"] != null ||
+                Config["Enable metabolism reset action"] != null || Config["Enable hurt action"] != null || Config["Enable heal action"] != null ||
+                Config["Enable voice mute action"] != null || Config["Enable chat mute action"] != null || Config["Enable perms action"] != null ||
+                Config["Enable freeze action"] != null)
                 result = true;
 
             Config.Clear();
@@ -905,10 +850,10 @@ namespace Oxide.Plugins
             aUIObj.AddLabel(panel, CMainPageLblBanByIdLbAnchor, CMainPageLblBanByIdRtAnchor, CuiDefaultColors.TextAlt, GetMessage("Ban By ID Label Text", uiUserId),
                             string.Empty, 14, TextAnchor.MiddleLeft);
             string panelBanByIdGroup = aUIObj.AddPanel(panel, CMainPagePanelBanByIdLbAnchor, CMainPagePanelBanByIdRtAnchor, false, CuiDefaultColors.BackgroundDark);
-            aUIObj.AddInputField(panelBanByIdGroup, CMainPageEdtBanByIdLbAnchor, CMainPageEdtBanByIdRtAnchor, CuiDefaultColors.TextAlt, string.Empty, 24,
-                                 CMainPageBanIdInputTextCmd);
 
-            if (FConfigData.EnableBan) {
+            if (VerifyPermission(uiUserId, CPermBan)) {
+                aUIObj.AddInputField(panelBanByIdGroup, CMainPageEdtBanByIdLbAnchor, CMainPageEdtBanByIdRtAnchor, CuiDefaultColors.TextAlt, string.Empty, 24,
+                                     CMainPageBanIdInputTextCmd);
                 aUIObj.AddButton(panel, CMainPageBtnBanByIdLbAnchor, CMainPageBtnBanByIdRtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt, "Ban",
                                  CMainPageBanByIdCmd);
             } else {
@@ -1132,7 +1077,7 @@ namespace Oxide.Plugins
         /// <param name="aPlayer">Player who's information we need to display</param>
         private void AddUserPageFirstActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId, ref BasePlayer aPlayer)
         {
-            if (FConfigData.EnableBan) {
+            if (VerifyPermission(aUiUserId, CPermBan)) {
                 aUIObj.AddButton(aParent, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
                                  GetMessage("Ban Button Text", aUiUserId), $"{CBanUserCmd} {aPlayerId}");
             } else {
@@ -1140,7 +1085,7 @@ namespace Oxide.Plugins
                                  GetMessage("Ban Button Text", aUiUserId));
             }
 
-            if (FConfigData.EnableKick && aPlayer.IsConnected) {
+            if (VerifyPermission(aUiUserId, CPermKick) && aPlayer.IsConnected) {
                 aUIObj.AddButton(aParent, CUserPageBtnKickLbAnchor, CUserPageBtnKickRtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
                                  GetMessage("Kick Button Text", aUiUserId), $"{CKickUserCmd} {aPlayerId}");
             } else {
@@ -1148,7 +1093,7 @@ namespace Oxide.Plugins
                                  GetMessage("Kick Button Text", aUiUserId));
             }
 
-            if (FConfigData.EnableKill) {
+            if (VerifyPermission(aUiUserId, CPermKill)) {
                 aUIObj.AddButton(aParent, CUserPageBtnKillLbAnchor, CUserPageBtnKillRtAnchor, CuiDefaultColors.ButtonWarning, CuiDefaultColors.TextAlt,
                                  GetMessage("Kill Button Text", aUiUserId), $"{CKillUserCmd} {aPlayerId}");
             } else {
@@ -1156,7 +1101,7 @@ namespace Oxide.Plugins
                                  GetMessage("Kill Button Text", aUiUserId));
             }
 
-            if (PermissionsManager != null && FConfigData.EnablePerms) {
+            if (PermissionsManager != null && VerifyPermission(aUiUserId, CPermPerms)) {
                 aUIObj.AddButton(aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
                                  GetMessage("Perms Button Text", aUiUserId), $"{CPermsCmd} {aPlayerId}");
             } else {
@@ -1177,7 +1122,7 @@ namespace Oxide.Plugins
         {
             bool playerConnected = aPlayer.IsConnected;
 
-            if (FConfigData.EnableVMute && playerConnected) {
+            if (VerifyPermission(aUiUserId, CPermVoiceMute) && playerConnected) {
                 if (GetIsVoiceMuted(ref aPlayer)) {
                     aUIObj.AddButton(aParent, CUserPageBtnVMuteLbAnchor, CUserPageBtnVMuteRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                      GetMessage("Voice Mute Button Text", aUiUserId));
@@ -1196,7 +1141,7 @@ namespace Oxide.Plugins
                                  GetMessage("Voice Unmute Button Text", aUiUserId));
             }
 
-            if (FConfigData.EnableCMute && playerConnected) {
+            if (VerifyPermission(aUiUserId, CPermChatMute) && playerConnected) {
                 if (GetIsChatMuted(ref aPlayer)) {
                     aUIObj.AddButton(aParent, CUserPageBtnCMuteLbAnchor, CUserPageBtnCMuteRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                      GetMessage("Chat Mute Button Text", aUiUserId));
@@ -1226,7 +1171,7 @@ namespace Oxide.Plugins
         /// <param name="aPlayer">Player who's information we need to display</param>
         private void AddUserPageThirdActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId, ref BasePlayer aPlayer)
         {
-            if (Freeze != null && FConfigData.EnableFreeze && aPlayer.IsConnected) {
+            if (Freeze != null && VerifyPermission(aUiUserId, CPermFreeze) && aPlayer.IsConnected) {
                 if (GetIsFrozen(aPlayerId)) {
                     aUIObj.AddButton(aParent, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                 GetMessage("Freeze Button Text", aUiUserId));
@@ -1255,7 +1200,7 @@ namespace Oxide.Plugins
         /// <param name="aPlayerId">Player ID (SteamId64)</param>
         private void AddUserPageFourthActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId)
         {
-            if (FConfigData.EnableClearInv) {
+            if (VerifyPermission(aUiUserId, CPermClearInventory)) {
                 aUIObj.AddButton(aParent, CUserPageBtnClearInventoryLbAnchor, CUserPageBtnClearInventoryRtAnchor, CuiDefaultColors.ButtonWarning,
                                  CuiDefaultColors.TextAlt, GetMessage("Clear Inventory Button Text", aUiUserId), $"{CClearUserInventoryCmd} {aPlayerId}");
             } else {
@@ -1263,7 +1208,7 @@ namespace Oxide.Plugins
                                  CuiDefaultColors.Text, GetMessage("Clear Inventory Button Text", aUiUserId));
             }
 
-            if (FConfigData.EnableResetBP) {
+            if (VerifyPermission(aUiUserId, CPermResetBP)) {
                 aUIObj.AddButton(aParent, CUserPageBtnResetBPLbAnchor, CUserPageBtnResetBPRtAnchor, CuiDefaultColors.ButtonWarning,
                                  CuiDefaultColors.TextAlt, GetMessage("Reset Blueprints Button Text", aUiUserId), $"{CResetUserBPCmd} {aPlayerId}");
             } else {
@@ -1271,7 +1216,7 @@ namespace Oxide.Plugins
                                  CuiDefaultColors.Text, GetMessage("Reset Blueprints Button Text", aUiUserId));
             }
 
-            if (FConfigData.EnableResetMetabolism) {
+            if (VerifyPermission(aUiUserId, CPermResetMetabolism)) {
                 aUIObj.AddButton(aParent, CUserPageBtnResetMetabolismLbAnchor, CUserPageBtnResetMetabolismRtAnchor, CuiDefaultColors.ButtonWarning,
                                  CuiDefaultColors.TextAlt, GetMessage("Reset Metabolism Button Text", aUiUserId), $"{CResetUserMetabolismCmd} {aPlayerId}");
             } else {
@@ -1289,7 +1234,7 @@ namespace Oxide.Plugins
         /// <param name="aPlayerId">Player ID (SteamId64)</param>
         private void AddUserPageFifthActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId)
         {
-            if (FConfigData.EnableHurt) {
+            if (VerifyPermission(aUiUserId, CPermHurt)) {
                 aUIObj.AddButton(aParent, CUserPageBtnHurt25LbAnchor, CUserPageBtnHurt25RtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
                                  GetMessage("Hurt 25 Button Text", aUiUserId), $"{CHurtUserCmd} {aPlayerId} 25");
                 aUIObj.AddButton(aParent, CUserPageBtnHurt50LbAnchor, CUserPageBtnHurt50RtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
@@ -1319,7 +1264,7 @@ namespace Oxide.Plugins
         /// <param name="aPlayerId">Player ID (SteamId64)</param>
         private void AddUserPageSixthActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId)
         {
-            if (FConfigData.EnableHeal) {
+            if (VerifyPermission(aUiUserId, CPermHeal)) {
                 aUIObj.AddButton(aParent, CUserPageBtnHeal25LbAnchor, CUserPageBtnHeal25RtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
                                  GetMessage("Heal 25 Button Text", aUiUserId), $"{CHealUserCmd} {aPlayerId} 25");
                 aUIObj.AddButton(aParent, CUserPageBtnHeal50LbAnchor, CUserPageBtnHeal50RtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
@@ -1392,7 +1337,7 @@ namespace Oxide.Plugins
                                 GetMessage("Id Label Format", uiUserId, aPlayerId, string.Empty), string.Empty, 14, TextAnchor.MiddleLeft);
 
                 // --- Build player action panel
-                if (FConfigData.EnableUnban) {
+                if (VerifyPermission(uiUserId, CPermBan)) {
                     aUIObj.AddButton(actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
                                      GetMessage("Unban Button Text", uiUserId), $"{CUnbanUserCmd} {aPlayerId}");
                 } else {
@@ -1458,44 +1403,8 @@ namespace Oxide.Plugins
         private class ConfigData
         {
             [DefaultValue(true)]
-            [JsonProperty("Enable kick action")]
-            public bool EnableKick { get; set; }
-            [DefaultValue(true)]
-            [JsonProperty("Enable ban action")]
-            public bool EnableBan { get; set; }
-            [DefaultValue(true)]
-            [JsonProperty("Enable unban action")]
-            public bool EnableUnban { get; set; }
-            [DefaultValue(true)]
-            [JsonProperty("Enable kill action")]
-            public bool EnableKill { get; set; }
-            [DefaultValue(true)]
-            [JsonProperty("Enable inventory clear action")]
-            public bool EnableClearInv { get; set; }
-            [DefaultValue(true)]
-            [JsonProperty("Enable blueprint reset action")]
-            public bool EnableResetBP { get; set; }
-            [DefaultValue(true)]
-            [JsonProperty("Enable metabolism reset action")]
-            public bool EnableResetMetabolism { get; set; }
-            [DefaultValue(true)]
-            [JsonProperty("Enable hurt action")]
-            public bool EnableHurt { get; set; }
-            [DefaultValue(true)]
-            [JsonProperty("Enable heal action")]
-            public bool EnableHeal { get; set; }
-            [DefaultValue(true)]
-            [JsonProperty("Enable voice mute action")]
-            public bool EnableVMute { get; set; }
-            [DefaultValue(true)]
-            [JsonProperty("Enable chat mute action")]
-            public bool EnableCMute { get; set; }
-            [DefaultValue(true)]
-            [JsonProperty("Enable perms action")]
-            public bool EnablePerms { get; set; }
-            [DefaultValue(true)]
-            [JsonProperty("Enable freeze action")]
-            public bool EnableFreeze { get; set; }
+            [JsonProperty("Use Permission System", DefaultValueHandling = DefaultValueHandling.Populate)]
+            public bool UsePermSystem { get; set; }
         }
         #endregion
 
@@ -1548,6 +1457,18 @@ namespace Oxide.Plugins
         #endregion Local Command Static Arguments
         #region Local permissions
         private const string CPermUiShow = "playeradministration.show";
+        private const string CPermKick = "playeradministration.kick";
+        private const string CPermBan = "playeradministration.ban";
+        private const string CPermKill = "playeradministration.kill";
+        private const string CPermPerms = "playeradministration.perms";
+        private const string CPermVoiceMute = "playeradministration.voicemute";
+        private const string CPermChatMute = "playeradministration.chatmute";
+        private const string CPermFreeze = "playeradministration.freeze";
+        private const string CPermClearInventory = "playeradministration.clearinventory";
+        private const string CPermResetBP = "playeradministration.resetblueprint";
+        private const string CPermResetMetabolism = "playeradministration.resetmetabolism";
+        private const string CPermHurt = "playeradministration.hurt";
+        private const string CPermHeal = "playeradministration.heal";
         #endregion Local permissions
         #region Foreign permissions
         private const string CPermFreezeFrozen = "freeze.frozen";
@@ -1715,16 +1636,22 @@ namespace Oxide.Plugins
         {
             FConfigData = Config.ReadObject<ConfigData>();
 
-            if (UpgradeTo130())
-                LogDebug("Upgraded the config to version 1.3.0");
-
-            if (UpgradeTo136())
-                LogDebug("Upgraded the config to version 1.3.6");
-
-            if (UpgradeTo137())
-                LogDebug("Upgraded the config to version 1.3.7");
+            if (UpgradeTo1310())
+                LogDebug("Upgraded the config to version 1.3.10");
 
             permission.RegisterPermission(CPermUiShow, this);
+            permission.RegisterPermission(CPermKick, this);
+            permission.RegisterPermission(CPermBan, this);
+            permission.RegisterPermission(CPermKill, this);
+            permission.RegisterPermission(CPermPerms, this);
+            permission.RegisterPermission(CPermVoiceMute, this);
+            permission.RegisterPermission(CPermChatMute, this);
+            permission.RegisterPermission(CPermFreeze, this);
+            permission.RegisterPermission(CPermClearInventory, this);
+            permission.RegisterPermission(CPermResetBP, this);
+            permission.RegisterPermission(CPermResetMetabolism, this);
+            permission.RegisterPermission(CPermHurt, this);
+            permission.RegisterPermission(CPermHeal, this);
             FPluginInstance = this;
         }
 
@@ -1749,19 +1676,7 @@ namespace Oxide.Plugins
         protected override void LoadDefaultConfig()
         {
             ConfigData config = new ConfigData {
-                EnableKick = true,
-                EnableBan = true,
-                EnableUnban = true,
-                EnableKill = true,
-                EnableClearInv = true,
-                EnableResetBP = true,
-                EnableResetMetabolism = true,
-                EnableHurt = true,
-                EnableHeal = true,
-                EnableVMute = true,
-                EnableCMute = true,
-                EnablePerms = true,
-                EnableFreeze = true
+                UsePermSystem = true
             };
             Config.WriteObject(config);
             LogDebug("Default config loaded");
@@ -1861,7 +1776,7 @@ namespace Oxide.Plugins
         {
             LogDebug("PlayerAdministrationUICallback was called");
 
-            if (!VerifyPermission(ref aPlayer, CPermUiShow))
+            if (!VerifyPermission(ref aPlayer, string.Empty, true))
                 return;
 
             LogInfo($"{aPlayer.displayName}: Opened the menu");
@@ -1888,7 +1803,7 @@ namespace Oxide.Plugins
             LogDebug("PlayerAdministrationSwitchUICallback was called");
             BasePlayer player = aArg.Player();
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !aArg.HasArgs())
+            if (!VerifyPermission(ref player, string.Empty, true) || !aArg.HasArgs())
                 return;
 
             switch (aArg.Args[0].ToLower()) {
@@ -1938,7 +1853,7 @@ namespace Oxide.Plugins
             BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableKick)
+            if (!VerifyPermission(ref player, CPermKick, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
             BasePlayer.FindByID(targetId)?.Kick(GetMessage("Kick Reason Message Text", targetId.ToString()));
@@ -1953,7 +1868,7 @@ namespace Oxide.Plugins
             BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableBan)
+            if (!VerifyPermission(ref player, CPermBan, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
             Player.Ban(targetId, GetMessage("Ban Reason Message Text", targetId.ToString()));
@@ -1968,8 +1883,8 @@ namespace Oxide.Plugins
             BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !FMainPageBanIdInputText.ContainsKey(player.userID) ||
-                !ulong.TryParse(FMainPageBanIdInputText[player.userID], out targetId) || !FConfigData.EnableBan)
+            if (!VerifyPermission(ref player, CPermBan, true) || !FMainPageBanIdInputText.ContainsKey(player.userID) ||
+                !ulong.TryParse(FMainPageBanIdInputText[player.userID], out targetId))
                 return;
 
             Player.Ban(targetId, GetMessage("Ban Reason Message Text", targetId.ToString()));
@@ -1984,7 +1899,7 @@ namespace Oxide.Plugins
             BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableUnban)
+            if (!VerifyPermission(ref player, CPermBan, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
             Player.Unban(targetId);
@@ -1999,7 +1914,7 @@ namespace Oxide.Plugins
             BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableKill)
+            if (!VerifyPermission(ref player, CPermKill, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Die();
@@ -2014,7 +1929,7 @@ namespace Oxide.Plugins
             BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnablePerms)
+            if (!VerifyPermission(ref player, CPermPerms, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
             player.SendConsoleCommand($"chat.say \"/{CPermsPermsCmd} {targetId}\"");
@@ -2028,7 +1943,7 @@ namespace Oxide.Plugins
             BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableVMute)
+            if (!VerifyPermission(ref player, CPermVoiceMute, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, true);
@@ -2043,7 +1958,7 @@ namespace Oxide.Plugins
             BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableVMute)
+            if (!VerifyPermission(ref player, CPermVoiceMute, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, false);
@@ -2058,7 +1973,7 @@ namespace Oxide.Plugins
             BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableCMute)
+            if (!VerifyPermission(ref player, CPermChatMute, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, true);
@@ -2073,7 +1988,7 @@ namespace Oxide.Plugins
             BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableCMute)
+            if (!VerifyPermission(ref player, CPermChatMute, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, false);
@@ -2088,7 +2003,7 @@ namespace Oxide.Plugins
             BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableFreeze)
+            if (!VerifyPermission(ref player, CPermFreeze, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
             player.SendConsoleCommand($"{CFreezeFreezeCmd} {targetId}");
@@ -2104,7 +2019,7 @@ namespace Oxide.Plugins
             BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableFreeze)
+            if (!VerifyPermission(ref player, CPermFreeze, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
             player.SendConsoleCommand($"{CFreezeUnfreezeCmd} {targetId}");
@@ -2120,7 +2035,7 @@ namespace Oxide.Plugins
             BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableClearInv)
+            if (!VerifyPermission(ref player, CPermClearInventory, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.inventory.Strip();
@@ -2135,7 +2050,7 @@ namespace Oxide.Plugins
             BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableResetBP)
+            if (!VerifyPermission(ref player, CPermResetBP, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.blueprints.Reset();
@@ -2150,7 +2065,7 @@ namespace Oxide.Plugins
             BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableResetMetabolism)
+            if (!VerifyPermission(ref player, CPermResetMetabolism, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.metabolism.Reset();
@@ -2166,8 +2081,7 @@ namespace Oxide.Plugins
             ulong targetId;
             float amount;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetAmountFromArg(ref aArg, out targetId, out amount) ||
-                !FConfigData.EnableHurt)
+            if (!VerifyPermission(ref player, CPermHurt, true) || !GetTargetAmountFromArg(ref aArg, out targetId, out amount))
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Hurt(amount);
@@ -2183,8 +2097,7 @@ namespace Oxide.Plugins
             ulong targetId;
             float amount;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetAmountFromArg(ref aArg, out targetId, out amount) ||
-                !FConfigData.EnableHeal)
+            if (!VerifyPermission(ref player, CPermHeal, true) || !GetTargetAmountFromArg(ref aArg, out targetId, out amount))
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Heal(amount);

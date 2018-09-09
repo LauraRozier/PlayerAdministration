@@ -9,17 +9,30 @@
 - Muting/unmuting a player's text chat
 - Clearing the user's inventory
 - Resetting a user's blueprints
-- Resetting a user's metabolism
+- Resetting a user's metabolism (Identical to how a respawn sets a random metabolism)
 - Hurting a user
 - Healing a user
 - The ability to see a user's vitals, status and steamID64
 - Use of PermissionsManager plugin to edit Oxide user permissions on a user
 - Use of Freeze plugin to freeze/unfreeze user position (Only for English language users, Freeze uses localized commands!!!)
 - Use of Economics plugin to show player's current balance
+- Filtering through users via the "search" function (Case insensitive and selects both names and IDs that contain the text written in the input)
 
 ## Permissions
 
 - **playeradministration.show** -- Required to be able to use the `/padmin` command and plugin
+- **playeradministration.kick** -- Allows the user to kick any player
+- **playeradministration.ban** -- Allows the user to ban and unban any player
+- **playeradministration.kill** -- Allows the user to kill any player
+- **playeradministration.clearinventory** -- Allows the user to clear any player's inventory
+- **playeradministration.resetblueprint** -- Allows the user to reset any player's blueprints
+- **playeradministration.resetmetabolism** -- Allows the user to reset any player's metabolism
+- **playeradministration.hurt** -- Required to be able to use the `/padmin` command and plugin
+- **playeradministration.heal** -- Required to be able to use the `/padmin` command and plugin
+- **playeradministration.voicemute** -- Required to be able to use the `/padmin` command and plugin
+- **playeradministration.chatmute** -- Required to be able to use the `/padmin` command and plugin
+- **playeradministration.perms** -- Required to be able to use the `/padmin` command and plugin
+- **playeradministration.freeze** -- Required to be able to use the `/padmin` command and plugin
 
 ## Chat Commands
 
@@ -27,21 +40,11 @@
 
 ## Configuration
 
+- **Use Permission System** -- When set to `false` the users with the `playeradministration.show` permission can use all actions
+
 ```json
 {
-  "Enable kick action": true,
-  "Enable ban action": true,
-  "Enable unban action": true,
-  "Enable kill action": true,
-  "Enable inventory clear action": true,
-  "Enable blueprint reset action": true,
-  "Enable metabolism reset action": true,
-  "Enable hurt action": true,
-  "Enable heal action": true,
-  "Enable voice mute action": true,
-  "Enable chat mute action": true,
-  "Enable perms action": true,
-  "Enable freeze action": true
+  "Use Permission System": true
 }
 ```
 
