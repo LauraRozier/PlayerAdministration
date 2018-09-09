@@ -73,6 +73,7 @@ The default messages are in the `PlayerAdministration.json` file under the `oxid
 
   "Ban By ID Title Text": "Ban a user by ID",
   "Ban By ID Label Text": "User ID:",
+  "Search Label Text": "Search:",
   "Player Info Label Text": "Player information:",
   "Player Actions Label Text": "Player actions:",
 
@@ -100,6 +101,8 @@ The default messages are in the `PlayerAdministration.json` file under the `oxid
   "Online Player Tab Text": "Online Players",
   "Offline Player Tab Text": "Offline Players",
   "Banned Player Tab Text": "Banned Players",
+
+  "Go Button Text": "Go",
 
   "Clear Inventory Button Text": "Clear Inventory",
   "Reset Blueprints Button Text": "Reset Blueprints",

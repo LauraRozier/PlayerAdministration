@@ -33,17 +33,19 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.3.7", ResourceId = 0)]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.3.8", ResourceId = 0)]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : RustPlugin
     {
         #region Plugin References
+#pragma warning disable IDE0044
         [PluginReference]
         private Plugin Economics;
         [PluginReference]
         private Plugin Freeze;
         [PluginReference]
         private Plugin PermissionsManager;
+#pragma warning restore IDE0044
         #endregion Plugin References
 
         #region GUI
@@ -521,6 +523,7 @@ namespace Oxide.Plugins
             int col = -1;
             int row = 0;
             float margin = 0.12f;
+            List<string> addedNames = new List<string>();
 
             foreach (T user in userRange) {
                 if (++col >= CMaxPlayerCols) {
@@ -532,20 +535,36 @@ namespace Oxide.Plugins
                 float calcLeft = ((dimensions.x + offset.x) * col) + offset.x;
                 CuiPoint lbAnchor = new CuiPoint(calcLeft, calcTop - dimensions.y);
                 CuiPoint rtAnchor = new CuiPoint(calcLeft + dimensions.x, calcTop);
+                string btnText;
+                string btnCommand;
+                int suffix = 0;
 
                 if (typeof(T) == typeof(BasePlayer)) {
-                    string btnText = (user as BasePlayer).displayName;
-                    string btnCommand = string.Format(aCommandFmt, (user as BasePlayer).UserIDString);
+                    BasePlayer player = (user as BasePlayer);
+                    btnText = player.displayName;
+                    btnCommand = string.Format(aCommandFmt, player.UserIDString);
+
+                    while (addedNames.FindIndex(item => string.Equals(btnText, item, StringComparison.OrdinalIgnoreCase)) >= 0)
+                        btnText = $"{player.displayName} {++suffix}";
+
                     aUIObj.AddButton(aParent, lbAnchor, rtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt, btnText, btnCommand, string.Empty, string.Empty, 16);
                 } else {
-                    string btnText = (user as ServerUsers.User).username;
-                    string btnCommand = string.Format(aCommandFmt, (user as ServerUsers.User).steamid);
+                    ServerUsers.User player = (user as ServerUsers.User);
+                    string btnTextTemp = player.username;
+                    btnCommand = string.Format(aCommandFmt, player.steamid);
 
-                    if (string.IsNullOrEmpty(btnText) || CUnknownNameList.Contains(btnText.ToLower()))
-                        btnText = (user as ServerUsers.User).steamid.ToString();
+                    if (string.IsNullOrEmpty(btnTextTemp) || CUnknownNameList.Contains(btnTextTemp.ToLower()))
+                        btnTextTemp = player.steamid.ToString();
+
+                    btnText = btnTextTemp;
+
+                    while (addedNames.FindIndex(item => string.Equals(btnText, item, StringComparison.OrdinalIgnoreCase)) >= 0)
+                        btnText = $"{btnTextTemp} {++suffix}";
 
                     aUIObj.AddButton(aParent, lbAnchor, rtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt, btnText, btnCommand, string.Empty, string.Empty, 16);
                 }
+
+                addedNames.Add(btnText);
             }
 
             LogDebug("Added the player buttons to the container");
@@ -632,21 +651,24 @@ namespace Oxide.Plugins
         /// <summary>
         /// Retrieve server users
         /// </summary>
+        /// <param name="aIndFiltered">Indicates if the output should be filtered</param>
+        /// <param name="aUserId">User ID for retrieving filter text</param>
         /// <param name="aIndOffline">Retrieve the list of sleepers (offline players)</param>
         /// <returns></returns>
-        private List<BasePlayer> GetServerUserList(bool aIndOffline = false)
+        private List<BasePlayer> GetServerUserList(bool aIndFiltered, string aUserId, bool aIndOffline = false)
         {
             List<BasePlayer> result = new List<BasePlayer>();
+            ulong userId = ulong.Parse(aUserId);
 
-            if (!aIndOffline) {
-                Player.Players.ForEach(user => {
+            if (aIndOffline) {
+                Player.Sleepers.ForEach(user => {
                     ServerUsers.User servUser = ServerUsers.Get(user.userID);
 
                     if (servUser == null || servUser?.group != ServerUsers.UserGroup.Banned)
                         result.Add(user);
                 });
             } else {
-                Player.Sleepers.ForEach(user => {
+                Player.Players.ForEach(user => {
                     ServerUsers.User servUser = ServerUsers.Get(user.userID);
 
                     if (servUser == null || servUser?.group != ServerUsers.UserGroup.Banned)
@@ -654,16 +676,48 @@ namespace Oxide.Plugins
                 });
             }
 
+            if (aIndFiltered && FUserBtnPageSearchInputText.ContainsKey(userId))
+                result = result.Where(x => x.displayName.IndexOf(FUserBtnPageSearchInputText[userId], StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                           x.UserIDString.IndexOf(FUserBtnPageSearchInputText[userId], StringComparison.OrdinalIgnoreCase) >= 0).ToList();
+
             LogDebug("Retrieved the server user list");
+            result.Sort((a, b) => {
+                int diff = string.Compare(a.displayName, b.displayName);
+
+                if (diff == 0)
+                    diff = a.userID.CompareTo(b.userID);
+
+                return diff;
+            });
             return result;
         }
 
         /// <summary>
         /// Retrieve server users
         /// </summary>
+        /// <param name="aIndFiltered">Indicates if the output should be filtered</param>
+        /// <param name="aUserId">User ID for retrieving filter text</param>
         /// <returns></returns>
-        private List<ServerUsers.User> GetBannedUserList() =>
-            ServerUsers.GetAll(ServerUsers.UserGroup.Banned).ToList();
+        private List<ServerUsers.User> GetBannedUserList(bool aIndFiltered, string aUserId)
+        {
+            List<ServerUsers.User> result = ServerUsers.GetAll(ServerUsers.UserGroup.Banned).ToList();
+            ulong userId = ulong.Parse(aUserId);
+
+            if (aIndFiltered && FUserBtnPageSearchInputText.ContainsKey(userId))
+                result = result.Where(x => x.username.IndexOf(FUserBtnPageSearchInputText[userId], StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                           x.steamid.ToString().IndexOf(FUserBtnPageSearchInputText[userId], StringComparison.OrdinalIgnoreCase) >= 0).ToList();
+
+            LogDebug("Retrieved the banned user list");
+            result.Sort((a, b) => {
+                int diff = string.Compare(a.username, b.username);
+
+                if (diff == 0)
+                    diff = a.steamid.CompareTo(b.steamid);
+
+                return diff;
+            });
+            return result;
+        }
 
         /// <summary>
         /// Retrieve the target player ID from the arguments and report success
@@ -823,14 +877,14 @@ namespace Oxide.Plugins
             aUIObj.AddLabel(headerPanel, CTabMenuHeaderLblLbAnchor, CTabMenuHeaderLblRtAnchor, CuiDefaultColors.TextTitle,
                             "Player Administration by ThibmoRozier", string.Empty, 22, TextAnchor.MiddleCenter);
             aUIObj.AddButton(headerPanel, CTabMenuCloseBtnLbAnchor, CTabMenuCloseBtnRtAnchor, CuiDefaultColors.ButtonDecline, CuiDefaultColors.TextAlt, "X",
-                             "padm_closeui", string.Empty, string.Empty, 22);
+                             CCloseUiCmd, string.Empty, string.Empty, 22);
             // Add the tab menu buttons
-            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Main Tab Text", uiUserId), "padm_switchui Main", 0, (aPageType == UiPage.Main ? true : false));
-            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Online Player Tab Text", uiUserId), "padm_switchui PlayersOnline 0", 1,
+            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Main Tab Text", uiUserId), $"{CSwitchUiCmd} {CCmdArgMain}", 0, (aPageType == UiPage.Main ? true : false));
+            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Online Player Tab Text", uiUserId), $"{CSwitchUiCmd} {CCmdArgPlayersOnline} 0", 1,
                           (aPageType == UiPage.PlayersOnline ? true : false));
-            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Offline Player Tab Text", uiUserId), "padm_switchui PlayersOffline 0", 2,
+            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Offline Player Tab Text", uiUserId), $"{CSwitchUiCmd} {CCmdArgPlayersOffline} 0", 2,
                           (aPageType == UiPage.PlayersOffline ? true : false));
-            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Banned Player Tab Text", uiUserId), "padm_switchui PlayersBanned 0", 3,
+            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Banned Player Tab Text", uiUserId), $"{CSwitchUiCmd} {CCmdArgPlayersBanned} 0", 3,
                           (aPageType == UiPage.PlayersBanned ? true : false));
             LogDebug("Built the tab menu");
         }
@@ -852,11 +906,11 @@ namespace Oxide.Plugins
                             string.Empty, 14, TextAnchor.MiddleLeft);
             string panelBanByIdGroup = aUIObj.AddPanel(panel, CMainPagePanelBanByIdLbAnchor, CMainPagePanelBanByIdRtAnchor, false, CuiDefaultColors.BackgroundDark);
             aUIObj.AddInputField(panelBanByIdGroup, CMainPageEdtBanByIdLbAnchor, CMainPageEdtBanByIdRtAnchor, CuiDefaultColors.TextAlt, string.Empty, 24,
-                                 "padm_mainpagebanidinputtext");
+                                 CMainPageBanIdInputTextCmd);
 
             if (FConfigData.EnableBan) {
                 aUIObj.AddButton(panel, CMainPageBtnBanByIdLbAnchor, CMainPageBtnBanByIdRtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt, "Ban",
-                                 "padm_mainpagebanbyid");
+                                 CMainPageBanByIdCmd);
             } else {
                 aUIObj.AddButton(panel, CMainPageBtnBanByIdLbAnchor, CMainPageBtnBanByIdRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.TextAlt, "Ban");
             }
@@ -870,36 +924,70 @@ namespace Oxide.Plugins
         /// <param name="aUIObj">Cui object</param>
         /// <param name="aPageType">The active page type</param>
         /// <param name="aPage">User list page</param>
-        private void BuildUserBtnPage(ref Cui aUIObj, UiPage aPageType, int aPage)
+        /// <param name="aIndFiltered">Indicates if the output should be filtered</param>
+        private void BuildUserBtnPage(ref Cui aUIObj, UiPage aPageType, int aPage, bool aIndFiltered)
         {
-            string pageLabel = GetMessage("User Button Page Title Text", aUIObj.GetPlayerId());
+            string uiUserId = aUIObj.GetPlayerId();
+            ulong uiUserIdInt = ulong.Parse(uiUserId);
+            string pageTitleLabel = GetMessage("User Button Page Title Text", aUIObj.GetPlayerId());
             string npBtnCommandFmt;
             int userCount;
-            string panel = aUIObj.AddPanel(aUIObj.MainPanelName, CUserBtnPanelLbAnchor, CUserBtnPanelRtAnchor, false, CuiDefaultColors.Background);
-            aUIObj.AddLabel(panel, CUserBtnLblLbAnchor, CUserBtnLblRtAnchor, CuiDefaultColors.TextAlt, pageLabel, string.Empty, 18, TextAnchor.MiddleLeft);
+
+            string panel = aUIObj.AddPanel(aUIObj.MainPanelName, CUserBtnPagePanelLbAnchor, CUserBtnPagePanelRtAnchor, false, CuiDefaultColors.Background);
+            aUIObj.AddLabel(panel, CUserBtnPageLblTitleLbAnchor, CUserBtnPageLblTitleRtAnchor, CuiDefaultColors.TextAlt, pageTitleLabel, string.Empty, 18,
+                            TextAnchor.MiddleLeft);
+            // Add search elements
+            aUIObj.AddLabel(panel, CUserBtnPageLblSearchLbAnchor, CUserBtnPageLblSearchRtAnchor, CuiDefaultColors.TextAlt, GetMessage("Search Label Text", uiUserId),
+                            string.Empty, 16, TextAnchor.MiddleLeft);
+            string panelSearchGroup = aUIObj.AddPanel(panel, CUserBtnPagePanelSearchInputLbAnchor, CUserBtnPagePanelSearchInputRtAnchor, false,
+                                                      CuiDefaultColors.BackgroundDark);
+            aUIObj.AddInputField(panelSearchGroup, CUserBtnPageEdtSearchInputLbAnchor, CUserBtnPageEdtSearchInputRtAnchor, CuiDefaultColors.TextAlt,
+                                 (FUserBtnPageSearchInputText.ContainsKey(uiUserIdInt) ? FUserBtnPageSearchInputText[uiUserIdInt] : string.Empty), 100,
+                                 CUserBtnPageSearchInputTextCmd, false, string.Empty, 16);
+
+            switch (aPageType) {
+                case UiPage.PlayersOnline: {
+                    aUIObj.AddButton(panel, CUserBtnPageBtnSearchLblLbAnchor, CUserBtnPageBtnSearchLblRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                                     GetMessage("Go Button Text", uiUserId), $"{CSwitchUiCmd} {CCmdArgPlayersOnlineSearch} 0", string.Empty, string.Empty, 16);
+                    BuildUserButtons(ref aUIObj, panel, aPageType, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
+                    break;
+                }
+                case UiPage.PlayersOffline: {
+                    aUIObj.AddButton(panel, CUserBtnPageBtnSearchLblLbAnchor, CUserBtnPageBtnSearchLblRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                                     GetMessage("Go Button Text", uiUserId), $"{CSwitchUiCmd} {CCmdArgPlayersOfflineSearch} 0", string.Empty, string.Empty, 16);
+                    BuildUserButtons(ref aUIObj, panel, aPageType, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
+                    break;
+                }
+                default: {
+                    aUIObj.AddButton(panel, CUserBtnPageBtnSearchLblLbAnchor, CUserBtnPageBtnSearchLblRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                                     GetMessage("Go Button Text", uiUserId), $"{CSwitchUiCmd} {CCmdArgPlayersBannedSearch} 0", string.Empty, string.Empty, 16);
+                    BuildBannedUserButtons(ref aUIObj, panel, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
+                    break;
+                }
+            }
 
             if (aPageType == UiPage.PlayersOnline || aPageType == UiPage.PlayersOffline) {
-                BuildUserButtons(ref aUIObj, panel, aPageType, ref aPage, out npBtnCommandFmt, out userCount);
+                BuildUserButtons(ref aUIObj, panel, aPageType, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
             } else {
-                BuildBannedUserButtons(ref aUIObj, panel, ref aPage, out npBtnCommandFmt, out userCount);
+                BuildBannedUserButtons(ref aUIObj, panel, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
             }
 
             // Decide whether or not to activate the "previous" button
             if (aPage == 0) {
-                aUIObj.AddButton(panel, CUserBtnPreviousBtnLbAnchor, CUserBtnPreviousBtnRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.TextAlt, "<<",
+                aUIObj.AddButton(panel, CUserBtnPageBtnPreviousLbAnchor, CUserBtnPageBtnPreviousRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.TextAlt, "<<",
                                  string.Empty, string.Empty, string.Empty, 18);
             } else {
-                aUIObj.AddButton(panel, CUserBtnPreviousBtnLbAnchor, CUserBtnPreviousBtnRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt, "<<",
+                aUIObj.AddButton(panel, CUserBtnPageBtnPreviousLbAnchor, CUserBtnPageBtnPreviousRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt, "<<",
                                  string.Format(npBtnCommandFmt, aPage - 1), string.Empty, string.Empty, 18);
             }
 
             // Decide whether or not to activate the "next" button
             if (userCount > CMaxPlayerButtons * (aPage + 1)) {
-                aUIObj.AddButton(panel, CUserBtnNextBtnLbAnchor, CUserBtnNextBtnRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt, ">>",
+                aUIObj.AddButton(panel, CUserBtnPageBtnNextLbAnchor, CUserBtnPageBtnNextRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt, ">>",
                                  string.Format(npBtnCommandFmt, aPage + 1), string.Empty, string.Empty, 18);
             } else {
-                aUIObj.AddButton(panel, CUserBtnNextBtnLbAnchor, CUserBtnNextBtnRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.TextAlt, ">>", string.Empty, string.Empty,
-                                 string.Empty, 18);
+                aUIObj.AddButton(panel, CUserBtnPageBtnNextLbAnchor, CUserBtnPageBtnNextRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.TextAlt, ">>",
+                                 string.Empty, string.Empty, string.Empty, 18);
             }
 
             LogDebug("Built the user button page");
@@ -914,17 +1002,18 @@ namespace Oxide.Plugins
         /// <param name="aPage">User list page</param>
         /// <param name="aBtnCommandFmt">Command format for the buttons</param>
         /// <param name="aUserCount">Total user count</param>
-        private void BuildUserButtons(ref Cui aUIObj, string aParent, UiPage aPageType, ref int aPage, out string aBtnCommandFmt, out int aUserCount)
+        /// <param name="aIndFiltered">Indicates if the output should be filtered</param>
+        private void BuildUserButtons(ref Cui aUIObj, string aParent, UiPage aPageType, ref int aPage, out string aBtnCommandFmt, out int aUserCount, bool aIndFiltered)
         {
-            string commandFmt = "padm_switchui PlayerPage {0}";
+            string commandFmt = $"{CSwitchUiCmd} {CCmdArgPlayerPage} {{0}}";
             List<BasePlayer> userList;
 
             if (aPageType == UiPage.PlayersOnline) {
-                userList = GetServerUserList();
-                aBtnCommandFmt = "padm_switchui PlayersOnline {0}";
+                userList = GetServerUserList(aIndFiltered, aUIObj.GetPlayerId());
+                aBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersOnlineSearch : CCmdArgPlayersOnline)} {{0}}";
             } else {
-                userList = GetServerUserList(true);
-                aBtnCommandFmt = "padm_switchui PlayersOffline {0}";
+                userList = GetServerUserList(aIndFiltered, aUIObj.GetPlayerId(), true);
+                aBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersOfflineSearch : CCmdArgPlayersOffline)} {{0}}";
             }
 
             aUserCount = userList.Count;
@@ -944,11 +1033,12 @@ namespace Oxide.Plugins
         /// <param name="aPage">User list page</param>
         /// <param name="aBtnCommandFmt">Command format for the buttons</param>
         /// <param name="aUserCount">Total user count</param>
-        private void BuildBannedUserButtons(ref Cui aUIObj, string aParent, ref int aPage, out string aBtnCommandFmt, out int aUserCount)
+        /// <param name="aIndFiltered">Indicates if the output should be filtered</param>
+        private void BuildBannedUserButtons(ref Cui aUIObj, string aParent, ref int aPage, out string aBtnCommandFmt, out int aUserCount, bool aIndFiltered)
         {
-            string commandFmt = "padm_switchui PlayerPageBanned {0}";
-            List<ServerUsers.User> userList = GetBannedUserList();
-            aBtnCommandFmt = "padm_switchui PlayersBanned {0}";
+            string commandFmt = $"{CSwitchUiCmd} {CCmdArgPlayerPageBanned} {{0}}";
+            List<ServerUsers.User> userList = GetBannedUserList(aIndFiltered, aUIObj.GetPlayerId());
+            aBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersBannedSearch : CCmdArgPlayersBanned)} {{0}}";
             aUserCount = userList.Count;
 
             if ((aPage != 0) && (userList.Count <= CMaxPlayerButtons))
@@ -1044,7 +1134,7 @@ namespace Oxide.Plugins
         {
             if (FConfigData.EnableBan) {
                 aUIObj.AddButton(aParent, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
-                                 GetMessage("Ban Button Text", aUiUserId), $"padm_banuser {aPlayerId}");
+                                 GetMessage("Ban Button Text", aUiUserId), $"{CBanUserCmd} {aPlayerId}");
             } else {
                 aUIObj.AddButton(aParent, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                  GetMessage("Ban Button Text", aUiUserId));
@@ -1052,7 +1142,7 @@ namespace Oxide.Plugins
 
             if (FConfigData.EnableKick && aPlayer.IsConnected) {
                 aUIObj.AddButton(aParent, CUserPageBtnKickLbAnchor, CUserPageBtnKickRtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
-                                 GetMessage("Kick Button Text", aUiUserId), $"padm_kickuser {aPlayerId}");
+                                 GetMessage("Kick Button Text", aUiUserId), $"{CKickUserCmd} {aPlayerId}");
             } else {
                 aUIObj.AddButton(aParent, CUserPageBtnKickLbAnchor, CUserPageBtnKickRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                  GetMessage("Kick Button Text", aUiUserId));
@@ -1060,7 +1150,7 @@ namespace Oxide.Plugins
 
             if (FConfigData.EnableKill) {
                 aUIObj.AddButton(aParent, CUserPageBtnKillLbAnchor, CUserPageBtnKillRtAnchor, CuiDefaultColors.ButtonWarning, CuiDefaultColors.TextAlt,
-                                 GetMessage("Kill Button Text", aUiUserId), $"padm_killuser {aPlayerId}");
+                                 GetMessage("Kill Button Text", aUiUserId), $"{CKillUserCmd} {aPlayerId}");
             } else {
                 aUIObj.AddButton(aParent, CUserPageBtnKillLbAnchor, CUserPageBtnKillRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                  GetMessage("Kill Button Text", aUiUserId));
@@ -1068,7 +1158,7 @@ namespace Oxide.Plugins
 
             if (PermissionsManager != null && FConfigData.EnablePerms) {
                 aUIObj.AddButton(aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
-                                 GetMessage("Perms Button Text", aUiUserId), $"padm_perms {aPlayerId}");
+                                 GetMessage("Perms Button Text", aUiUserId), $"{CPermsCmd} {aPlayerId}");
             } else {
                 aUIObj.AddButton(aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                  GetMessage("Perms Not Installed Button Text", aUiUserId));
@@ -1092,10 +1182,10 @@ namespace Oxide.Plugins
                     aUIObj.AddButton(aParent, CUserPageBtnVMuteLbAnchor, CUserPageBtnVMuteRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                      GetMessage("Voice Mute Button Text", aUiUserId));
                     aUIObj.AddButton(aParent, CUserPageBtnVUnmuteLbAnchor, CUserPageBtnVUnmuteRtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
-                                     GetMessage("Voice Unmute Button Text", aUiUserId), $"padm_vunmuteuser {aPlayerId}");
+                                     GetMessage("Voice Unmute Button Text", aUiUserId), $"{CVoiceUnmuteUserCmd} {aPlayerId}");
                 } else {
                     aUIObj.AddButton(aParent, CUserPageBtnVMuteLbAnchor, CUserPageBtnVMuteRtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
-                                     GetMessage("Voice Mute Button Text", aUiUserId), $"padm_vmuteuser {aPlayerId}");
+                                     GetMessage("Voice Mute Button Text", aUiUserId), $"{CVoiceMuteUserCmd} {aPlayerId}");
                     aUIObj.AddButton(aParent, CUserPageBtnVUnmuteLbAnchor, CUserPageBtnVUnmuteRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                      GetMessage("Voice Unmute Button Text", aUiUserId));
                 }
@@ -1111,10 +1201,10 @@ namespace Oxide.Plugins
                     aUIObj.AddButton(aParent, CUserPageBtnCMuteLbAnchor, CUserPageBtnCMuteRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                      GetMessage("Chat Mute Button Text", aUiUserId));
                     aUIObj.AddButton(aParent, CUserPageBtnCUnmuteLbAnchor, CUserPageBtnCUnmuteRtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
-                                     GetMessage("Chat Unmute Button Text", aUiUserId), $"padm_cunmuteuser {aPlayerId}");
+                                     GetMessage("Chat Unmute Button Text", aUiUserId), $"{CChatUnmuteUserCmd} {aPlayerId}");
                 } else {
                     aUIObj.AddButton(aParent, CUserPageBtnCMuteLbAnchor, CUserPageBtnCMuteRtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
-                                     GetMessage("Chat Mute Button Text", aUiUserId), $"padm_cmuteuser {aPlayerId}");
+                                     GetMessage("Chat Mute Button Text", aUiUserId), $"{CChatMuteUserCmd} {aPlayerId}");
                     aUIObj.AddButton(aParent, CUserPageBtnCUnmuteLbAnchor, CUserPageBtnCUnmuteRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                      GetMessage("Chat Unmute Button Text", aUiUserId));
                 }
@@ -1141,10 +1231,10 @@ namespace Oxide.Plugins
                     aUIObj.AddButton(aParent, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                 GetMessage("Freeze Button Text", aUiUserId));
                     aUIObj.AddButton(aParent, CUserPageBtnUnFreezeLbAnchor, CUserPageBtnUnFreezeRtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
-                                GetMessage("UnFreeze Button Text", aUiUserId), $"padm_unfreeze {aPlayerId}");
+                                GetMessage("UnFreeze Button Text", aUiUserId), $"{CUnreezeCmd} {aPlayerId}");
                 } else {
                     aUIObj.AddButton(aParent, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
-                                GetMessage("Freeze Button Text", aUiUserId), $"padm_freeze {aPlayerId}");
+                                GetMessage("Freeze Button Text", aUiUserId), $"{CFreezeCmd} {aPlayerId}");
                     aUIObj.AddButton(aParent, CUserPageBtnUnFreezeLbAnchor, CUserPageBtnUnFreezeRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                 GetMessage("UnFreeze Button Text", aUiUserId));
                 }
@@ -1167,7 +1257,7 @@ namespace Oxide.Plugins
         {
             if (FConfigData.EnableClearInv) {
                 aUIObj.AddButton(aParent, CUserPageBtnClearInventoryLbAnchor, CUserPageBtnClearInventoryRtAnchor, CuiDefaultColors.ButtonWarning,
-                                 CuiDefaultColors.TextAlt, GetMessage("Clear Inventory Button Text", aUiUserId), $"padm_clearuserinventory {aPlayerId}");
+                                 CuiDefaultColors.TextAlt, GetMessage("Clear Inventory Button Text", aUiUserId), $"{CClearUserInventoryCmd} {aPlayerId}");
             } else {
                 aUIObj.AddButton(aParent, CUserPageBtnClearInventoryLbAnchor, CUserPageBtnClearInventoryRtAnchor, CuiDefaultColors.ButtonInactive,
                                  CuiDefaultColors.Text, GetMessage("Clear Inventory Button Text", aUiUserId));
@@ -1175,7 +1265,7 @@ namespace Oxide.Plugins
 
             if (FConfigData.EnableResetBP) {
                 aUIObj.AddButton(aParent, CUserPageBtnResetBPLbAnchor, CUserPageBtnResetBPRtAnchor, CuiDefaultColors.ButtonWarning,
-                                 CuiDefaultColors.TextAlt, GetMessage("Reset Blueprints Button Text", aUiUserId), $"padm_resetuserblueprints {aPlayerId}");
+                                 CuiDefaultColors.TextAlt, GetMessage("Reset Blueprints Button Text", aUiUserId), $"{CResetUserBPCmd} {aPlayerId}");
             } else {
                 aUIObj.AddButton(aParent, CUserPageBtnResetBPLbAnchor, CUserPageBtnResetBPRtAnchor, CuiDefaultColors.ButtonInactive,
                                  CuiDefaultColors.Text, GetMessage("Reset Blueprints Button Text", aUiUserId));
@@ -1183,7 +1273,7 @@ namespace Oxide.Plugins
 
             if (FConfigData.EnableResetMetabolism) {
                 aUIObj.AddButton(aParent, CUserPageBtnResetMetabolismLbAnchor, CUserPageBtnResetMetabolismRtAnchor, CuiDefaultColors.ButtonWarning,
-                                 CuiDefaultColors.TextAlt, GetMessage("Reset Metabolism Button Text", aUiUserId), $"padm_resetusermetabolism {aPlayerId}");
+                                 CuiDefaultColors.TextAlt, GetMessage("Reset Metabolism Button Text", aUiUserId), $"{CResetUserMetabolismCmd} {aPlayerId}");
             } else {
                 aUIObj.AddButton(aParent, CUserPageBtnResetMetabolismLbAnchor, CUserPageBtnResetMetabolismRtAnchor, CuiDefaultColors.ButtonInactive,
                                  CuiDefaultColors.Text, GetMessage("Reset Metabolism Button Text", aUiUserId));
@@ -1201,13 +1291,13 @@ namespace Oxide.Plugins
         {
             if (FConfigData.EnableHurt) {
                 aUIObj.AddButton(aParent, CUserPageBtnHurt25LbAnchor, CUserPageBtnHurt25RtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
-                                 GetMessage("Hurt 25 Button Text", aUiUserId), $"padm_hurtuser {aPlayerId} 25");
+                                 GetMessage("Hurt 25 Button Text", aUiUserId), $"{CHurtUserCmd} {aPlayerId} 25");
                 aUIObj.AddButton(aParent, CUserPageBtnHurt50LbAnchor, CUserPageBtnHurt50RtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
-                                 GetMessage("Hurt 50 Button Text", aUiUserId), $"padm_hurtuser {aPlayerId} 50");
+                                 GetMessage("Hurt 50 Button Text", aUiUserId), $"{CHurtUserCmd} {aPlayerId} 50");
                 aUIObj.AddButton(aParent, CUserPageBtnHurt75LbAnchor, CUserPageBtnHurt75RtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
-                                 GetMessage("Hurt 75 Button Text", aUiUserId), $"padm_hurtuser {aPlayerId} 75");
+                                 GetMessage("Hurt 75 Button Text", aUiUserId), $"{CHurtUserCmd} {aPlayerId} 75");
                 aUIObj.AddButton(aParent, CUserPageBtnHurt100LbAnchor, CUserPageBtnHurt100RtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
-                                 GetMessage("Hurt 100 Button Text", aUiUserId), $"padm_hurtuser {aPlayerId} 100");
+                                 GetMessage("Hurt 100 Button Text", aUiUserId), $"{CHurtUserCmd} {aPlayerId} 100");
             } else {
                 aUIObj.AddButton(aParent, CUserPageBtnHurt25LbAnchor, CUserPageBtnHurt25RtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                  GetMessage("Hurt 25 Button Text", aUiUserId));
@@ -1231,13 +1321,13 @@ namespace Oxide.Plugins
         {
             if (FConfigData.EnableHeal) {
                 aUIObj.AddButton(aParent, CUserPageBtnHeal25LbAnchor, CUserPageBtnHeal25RtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
-                                 GetMessage("Heal 25 Button Text", aUiUserId), $"padm_healuser {aPlayerId} 25");
+                                 GetMessage("Heal 25 Button Text", aUiUserId), $"{CHealUserCmd} {aPlayerId} 25");
                 aUIObj.AddButton(aParent, CUserPageBtnHeal50LbAnchor, CUserPageBtnHeal50RtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
-                                 GetMessage("Heal 50 Button Text", aUiUserId), $"padm_healuser {aPlayerId} 50");
+                                 GetMessage("Heal 50 Button Text", aUiUserId), $"{CHealUserCmd} {aPlayerId} 50");
                 aUIObj.AddButton(aParent, CUserPageBtnHeal75LbAnchor, CUserPageBtnHeal75RtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
-                                 GetMessage("Heal 75 Button Text", aUiUserId), $"padm_healuser {aPlayerId} 75");
+                                 GetMessage("Heal 75 Button Text", aUiUserId), $"{CHealUserCmd} {aPlayerId} 75");
                 aUIObj.AddButton(aParent, CUserPageBtnHeal100LbAnchor, CUserPageBtnHeal100RtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
-                                 GetMessage("Heal 100 Button Text", aUiUserId), $"padm_healuser {aPlayerId} 100");
+                                 GetMessage("Heal 100 Button Text", aUiUserId), $"{CHealUserCmd} {aPlayerId} 100");
             } else {
                 aUIObj.AddButton(aParent, CUserPageBtnHeal25LbAnchor, CUserPageBtnHeal25RtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                  GetMessage("Heal 25 Button Text", aUiUserId));
@@ -1304,7 +1394,7 @@ namespace Oxide.Plugins
                 // --- Build player action panel
                 if (FConfigData.EnableUnban) {
                     aUIObj.AddButton(actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
-                                     GetMessage("Unban Button Text", uiUserId), $"padm_unbanuser {aPlayerId}");
+                                     GetMessage("Unban Button Text", uiUserId), $"{CUnbanUserCmd} {aPlayerId}");
                 } else {
                     aUIObj.AddButton(actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                      GetMessage("Unban Button Text", uiUserId));
@@ -1317,10 +1407,11 @@ namespace Oxide.Plugins
         /// <summary>
         /// Initiate the building of the UI page to show
         /// </summary>
-        /// <param name="aPlayer"></param>
-        /// <param name="aPageType"></param>
-        /// <param name="aArg"></param>
-        private void BuildUI(BasePlayer aPlayer, UiPage aPageType, string aArg = "")
+        /// <param name="aPlayer">UI destination player</param>
+        /// <param name="aPageType">Type of the page</param>
+        /// <param name="aArg">Argument</param>
+        /// <param name="aIndFiltered">Indicates if the output should be filtered</param>
+        private void BuildUI(BasePlayer aPlayer, UiPage aPageType, string aArg = "", bool aIndFiltered = false)
         {
             // Initiate the new UI and panel
             Cui newUiLib = new Cui(aPlayer);
@@ -1341,7 +1432,7 @@ namespace Oxide.Plugins
                         if (!int.TryParse(aArg, out page))
                             page = 0; // Just to be sure
 
-                    BuildUserBtnPage(ref newUiLib, aPageType, page);
+                    BuildUserBtnPage(ref newUiLib, aPageType, page, aIndFiltered);
                     break;
                 }
                 case UiPage.PlayerPage:
@@ -1414,14 +1505,59 @@ namespace Oxide.Plugins
         private const int CMaxPlayerRows = 8;
         private const int CMaxPlayerButtons = CMaxPlayerCols * CMaxPlayerRows;
         private const string CMainPanelName = "PAdm_MainPanel";
-        private const string CPermUiShow = "playeradministration.show";
-        private const string CPermFreezeFrozen = "freeze.frozen";
         private readonly List<string> CUnknownNameList = new List<string> { "unnamed", "unknown" };
+        #region Local commands
+        private const string CPadminCmd = "padmin";
+        private const string CCloseUiCmd = "padm_closeui";
+        private const string CSwitchUiCmd = "padm_switchui";
+        private const string CKickUserCmd = "padm_kickuser";
+        private const string CBanUserCmd = "padm_banuser";
+        private const string CMainPageBanByIdCmd = "padm_mainpagebanbyid";
+        private const string CUnbanUserCmd = "padm_unbanuser";
+        private const string CKillUserCmd = "padm_killuser";
+        private const string CPermsCmd = "padm_perms";
+        private const string CVoiceMuteUserCmd = "padm_vmuteuser";
+        private const string CVoiceUnmuteUserCmd = "padm_vunmuteuser";
+        private const string CChatMuteUserCmd = "padm_cmuteuser";
+        private const string CChatUnmuteUserCmd = "padm_cunmuteuser";
+        private const string CFreezeCmd = "padm_freeze";
+        private const string CUnreezeCmd = "padm_unfreeze";
+        private const string CClearUserInventoryCmd = "padm_clearuserinventory";
+        private const string CResetUserBPCmd = "padm_resetuserblueprints";
+        private const string CResetUserMetabolismCmd = "padm_resetusermetabolism";
+        private const string CHurtUserCmd = "padm_hurtuser";
+        private const string CHealUserCmd = "padm_healuser";
+        private const string CMainPageBanIdInputTextCmd = "padm_mainpagebanidinputtext";
+        private const string CUserBtnPageSearchInputTextCmd = "padm_userbtnpagesearchinputtext";
+        #endregion Local commands
+        #region Foreign commands
+        private const string CPermsPermsCmd = "perms player";
+        private const string CFreezeFreezeCmd = "freeze";
+        private const string CFreezeUnfreezeCmd = "unfreeze";
+        #endregion Foreign commands
+        #region Local Command Static Arguments
+        private const string CCmdArgMain = "main";
+        private const string CCmdArgPlayersOnline = "playersonline";
+        private const string CCmdArgPlayersOnlineSearch = "playersonlinesearch";
+        private const string CCmdArgPlayersOffline = "playersoffline";
+        private const string CCmdArgPlayersOfflineSearch = "playersofflinesearch";
+        private const string CCmdArgPlayersBanned = "playersbanned";
+        private const string CCmdArgPlayersBannedSearch = "playersbannedsearch";
+        private const string CCmdArgPlayerPage = "playerpage";
+        private const string CCmdArgPlayerPageBanned = "playerpagebanned";
+        #endregion Local Command Static Arguments
+        #region Local permissions
+        private const string CPermUiShow = "playeradministration.show";
+        #endregion Local permissions
+        #region Foreign permissions
+        private const string CPermFreezeFrozen = "freeze.frozen";
+        #endregion Foreign permissions
         /* Define layout */
-        // Main panel bounds
+        #region Main panel bounds
         private readonly CuiPoint CMainLbAnchor = new CuiPoint(0.03f, 0.15f);
         private readonly CuiPoint CMainRtAnchor = new CuiPoint(0.97f, 0.97f);
-        // Tab menu bounds
+        #endregion Main panel bounds
+        #region Tab menu bounds
         private readonly CuiPoint CTabMenuHeaderContainerLbAnchor = new CuiPoint(0.005f, 0.9085f);
         private readonly CuiPoint CTabMenuHeaderContainerRtAnchor = new CuiPoint(0.995f, 1f);
         private readonly CuiPoint CTabMenuTabBtnContainerLbAnchor = new CuiPoint(0.005f, 0.83f);
@@ -1430,7 +1566,8 @@ namespace Oxide.Plugins
         private readonly CuiPoint CTabMenuHeaderLblRtAnchor = new CuiPoint(1f, 1f);
         private readonly CuiPoint CTabMenuCloseBtnLbAnchor = new CuiPoint(0.965f, 0.1f);
         private readonly CuiPoint CTabMenuCloseBtnRtAnchor = new CuiPoint(0.997f, 0.9f);
-        // Main page bounds
+        #endregion Tab menu bounds
+        #region Main page bounds
         private readonly CuiPoint CMainPagePanelLbAnchor = new CuiPoint(0.005f, 0.01f);
         private readonly CuiPoint CMainPagePanelRtAnchor = new CuiPoint(0.995f, 0.817f);
         private readonly CuiPoint CMainPageLblTitleLbAnchor = new CuiPoint(0.005f, 0.88f);
@@ -1445,30 +1582,42 @@ namespace Oxide.Plugins
         private readonly CuiPoint CMainPageEdtBanByIdRtAnchor = new CuiPoint(0.995f, 1f);
         private readonly CuiPoint CMainPageBtnBanByIdLbAnchor = new CuiPoint(0.315f, 0.76f);
         private readonly CuiPoint CMainPageBtnBanByIdRtAnchor = new CuiPoint(0.365f, 0.81f);
-        // User button page bounds 
-        private readonly CuiPoint CUserBtnPanelLbAnchor = new CuiPoint(0.005f, 0.01f);
-        private readonly CuiPoint CUserBtnPanelRtAnchor = new CuiPoint(0.995f, 0.817f);
-        private readonly CuiPoint CUserBtnLblLbAnchor = new CuiPoint(0.005f, 0.88f);
-        private readonly CuiPoint CUserBtnLblRtAnchor = new CuiPoint(0.995f, 0.99f);
-        private readonly CuiPoint CUserBtnPreviousBtnLbAnchor = new CuiPoint(0.005f, 0.01f);
-        private readonly CuiPoint CUserBtnPreviousBtnRtAnchor = new CuiPoint(0.035f, 0.061875f);
-        private readonly CuiPoint CUserBtnNextBtnLbAnchor = new CuiPoint(0.96f, 0.01f);
-        private readonly CuiPoint CUserBtnNextBtnRtAnchor = new CuiPoint(0.995f, 0.061875f);
-        // User page panel bounds
+        #endregion Main page bounds
+        #region User button page bounds
+        private readonly CuiPoint CUserBtnPagePanelLbAnchor = new CuiPoint(0.005f, 0.01f);
+        private readonly CuiPoint CUserBtnPagePanelRtAnchor = new CuiPoint(0.995f, 0.817f);
+        private readonly CuiPoint CUserBtnPageLblTitleLbAnchor = new CuiPoint(0.005f, 0.88f);
+        private readonly CuiPoint CUserBtnPageLblTitleRtAnchor = new CuiPoint(0.495f, 0.99f);
+        private readonly CuiPoint CUserBtnPageLblSearchLbAnchor = new CuiPoint(0.5f, 0.92f);
+        private readonly CuiPoint CUserBtnPageLblSearchRtAnchor = new CuiPoint(0.565f, 0.99f);
+        private readonly CuiPoint CUserBtnPagePanelSearchInputLbAnchor = new CuiPoint(0.57f, 0.92f);
+        private readonly CuiPoint CUserBtnPagePanelSearchInputRtAnchor = new CuiPoint(0.925f, 0.99f);
+        private readonly CuiPoint CUserBtnPageEdtSearchInputLbAnchor = new CuiPoint(0.005f, 0f);
+        private readonly CuiPoint CUserBtnPageEdtSearchInputRtAnchor = new CuiPoint(0.995f, 1f);
+        private readonly CuiPoint CUserBtnPageBtnSearchLblLbAnchor = new CuiPoint(0.93f, 0.92f);
+        private readonly CuiPoint CUserBtnPageBtnSearchLblRtAnchor = new CuiPoint(0.995f, 0.99f);
+        private readonly CuiPoint CUserBtnPageBtnPreviousLbAnchor = new CuiPoint(0.005f, 0.01f);
+        private readonly CuiPoint CUserBtnPageBtnPreviousRtAnchor = new CuiPoint(0.035f, 0.061875f);
+        private readonly CuiPoint CUserBtnPageBtnNextLbAnchor = new CuiPoint(0.96f, 0.01f);
+        private readonly CuiPoint CUserBtnPageBtnNextRtAnchor = new CuiPoint(0.995f, 0.061875f);
+        #endregion User button page bounds
+        #region User page panel bounds
         private readonly CuiPoint CUserPagePanelLbAnchor = new CuiPoint(0.005f, 0.01f);
         private readonly CuiPoint CUserPagePanelRtAnchor = new CuiPoint(0.995f, 0.817f);
         private readonly CuiPoint CUserPageInfoPanelLbAnchor = new CuiPoint(0.005f, 0.01f);
         private readonly CuiPoint CUserPageInfoPanelRtAnchor = new CuiPoint(0.28f, 0.87f);
         private readonly CuiPoint CUserPageActionPanelLbAnchor = new CuiPoint(0.285f, 0.01f);
         private readonly CuiPoint CUserPageActionPanelRtAnchor = new CuiPoint(0.995f, 0.87f);
-        // User page title label bounds
+        #endregion User page panel bounds
+        #region User page title label bounds
         private readonly CuiPoint CUserPageLblLbAnchor = new CuiPoint(0.005f, 0.88f);
         private readonly CuiPoint CUserPageLblRtAnchor = new CuiPoint(0.995f, 0.99f);
         private readonly CuiPoint CUserPageLblinfoTitleLbAnchor = new CuiPoint(0.025f, 0.94f);
         private readonly CuiPoint CUserPageLblinfoTitleRtAnchor = new CuiPoint(0.975f, 0.99f);
         private readonly CuiPoint CUserPageLblActionTitleLbAnchor = new CuiPoint(0.01f, 0.94f);
         private readonly CuiPoint CUserPageLblActionTitleRtAnchor = new CuiPoint(0.99f, 0.99f);
-        // User page info label bounds
+        #endregion User page title label bounds
+        #region User page info label bounds
         private readonly CuiPoint CUserPageLblIdLbAnchor = new CuiPoint(0.025f, 0.87f);
         private readonly CuiPoint CUserPageLblIdRtAnchor = new CuiPoint(0.975f, 0.92f);
         private readonly CuiPoint CUserPageLblAuthLbAnchor = new CuiPoint(0.025f, 0.81f);
@@ -1507,7 +1656,8 @@ namespace Oxide.Plugins
         private readonly CuiPoint CUserPageLblRads1RtAnchor = new CuiPoint(0.5f, 0.06f);
         private readonly CuiPoint CUserPageLblRads2LbAnchor = new CuiPoint(0.5f, 0.01f);
         private readonly CuiPoint CUserPageLblRads2RtAnchor = new CuiPoint(0.975f, 0.06f);
-        // User page button bounds
+        #endregion User page info label bounds
+        #region User page button bounds
         private readonly CuiPoint CUserPageBtnBanLbAnchor = new CuiPoint(0.01f, 0.85f);
         private readonly CuiPoint CUserPageBtnBanRtAnchor = new CuiPoint(0.16f, 0.92f);
         private readonly CuiPoint CUserPageBtnKickLbAnchor = new CuiPoint(0.17f, 0.85f);
@@ -1550,12 +1700,14 @@ namespace Oxide.Plugins
         private readonly CuiPoint CUserPageBtnHeal75RtAnchor = new CuiPoint(0.48f, 0.38f);
         private readonly CuiPoint CUserPageBtnHeal100LbAnchor = new CuiPoint(0.49f, 0.31f);
         private readonly CuiPoint CUserPageBtnHeal100RtAnchor = new CuiPoint(0.64f, 0.38f);
+        #endregion User page button bounds
         #endregion Constants
 
         #region Variables
         private static PlayerAdministration FPluginInstance;
         private ConfigData FConfigData;
         private Dictionary<ulong, string> FMainPageBanIdInputText = new Dictionary<ulong, string>(); // Format: <userId, text>
+        private Dictionary<ulong, string> FUserBtnPageSearchInputText = new Dictionary<ulong, string>(); // Format: <userId, text>
         #endregion Variables
 
         #region Hooks
@@ -1640,6 +1792,7 @@ namespace Oxide.Plugins
 
                 { "Ban By ID Title Text", "Ban a user by ID" },
                 { "Ban By ID Label Text", "User ID:" },
+                { "Search Label Text", "Search:" },
                 { "Player Info Label Text", "Player information:" },
                 { "Player Actions Label Text", "Player actions:" },
 
@@ -1667,6 +1820,8 @@ namespace Oxide.Plugins
                 { "Online Player Tab Text", "Online Players" },
                 { "Offline Player Tab Text", "Offline Players" },
                 { "Banned Player Tab Text", "Banned Players" },
+
+                { "Go Button Text", "Go" },
 
                 { "Clear Inventory Button Text", "Clear Inventory" },
                 { "Reset Blueprints Button Text", "Reset Blueprints" },
@@ -1701,7 +1856,7 @@ namespace Oxide.Plugins
         #endregion Hooks
 
         #region Command Callbacks
-        [ChatCommand("padmin")]
+        [ChatCommand(CPadminCmd)]
         private void PlayerAdministrationUICallback(BasePlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationUICallback was called");
@@ -1713,45 +1868,60 @@ namespace Oxide.Plugins
             BuildUI(aPlayer, UiPage.Main);
         }
 
-        [ConsoleCommand("padm_closeui")]
-        private void PlayerAdministrationCloseUICallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CCloseUiCmd)]
+        private void PlayerAdministrationCloseUICallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationCloseUICallback was called");
-            BasePlayer player = arg.Player();
-            CuiHelper.DestroyUi(arg.Player(), CMainPanelName);
+            BasePlayer player = aArg.Player();
+            CuiHelper.DestroyUi(aArg.Player(), CMainPanelName);
 
             if (FMainPageBanIdInputText.ContainsKey(player.userID))
                 FMainPageBanIdInputText.Remove(player.userID);
+
+            if (FUserBtnPageSearchInputText.ContainsKey(player.userID))
+                FUserBtnPageSearchInputText.Remove(player.userID);
         }
 
-        [ConsoleCommand("padm_switchui")]
-        private void PlayerAdministrationSwitchUICallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CSwitchUiCmd)]
+        private void PlayerAdministrationSwitchUICallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationSwitchUICallback was called");
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !arg.HasArgs())
+            if (!VerifyPermission(ref player, CPermUiShow) || !aArg.HasArgs())
                 return;
 
-            switch (arg.Args[0].ToLower()) {
-                case "playersonline": {
-                    BuildUI(player, UiPage.PlayersOnline, (arg.HasArgs(2) ? arg.Args[1] : string.Empty));
+            switch (aArg.Args[0].ToLower()) {
+                case CCmdArgPlayersOnline: {
+                    BuildUI(player, UiPage.PlayersOnline, (aArg.HasArgs(2) ? aArg.Args[1] : string.Empty));
                     break;
                 }
-                case "playersoffline": {
-                    BuildUI(player, UiPage.PlayersOffline, (arg.HasArgs(2) ? arg.Args[1] : string.Empty));
+                case CCmdArgPlayersOnlineSearch: {
+                    BuildUI(player, UiPage.PlayersOnline, (aArg.HasArgs(2) ? aArg.Args[1] : string.Empty), true);
                     break;
                 }
-                case "playersbanned": {
-                    BuildUI(player, UiPage.PlayersBanned, (arg.HasArgs(2) ? arg.Args[1] : string.Empty));
+                case CCmdArgPlayersOffline: {
+                    BuildUI(player, UiPage.PlayersOffline, (aArg.HasArgs(2) ? aArg.Args[1] : string.Empty));
                     break;
                 }
-                case "playerpage": {
-                    BuildUI(player, UiPage.PlayerPage, (arg.HasArgs(2) ? arg.Args[1] : string.Empty));
+                case CCmdArgPlayersOfflineSearch: {
+                    BuildUI(player, UiPage.PlayersOffline, (aArg.HasArgs(2) ? aArg.Args[1] : string.Empty), true);
                     break;
                 }
-                case "playerpagebanned": {
-                    BuildUI(player, UiPage.PlayerPageBanned, (arg.HasArgs(2) ? arg.Args[1] : string.Empty));
+                case CCmdArgPlayersBanned: {
+                    BuildUI(player, UiPage.PlayersBanned, (aArg.HasArgs(2) ? aArg.Args[1] : string.Empty));
+                    break;
+                }
+                case CCmdArgPlayersBannedSearch: {
+                    BuildUI(player, UiPage.PlayersBanned, (aArg.HasArgs(2) ? aArg.Args[1] : string.Empty), true);
+                    break;
+                }
+                case CCmdArgPlayerPage: {
+                    BuildUI(player, UiPage.PlayerPage, (aArg.HasArgs(2) ? aArg.Args[1] : string.Empty));
+                    break;
+                }
+                case CCmdArgPlayerPageBanned: {
+                    BuildUI(player, UiPage.PlayerPageBanned, (aArg.HasArgs(2) ? aArg.Args[1] : string.Empty));
                     break;
                 }
                 default: { // Main is the default for everything
@@ -1761,14 +1931,14 @@ namespace Oxide.Plugins
             };
         }
 
-        [ConsoleCommand("padm_kickuser")]
-        private void PlayerAdministrationKickUserCallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CKickUserCmd)]
+        private void PlayerAdministrationKickUserCallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationKickUserCallback was called");
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
             ulong targetId;
-            
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref arg, out targetId) || !FConfigData.EnableKick)
+
+            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableKick)
                 return;
 
             BasePlayer.FindByID(targetId)?.Kick(GetMessage("Kick Reason Message Text", targetId.ToString()));
@@ -1776,14 +1946,14 @@ namespace Oxide.Plugins
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 
-        [ConsoleCommand("padm_banuser")]
-        private void PlayerAdministrationBanUserCallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CBanUserCmd)]
+        private void PlayerAdministrationBanUserCallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationBanUserCallback was called");
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref arg, out targetId) || !FConfigData.EnableBan)
+            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableBan)
                 return;
 
             Player.Ban(targetId, GetMessage("Ban Reason Message Text", targetId.ToString()));
@@ -1791,11 +1961,11 @@ namespace Oxide.Plugins
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 
-        [ConsoleCommand("padm_mainpagebanbyid")]
-        private void PlayerAdministrationMainPageBanByIdCallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CMainPageBanByIdCmd)]
+        private void PlayerAdministrationMainPageBanByIdCallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationMainPageBanByIdCallback was called");
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
             ulong targetId;
 
             if (!VerifyPermission(ref player, CPermUiShow) || !FMainPageBanIdInputText.ContainsKey(player.userID) ||
@@ -1807,14 +1977,14 @@ namespace Oxide.Plugins
             BuildUI(player, UiPage.Main);
         }
 
-        [ConsoleCommand("padm_unbanuser")]
-        private void PlayerAdministrationUnbanUserCallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CUnbanUserCmd)]
+        private void PlayerAdministrationUnbanUserCallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationUnbanUserCallback was called");
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref arg, out targetId) || !FConfigData.EnableUnban)
+            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableUnban)
                 return;
 
             Player.Unban(targetId);
@@ -1822,14 +1992,14 @@ namespace Oxide.Plugins
             BuildUI(player, UiPage.Main);
         }
 
-        [ConsoleCommand("padm_killuser")]
-        private void PlayerAdministrationKillUserCallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CKillUserCmd)]
+        private void PlayerAdministrationKillUserCallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationKillUserCallback was called");
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref arg, out targetId) || !FConfigData.EnableKill)
+            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableKill)
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Die();
@@ -1837,28 +2007,28 @@ namespace Oxide.Plugins
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 
-        [ConsoleCommand("padm_perms")]
-        private void PlayerAdministrationRunPermsCallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CPermsCmd)]
+        private void PlayerAdministrationRunPermsCallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationRunPermsCallback was called");
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref arg, out targetId) || !FConfigData.EnablePerms)
+            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnablePerms)
                 return;
 
-            player.SendConsoleCommand($"chat.say \"/perms player {targetId}\"");
+            player.SendConsoleCommand($"chat.say \"/{CPermsPermsCmd} {targetId}\"");
             LogInfo($"{player.displayName}: Opened the permissions manager for user ID {targetId}");
         }
 
-        [ConsoleCommand("padm_vmuteuser")]
-        private void PlayerAdministrationVoiceMuteUserCallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CVoiceMuteUserCmd)]
+        private void PlayerAdministrationVoiceMuteUserCallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationVoiceMuteUserCallback was called");
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref arg, out targetId) || !FConfigData.EnableVMute)
+            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableVMute)
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, true);
@@ -1866,14 +2036,14 @@ namespace Oxide.Plugins
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 
-        [ConsoleCommand("padm_vunmuteuser")]
-        private void PlayerAdministrationVoiceUnmuteUserCallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CVoiceUnmuteUserCmd)]
+        private void PlayerAdministrationVoiceUnmuteUserCallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationVoiceUnmuteUserCallback was called");
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref arg, out targetId) || !FConfigData.EnableVMute)
+            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableVMute)
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, false);
@@ -1881,14 +2051,14 @@ namespace Oxide.Plugins
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 
-        [ConsoleCommand("padm_cmuteuser")]
-        private void PlayerAdministrationChatMuteUserCallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CChatMuteUserCmd)]
+        private void PlayerAdministrationChatMuteUserCallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationChatMuteUserCallback was called");
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref arg, out targetId) || !FConfigData.EnableCMute)
+            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableCMute)
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, true);
@@ -1896,14 +2066,14 @@ namespace Oxide.Plugins
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 
-        [ConsoleCommand("padm_cunmuteuser")]
-        private void PlayerAdministrationChatUnmuteUserCallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CChatUnmuteUserCmd)]
+        private void PlayerAdministrationChatUnmuteUserCallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationChatUnmuteUserCallback was called");
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref arg, out targetId) || !FConfigData.EnableCMute)
+            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableCMute)
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, false);
@@ -1911,46 +2081,46 @@ namespace Oxide.Plugins
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 
-        [ConsoleCommand("padm_freeze")]
-        private void PlayerAdministrationFreezeCallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CFreezeCmd)]
+        private void PlayerAdministrationFreezeCallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationFreezeCallback was called");
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref arg, out targetId) || !FConfigData.EnableFreeze)
+            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableFreeze)
                 return;
 
-            player.SendConsoleCommand($"freeze {targetId}");
+            player.SendConsoleCommand($"{CFreezeFreezeCmd} {targetId}");
             LogInfo($"{player.displayName}: Chat froze user ID {targetId}");
             // Let code execute, then reload screen
             timer.Once(0.1f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand("padm_unfreeze")]
-        private void PlayerAdministrationUnfreezeCallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CUnreezeCmd)]
+        private void PlayerAdministrationUnfreezeCallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationUnfreezeCallback was called");
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref arg, out targetId) || !FConfigData.EnableFreeze)
+            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableFreeze)
                 return;
 
-            player.SendConsoleCommand($"unfreeze {targetId}");
+            player.SendConsoleCommand($"{CFreezeUnfreezeCmd} {targetId}");
             LogInfo($"{player.displayName}: Chat unfroze user ID {targetId}");
             // Let code execute, then reload screen
             timer.Once(0.1f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand("padm_clearuserinventory")]
-        private void PlayerAdministrationClearUserInventoryCallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CClearUserInventoryCmd)]
+        private void PlayerAdministrationClearUserInventoryCallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationClearUserInventoryCallback was called");
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref arg, out targetId) || !FConfigData.EnableClearInv)
+            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableClearInv)
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.inventory.Strip();
@@ -1958,14 +2128,14 @@ namespace Oxide.Plugins
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 
-        [ConsoleCommand("padm_resetuserblueprints")]
-        private void PlayerAdministrationResetUserBlueprintsCallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CResetUserBPCmd)]
+        private void PlayerAdministrationResetUserBlueprintsCallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationResetUserBlueprintsCallback was called");
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref arg, out targetId) || !FConfigData.EnableResetBP)
+            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableResetBP)
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.blueprints.Reset();
@@ -1973,14 +2143,14 @@ namespace Oxide.Plugins
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 
-        [ConsoleCommand("padm_resetusermetabolism")]
-        private void PlayerAdministrationResetUserMetabolismCallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CResetUserMetabolismCmd)]
+        private void PlayerAdministrationResetUserMetabolismCallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationResetUserMetabolismCallback was called");
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref arg, out targetId) || !FConfigData.EnableResetMetabolism)
+            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetFromArg(ref aArg, out targetId) || !FConfigData.EnableResetMetabolism)
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.metabolism.Reset();
@@ -1988,15 +2158,15 @@ namespace Oxide.Plugins
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 
-        [ConsoleCommand("padm_hurtuser")]
-        private void PlayerAdministrationHurtUserCallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CHurtUserCmd)]
+        private void PlayerAdministrationHurtUserCallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationHurtUserCallback was called");
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
             ulong targetId;
             float amount;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetAmountFromArg(ref arg, out targetId, out amount) ||
+            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetAmountFromArg(ref aArg, out targetId, out amount) ||
                 !FConfigData.EnableHurt)
                 return;
 
@@ -2005,15 +2175,15 @@ namespace Oxide.Plugins
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 
-        [ConsoleCommand("padm_healuser")]
-        private void PlayerAdministrationHealUserCallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CHealUserCmd)]
+        private void PlayerAdministrationHealUserCallback(ConsoleSystem.Arg aArg)
         {
             LogDebug("PlayerAdministrationHealUserCallback was called");
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
             ulong targetId;
             float amount;
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetAmountFromArg(ref arg, out targetId, out amount) ||
+            if (!VerifyPermission(ref player, CPermUiShow) || !GetTargetAmountFromArg(ref aArg, out targetId, out amount) ||
                 !FConfigData.EnableHeal)
                 return;
 
@@ -2024,12 +2194,12 @@ namespace Oxide.Plugins
         #endregion Command Callbacks
 
         #region Text Update Callbacks
-        [ConsoleCommand("padm_mainpagebanidinputtext")]
-        private void PlayerAdministrationMainPageBanIdInputTextCallback(ConsoleSystem.Arg arg)
+        [ConsoleCommand(CMainPageBanIdInputTextCmd)]
+        private void PlayerAdministrationMainPageBanIdInputTextCallback(ConsoleSystem.Arg aArg)
         {
-            BasePlayer player = arg.Player();
+            BasePlayer player = aArg.Player();
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !arg.HasArgs()) {
+            if (!VerifyPermission(ref player, CPermUiShow) || !aArg.HasArgs()) {
                 if (FMainPageBanIdInputText.ContainsKey(player.userID))
                     FMainPageBanIdInputText.Remove(player.userID);
 
@@ -2037,9 +2207,28 @@ namespace Oxide.Plugins
             };
 
             if (FMainPageBanIdInputText.ContainsKey(player.userID)) {
-                FMainPageBanIdInputText[player.userID] = arg.Args[0];
+                FMainPageBanIdInputText[player.userID] = aArg.Args[0];
             } else {
-                FMainPageBanIdInputText.Add(player.userID, arg.Args[0]);
+                FMainPageBanIdInputText.Add(player.userID, aArg.Args[0]);
+            };
+        }
+
+        [ConsoleCommand(CUserBtnPageSearchInputTextCmd)]
+        private void PlayerAdministrationUserBtnPageSearchInputTextCallback(ConsoleSystem.Arg aArg)
+        {
+            BasePlayer player = aArg.Player();
+
+            if (!VerifyPermission(ref player, CPermUiShow) || !aArg.HasArgs()) {
+                if (FUserBtnPageSearchInputText.ContainsKey(player.userID))
+                    FUserBtnPageSearchInputText.Remove(player.userID);
+
+                return;
+            };
+
+            if (FUserBtnPageSearchInputText.ContainsKey(player.userID)) {
+                FUserBtnPageSearchInputText[player.userID] = aArg.Args[0];
+            } else {
+                FUserBtnPageSearchInputText.Add(player.userID, aArg.Args[0]);
             };
         }
         #endregion Text Update Callbacks
