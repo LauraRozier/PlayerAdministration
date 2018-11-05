@@ -1223,6 +1223,14 @@ namespace Oxide.Plugins
                 aUIObj.AddButton(aParent, CUserPageBtnResetMetabolismLbAnchor, CUserPageBtnResetMetabolismRtAnchor, CuiDefaultColors.ButtonInactive,
                                  CuiDefaultColors.Text, GetMessage("Reset Metabolism Button Text", aUiUserId));
             }
+
+            if (VerifyPermission(aUiUserId, CPermRecoverMetabolism)) {
+                aUIObj.AddButton(aParent, CUserPageBtnRecoverMetabolismLbAnchor, CUserPageBtnRecoverMetabolismRtAnchor, CuiDefaultColors.ButtonWarning,
+                                 CuiDefaultColors.TextAlt, GetMessage("Recover Metabolism Button Text", aUiUserId), $"{CRecoverUserMetabolismCmd} {aPlayerId}");
+            } else {
+                aUIObj.AddButton(aParent, CUserPageBtnRecoverMetabolismLbAnchor, CUserPageBtnRecoverMetabolismRtAnchor, CuiDefaultColors.ButtonInactive,
+                                 CuiDefaultColors.Text, GetMessage("Recover Metabolism Button Text", aUiUserId));
+            }
         }
 
         /// <summary>
@@ -1434,6 +1442,7 @@ namespace Oxide.Plugins
         private const string CClearUserInventoryCmd = "padm_clearuserinventory";
         private const string CResetUserBPCmd = "padm_resetuserblueprints";
         private const string CResetUserMetabolismCmd = "padm_resetusermetabolism";
+        private const string CRecoverUserMetabolismCmd = "padm_recoverusermetabolism";
         private const string CHurtUserCmd = "padm_hurtuser";
         private const string CHealUserCmd = "padm_healuser";
         private const string CMainPageBanIdInputTextCmd = "padm_mainpagebanidinputtext";
@@ -1467,6 +1476,7 @@ namespace Oxide.Plugins
         private const string CPermClearInventory = "playeradministration.clearinventory";
         private const string CPermResetBP = "playeradministration.resetblueprint";
         private const string CPermResetMetabolism = "playeradministration.resetmetabolism";
+        private const string CPermRecoverMetabolism = "playeradministration.recovermetabolism";
         private const string CPermHurt = "playeradministration.hurt";
         private const string CPermHeal = "playeradministration.heal";
         #endregion Local permissions
@@ -1605,6 +1615,8 @@ namespace Oxide.Plugins
         private readonly CuiPoint CUserPageBtnResetBPRtAnchor = new CuiPoint(0.32f, 0.65f);
         private readonly CuiPoint CUserPageBtnResetMetabolismLbAnchor = new CuiPoint(0.33f, 0.58f);
         private readonly CuiPoint CUserPageBtnResetMetabolismRtAnchor = new CuiPoint(0.48f, 0.65f);
+        private readonly CuiPoint CUserPageBtnRecoverMetabolismLbAnchor = new CuiPoint(0.49f, 0.58f);
+        private readonly CuiPoint CUserPageBtnRecoverMetabolismRtAnchor = new CuiPoint(0.64f, 0.65f);
         private readonly CuiPoint CUserPageBtnHurt25LbAnchor = new CuiPoint(0.01f, 0.40f);
         private readonly CuiPoint CUserPageBtnHurt25RtAnchor = new CuiPoint(0.16f, 0.47f);
         private readonly CuiPoint CUserPageBtnHurt50LbAnchor = new CuiPoint(0.17f, 0.40f);
@@ -1650,6 +1662,7 @@ namespace Oxide.Plugins
             permission.RegisterPermission(CPermClearInventory, this);
             permission.RegisterPermission(CPermResetBP, this);
             permission.RegisterPermission(CPermResetMetabolism, this);
+            permission.RegisterPermission(CPermRecoverMetabolism, this);
             permission.RegisterPermission(CPermHurt, this);
             permission.RegisterPermission(CPermHeal, this);
             FPluginInstance = this;
@@ -1741,6 +1754,7 @@ namespace Oxide.Plugins
                 { "Clear Inventory Button Text", "Clear Inventory" },
                 { "Reset Blueprints Button Text", "Reset Blueprints" },
                 { "Reset Metabolism Button Text", "Reset Metabolism" },
+                { "Recover Metabolism Button Text", "Recover Metabolism" },
 
                 { "Hurt 25 Button Text", "Hurt 25" },
                 { "Hurt 50 Button Text", "Hurt 50" },
@@ -2070,6 +2084,32 @@ namespace Oxide.Plugins
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.metabolism.Reset();
             LogInfo($"{player.displayName}: Reset the metabolism of user ID {targetId}");
+            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+        }
+
+        [ConsoleCommand(CRecoverUserMetabolismCmd)]
+        private void PlayerAdministrationRecoverUserMetabolismCallback(ConsoleSystem.Arg aArg)
+        {
+            LogDebug("PlayerAdministrationRecoverUserMetabolismCallback was called");
+            BasePlayer player = aArg.Player();
+            ulong targetId;
+
+            if (!VerifyPermission(ref player, CPermRecoverMetabolism, true) || !GetTargetFromArg(ref aArg, out targetId))
+                return;
+
+            PlayerMetabolism playerState = (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.metabolism;
+            playerState.bleeding.value = playerState.bleeding.min;
+            playerState.calories.value = playerState.calories.max;
+            playerState.comfort.value = 0;
+            playerState.hydration.value = playerState.hydration.max;
+            playerState.oxygen.value = playerState.oxygen.max;
+            playerState.poison.value = playerState.poison.min;
+            playerState.radiation_level.value = playerState.radiation_level.min;
+            playerState.radiation_poison.value = playerState.radiation_poison.min;
+            playerState.temperature.value = (PlayerMetabolism.HotThreshold + PlayerMetabolism.ColdThreshold) / 2;
+            playerState.wetness.value = playerState.wetness.min;
+
+            LogInfo($"{player.displayName}: Recovered the metabolism of user ID {targetId}");
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 
