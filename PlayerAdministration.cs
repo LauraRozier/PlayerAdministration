@@ -33,7 +33,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.3.10", ResourceId = 0)]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.3.12", ResourceId = 0)]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : RustPlugin
     {
@@ -1105,12 +1105,15 @@ namespace Oxide.Plugins
                                  GetMessage("Kill Button Text", aUiUserId));
             }
 
-            if (PermissionsManager != null && VerifyPermission(aUiUserId, CPermPerms)) {
+            if (PermissionsManager == null) {
+                aUIObj.AddButton(aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                                 GetMessage("Perms Not Installed Button Text", aUiUserId));
+            } else if (VerifyPermission(aUiUserId, CPermPerms)) {
                 aUIObj.AddButton(aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
                                  GetMessage("Perms Button Text", aUiUserId), $"{CPermsCmd} {aPlayerId}");
             } else {
                 aUIObj.AddButton(aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
-                                 GetMessage("Perms Not Installed Button Text", aUiUserId));
+                                 GetMessage("Perms Button Text", aUiUserId));
             }
         }
 
@@ -1175,7 +1178,10 @@ namespace Oxide.Plugins
         /// <param name="aPlayer">Player who's information we need to display</param>
         private void AddUserPageThirdActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId, ref BasePlayer aPlayer)
         {
-            if (Freeze != null && VerifyPermission(aUiUserId, CPermFreeze) && aPlayer.IsConnected) {
+            if (Freeze == null) {
+                aUIObj.AddButton(aParent, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                            GetMessage("Freeze Not Installed Button Text", aUiUserId));
+            } else if (VerifyPermission(aUiUserId, CPermFreeze) && aPlayer.IsConnected) {
                 if (GetIsFrozen(aPlayerId)) {
                     aUIObj.AddButton(aParent, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                 GetMessage("Freeze Button Text", aUiUserId));
@@ -1760,7 +1766,9 @@ namespace Oxide.Plugins
                 { "Unban Button Text", "Unban" },
 
                 { "Perms Button Text", "Permissions" },
+                { "Perms Not Installed Button Text", "Perms Not Installed" },
                 { "Freeze Button Text", "Freeze" },
+                { "Freeze Not Installed Button Text", "Freeze Not Installed" },
                 { "UnFreeze Button Text", "UnFreeze" },
 
                 { "Voice Mute Button Text", "Mute Voice" },
