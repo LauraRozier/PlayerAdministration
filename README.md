@@ -127,7 +127,9 @@ The default messages are in the `PlayerAdministration.json` file under the `oxid
   "Unban Button Text": "Unban",
 
   "Perms Button Text": "Permissions",
+  "Perms Not Installed Button Text": "Perms Not Installed",
   "Freeze Button Text": "Freeze",
+  "Freeze Not Installed Button Text": "Freeze Not Installed",
   "UnFreeze Button Text": "UnFreeze",
 
   "Voice Mute Button Text": "Mute Voice",
