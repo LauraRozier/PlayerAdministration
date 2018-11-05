@@ -10,6 +10,7 @@
 - Clearing the user's inventory
 - Resetting a user's blueprints
 - Resetting a user's metabolism (Identical to how a respawn sets a random metabolism)
+- Recover a user's metabolism (Gives the user a healthy metabolic state by filling their hunger, thirst, oxygen, and removing bleeding and radiation.)
 - Hurting a user
 - Healing a user
 - Teleporting to a user
@@ -28,6 +29,7 @@
 - **playeradministration.clearinventory** -- Allows the user to clear any player's inventory
 - **playeradministration.resetblueprint** -- Allows the user to reset any player's blueprints
 - **playeradministration.resetmetabolism** -- Allows the user to reset any player's metabolism
+- **playeradministration.recovermetabolism** -- Allows the user to give any player a healthy metabolic state
 - **playeradministration.hurt** -- Allows the user to hurt any player
 - **playeradministration.heal** -- Allows the user to heal any player
 - **playeradministration.voicemute** -- Allows the user to mute the voice chat of any player
@@ -112,6 +114,7 @@ The default messages are in the `PlayerAdministration.json` file under the `oxid
   "Clear Inventory Button Text": "Clear Inventory",
   "Reset Blueprints Button Text": "Reset Blueprints",
   "Reset Metabolism Button Text": "Reset Metabolism",
+  "Recover Metabolism Button Text": "Recover Metabolism",
 
   "Hurt 25 Button Text": "Hurt 25",
   "Hurt 50 Button Text": "Hurt 50",
