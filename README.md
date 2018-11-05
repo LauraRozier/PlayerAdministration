@@ -12,6 +12,7 @@
 - Resetting a user's metabolism (Identical to how a respawn sets a random metabolism)
 - Hurting a user
 - Healing a user
+- Teleporting to a user
 - The ability to see a user's vitals, status and steamID64
 - Use of PermissionsManager plugin to edit Oxide user permissions on a user
 - Use of Freeze plugin to freeze/unfreeze user position (Only for English language users, Freeze uses localized commands!!!)
@@ -33,6 +34,7 @@
 - **playeradministration.chatmute** -- Allows the user to mute the text chat of any player
 - **playeradministration.perms** -- Allows the user to use the "Permissions" button for any player
 - **playeradministration.freeze** -- Allows the user to freeze and unfreeze any player
+- **playeradministration.teleport** -- Allows the user to teleport to any player
 
 ## Chat Commands
 
