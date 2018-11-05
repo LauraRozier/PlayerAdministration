@@ -33,7 +33,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.3.12", ResourceId = 0)]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.3.13", ResourceId = 0)]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : RustPlugin
     {
@@ -45,6 +45,8 @@ namespace Oxide.Plugins
         private Plugin Freeze;
         [PluginReference]
         private Plugin PermissionsManager;
+        [PluginReference]
+        private Plugin DiscordMessages;
 #pragma warning restore IDE0044, CS0649
         #endregion Plugin References
 
@@ -518,11 +520,11 @@ namespace Oxide.Plugins
         private void AddPlayerButtons<T>(ref Cui aUIObj, string aParent, ref List<T> aUserList, string aCommandFmt, int aPage)
         {
             List<T> userRange = GetPage(aUserList, aPage, CMaxPlayerButtons);
-            Vector2 dimensions = new Vector2(0.194f, 0.09f);
+            Vector2 dimensions = new Vector2(0.194f, 0.06f);
             Vector2 offset = new Vector2(0.005f, 0.01f);
             int col = -1;
             int row = 0;
-            float margin = 0.12f;
+            float margin = 0.09f;
             List<string> addedNames = new List<string>();
 
             foreach (T user in userRange) {
@@ -807,6 +809,33 @@ namespace Oxide.Plugins
 
             return result;
         }
+
+        /// <summary>
+        /// Upgrade the config to 1.3.13 if needed
+        /// </summary>
+        /// <returns></returns>
+        private bool UpgradeTo1313()
+        {
+            bool result = false;
+            Config.Load();
+
+            if (Config["Discord Webhook url for ban messages"] == null) {
+                FConfigData.BanMsgWebhookUrl = string.Empty;
+                result = true;
+            }
+
+            if (Config["Discord Webhook url for kick messages"] == null) {
+                FConfigData.KickMsgWebhookUrl = string.Empty;
+                result = true;
+            }
+
+            Config.Clear();
+
+            if (result)
+                Config.WriteObject(FConfigData);
+
+            return result;
+        }
         #endregion
 
         #region GUI build methods
@@ -896,19 +925,19 @@ namespace Oxide.Plugins
 
             switch (aPageType) {
                 case UiPage.PlayersOnline: {
-                    aUIObj.AddButton(panel, CUserBtnPageBtnSearchLblLbAnchor, CUserBtnPageBtnSearchLblRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
                                      GetMessage("Go Button Text", uiUserId), $"{CSwitchUiCmd} {CCmdArgPlayersOnlineSearch} 0", string.Empty, string.Empty, 16);
                     BuildUserButtons(ref aUIObj, panel, aPageType, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
                     break;
                 }
                 case UiPage.PlayersOffline: {
-                    aUIObj.AddButton(panel, CUserBtnPageBtnSearchLblLbAnchor, CUserBtnPageBtnSearchLblRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
                                      GetMessage("Go Button Text", uiUserId), $"{CSwitchUiCmd} {CCmdArgPlayersOfflineSearch} 0", string.Empty, string.Empty, 16);
                     BuildUserButtons(ref aUIObj, panel, aPageType, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
                     break;
                 }
                 default: {
-                    aUIObj.AddButton(panel, CUserBtnPageBtnSearchLblLbAnchor, CUserBtnPageBtnSearchLblRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
                                      GetMessage("Go Button Text", uiUserId), $"{CSwitchUiCmd} {CCmdArgPlayersBannedSearch} 0", string.Empty, string.Empty, 16);
                     BuildBannedUserButtons(ref aUIObj, panel, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
                     break;
@@ -1426,13 +1455,19 @@ namespace Oxide.Plugins
             [DefaultValue(true)]
             [JsonProperty("Use Permission System", DefaultValueHandling = DefaultValueHandling.Populate)]
             public bool UsePermSystem { get; set; }
+            [DefaultValue("")]
+            [JsonProperty("Discord Webhook url for ban messages", DefaultValueHandling = DefaultValueHandling.Populate)]
+            public string BanMsgWebhookUrl { get; set; }
+            [DefaultValue("")]
+            [JsonProperty("Discord Webhook url for kick messages", DefaultValueHandling = DefaultValueHandling.Populate)]
+            public string KickMsgWebhookUrl { get; set; }
         }
         #endregion
 
         #region Constants
         private readonly bool CDebugEnabled = false;
         private const int CMaxPlayerCols = 5;
-        private const int CMaxPlayerRows = 8;
+        private const int CMaxPlayerRows = 12;
         private const int CMaxPlayerButtons = CMaxPlayerCols * CMaxPlayerRows;
         private const string CMainPanelName = "PAdm_MainPanel";
         private readonly List<string> CUnknownNameList = new List<string> { "unnamed", "unknown" };
@@ -1516,8 +1551,8 @@ namespace Oxide.Plugins
         private readonly CuiPoint CMainLblTitleRtAnchor = new CuiPoint(0.995f, 0.99f);
         #endregion Main bounds
         #region Main page bounds
-        private readonly CuiPoint CMainPageLblBanByIdTitleLbAnchor = new CuiPoint(0.005f, 0.82f);
-        private readonly CuiPoint CMainPageLblBanByIdTitleRtAnchor = new CuiPoint(0.995f, 0.87f);
+        private readonly CuiPoint CMainPageLblBanByIdTitleLbAnchor = new CuiPoint(0.005f, 0.84f);
+        private readonly CuiPoint CMainPageLblBanByIdTitleRtAnchor = new CuiPoint(0.995f, 0.89f);
         private readonly CuiPoint CMainPageLblBanByIdLbAnchor = new CuiPoint(0.005f, 0.76f);
         private readonly CuiPoint CMainPageLblBanByIdRtAnchor = new CuiPoint(0.05f, 0.81f);
         private readonly CuiPoint CMainPagePanelBanByIdLbAnchor = new CuiPoint(0.055f, 0.76f);
@@ -1530,18 +1565,18 @@ namespace Oxide.Plugins
         #region User button page bounds
         private readonly CuiPoint CUserBtnPageLblTitleLbAnchor = new CuiPoint(0.005f, 0.93f);
         private readonly CuiPoint CUserBtnPageLblTitleRtAnchor = new CuiPoint(0.495f, 0.99f);
-        private readonly CuiPoint CUserBtnPageLblSearchLbAnchor = new CuiPoint(0.5f, 0.93f);
+        private readonly CuiPoint CUserBtnPageLblSearchLbAnchor = new CuiPoint(0.52f, 0.93f);
         private readonly CuiPoint CUserBtnPageLblSearchRtAnchor = new CuiPoint(0.565f, 0.99f);
         private readonly CuiPoint CUserBtnPagePanelSearchInputLbAnchor = new CuiPoint(0.57f, 0.94f);
-        private readonly CuiPoint CUserBtnPagePanelSearchInputRtAnchor = new CuiPoint(0.925f, 0.99f);
+        private readonly CuiPoint CUserBtnPagePanelSearchInputRtAnchor = new CuiPoint(0.945f, 0.99f);
         private readonly CuiPoint CUserBtnPageEdtSearchInputLbAnchor = new CuiPoint(0.005f, 0f);
         private readonly CuiPoint CUserBtnPageEdtSearchInputRtAnchor = new CuiPoint(0.995f, 1f);
-        private readonly CuiPoint CUserBtnPageBtnSearchLblLbAnchor = new CuiPoint(0.93f, 0.93f);
-        private readonly CuiPoint CUserBtnPageBtnSearchLblRtAnchor = new CuiPoint(0.995f, 0.99f);
+        private readonly CuiPoint CUserBtnPageBtnSearchLbAnchor = new CuiPoint(0.95f, 0.94f);
+        private readonly CuiPoint CUserBtnPageBtnSearchRtAnchor = new CuiPoint(0.995f, 0.99f);
         private readonly CuiPoint CUserBtnPageBtnPreviousLbAnchor = new CuiPoint(0.005f, 0.01f);
-        private readonly CuiPoint CUserBtnPageBtnPreviousRtAnchor = new CuiPoint(0.035f, 0.061875f);
+        private readonly CuiPoint CUserBtnPageBtnPreviousRtAnchor = new CuiPoint(0.035f, 0.06f);
         private readonly CuiPoint CUserBtnPageBtnNextLbAnchor = new CuiPoint(0.96f, 0.01f);
-        private readonly CuiPoint CUserBtnPageBtnNextRtAnchor = new CuiPoint(0.995f, 0.061875f);
+        private readonly CuiPoint CUserBtnPageBtnNextRtAnchor = new CuiPoint(0.995f, 0.06f);
         #endregion User button page bounds
         #region User page panel bounds
         private readonly CuiPoint CUserPageInfoPanelLbAnchor = new CuiPoint(0.005f, 0.01f);
@@ -1657,6 +1692,9 @@ namespace Oxide.Plugins
 
             if (UpgradeTo1310())
                 LogDebug("Upgraded the config to version 1.3.10");
+
+            if (UpgradeTo1313())
+                LogDebug("Upgraded the config to version 1.3.13");
 
             permission.RegisterPermission(CPermUiShow, this);
             permission.RegisterPermission(CPermKick, this);
@@ -1880,8 +1918,36 @@ namespace Oxide.Plugins
             if (!VerifyPermission(ref player, CPermKick, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
-            BasePlayer.FindByID(targetId)?.Kick(GetMessage("Kick Reason Message Text", targetId.ToString()));
+            BasePlayer targetPlayer = BasePlayer.FindByID(targetId);
+            string kickReasonMsg = GetMessage("Kick Reason Message Text", targetId.ToString());
+            targetPlayer?.Kick(kickReasonMsg);
             LogInfo($"{player.displayName}: Kicked user ID {targetId}");
+            
+            if (DiscordMessages != null) {
+                object fields = new[] {
+                    new {
+                        name = "Player",
+                        value = string.Format(
+                            "[{0}](https://steamcommunity.com/profiles/{1})",
+                            targetPlayer == null ? targetId.ToString() : targetPlayer.displayName,
+                            targetId
+                        ),
+                        inline = true
+                    },
+                    new {
+                        name = "Kicked by",
+                        value = $"[{player.displayName}](https://steamcommunity.com/profiles/{player.UserIDString})",
+                        inline = true
+                    },
+                    new {
+                        name = "Reason",
+                        value = kickReasonMsg,
+                        inline = false
+                    }
+                };
+                DiscordMessages.Call("API_SendFancyMessage", FConfigData.KickMsgWebhookUrl, "Player Kick", 3329330, JsonConvert.SerializeObject(fields));
+            }
+
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 
@@ -1895,8 +1961,36 @@ namespace Oxide.Plugins
             if (!VerifyPermission(ref player, CPermBan, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
-            Player.Ban(targetId, GetMessage("Ban Reason Message Text", targetId.ToString()));
+            BasePlayer targetPlayer = BasePlayer.FindByID(targetId);
+            string banReasonMsg = GetMessage("Ban Reason Message Text", targetId.ToString());
+            Player.Ban(targetId, banReasonMsg);
             LogInfo($"{player.displayName}: Banned user ID {targetId}");
+
+            if (DiscordMessages != null) {
+                object fields = new[] {
+                    new {
+                        name = "Player",
+                        value = string.Format(
+                            "[{0}](https://steamcommunity.com/profiles/{1})",
+                            targetPlayer == null ? targetId.ToString() : targetPlayer.displayName,
+                            targetId
+                        ),
+                        inline = true
+                    },
+                    new {
+                        name = "Banned by",
+                        value = $"[{player.displayName}](https://steamcommunity.com/profiles/{player.UserIDString})",
+                        inline = true
+                    },
+                    new {
+                        name = "Reason",
+                        value = banReasonMsg,
+                        inline = false
+                    }
+                };
+                DiscordMessages.Call("API_SendFancyMessage", FConfigData.KickMsgWebhookUrl, "Player Ban", 3329330, JsonConvert.SerializeObject(fields));
+            }
+
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 
@@ -1911,8 +2005,36 @@ namespace Oxide.Plugins
                 !ulong.TryParse(FMainPageBanIdInputText[player.userID], out targetId))
                 return;
 
-            Player.Ban(targetId, GetMessage("Ban Reason Message Text", targetId.ToString()));
+            BasePlayer targetPlayer = BasePlayer.FindByID(targetId);
+            string banReasonMsg = GetMessage("Ban Reason Message Text", targetId.ToString());
+            Player.Ban(targetId, banReasonMsg);
             LogInfo($"{player.displayName}: Banned user ID {targetId}");
+
+            if (DiscordMessages != null) {
+                object fields = new[] {
+                    new {
+                        name = "Player",
+                        value = string.Format(
+                            "[{0}](https://steamcommunity.com/profiles/{1})",
+                            targetPlayer == null ? targetId.ToString() : targetPlayer.displayName,
+                            targetId
+                        ),
+                        inline = true
+                    },
+                    new {
+                        name = "Banned by",
+                        value = $"[{player.displayName}](https://steamcommunity.com/profiles/{player.UserIDString})",
+                        inline = true
+                    },
+                    new {
+                        name = "Reason",
+                        value = banReasonMsg,
+                        inline = false
+                    }
+                };
+                DiscordMessages.Call("API_SendFancyMessage", FConfigData.KickMsgWebhookUrl, "Player Ban", 3329330, JsonConvert.SerializeObject(fields));
+            }
+
             BuildUI(player, UiPage.Main);
         }
 

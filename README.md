@@ -18,6 +18,7 @@
 - Use of PermissionsManager plugin to edit Oxide user permissions on a user
 - Use of Freeze plugin to freeze/unfreeze user position (Only for English language users, Freeze uses localized commands!!!)
 - Use of Economics plugin to show player's current balance
+- Use of DiscordMessages plugin to send a fancy message to Discord for each ban and kick
 - Filtering through users via the "search" function (Case insensitive and selects both names and IDs that contain the text written in the input)
 
 ## Permissions
@@ -48,7 +49,9 @@
 
 ```json
 {
-  "Use Permission System": true
+  "Use Permission System": true,
+  "Discord Webhook url for ban messages": "",
+  "Discord Webhook url for kick messages": ""
 }
 ```
 
