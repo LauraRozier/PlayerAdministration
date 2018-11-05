@@ -112,6 +112,7 @@ The default messages are in the `PlayerAdministration.json` file under the `oxid
   "Clear Inventory Button Text": "Clear Inventory",
   "Reset Blueprints Button Text": "Reset Blueprints",
   "Reset Metabolism Button Text": "Reset Metabolism",
+  "Recover Metabolism Button Text": "Recover Metabolism",
 
   "Hurt 25 Button Text": "Hurt 25",
   "Hurt 50 Button Text": "Hurt 50",
