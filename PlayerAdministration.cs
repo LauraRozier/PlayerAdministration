@@ -5,6 +5,7 @@
  * -- Authors --
  * Thimo (ThibmoRozier) <thibmorozier@live.nl>
  * rfc1920 <no@email.com>
+ * Mheetu <no@email.com>s
  *
  * -- Naming --
  * Avoid using non-alphabetic characters, eg: _
@@ -31,9 +32,24 @@ using System.ComponentModel;
 using System.Linq;
 using UnityEngine;
 
+//TODO: Implement Better Chat Mute API_TimeMute 15 min - https://umod.org/plugins/better-chat-mute
+//TODO: Implement Better Chat Mute API_TimeMute 30 min - https://umod.org/plugins/better-chat-mute
+//TODO: Implement Better Chat Mute API_TimeMute 60 min - https://umod.org/plugins/better-chat-mute
+//TODO: Implement Better Chat Mute API_Mute - https://umod.org/plugins/better-chat-mute
+//TODO: Implement Better Chat Mute API_Unmute - https://umod.org/plugins/better-chat-mute
+//TODO: Implement Better Chat Mute API_IsMuted - https://umod.org/plugins/better-chat-mute
+//TODO: Optimize button sizes
+//TODO: Optimize UI layout
+//TODO: Move Kill button to Hurt row
+//TODO: Add Heal Wounds button to Heal row
+//TODO: Add button for Teleport to player (Callback and permissions exist already)
+//TODO: Add button for Teleport player (Callback and permissions exist already)
+//TODO: Add button for Spectate player (Callback and permissions exist already)
+//TODO: Determine if Server Rewards is worth adding to the info panel
+
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.3.13", ResourceId = 0)]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.3.14", ResourceId = 0)]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : RustPlugin
     {
@@ -47,6 +63,8 @@ namespace Oxide.Plugins
         private Plugin PermissionsManager;
         [PluginReference]
         private Plugin DiscordMessages;
+        [PluginReference]
+        private Plugin BetterChatMute;
 #pragma warning restore IDE0044, CS0649
         #endregion Plugin References
 
@@ -777,6 +795,45 @@ namespace Oxide.Plugins
         /// <returns></returns>
         private bool GetIsFrozen(ulong aPlayerId) =>
             permission.UserHasPermission(aPlayerId.ToString(), CPermFreezeFrozen);
+
+        /// <summary>
+        /// Send either a kick or a ban message to Discord via the DiscordMessages plugin
+        /// </summary>
+        /// <param name="aAdminName">The name of the admin</param>
+        /// <param name="aAdminId">The ID of the admin</param>
+        /// <param name="aTargetName">The name of the target player</param>
+        /// <param name="aTargetId">The ID of the target player</param>
+        /// <param name="aReason">The reason message</param>
+        /// <param name="aIndIsBan">If this is true a ban message is sent, else a kick message is sent</param>
+        private void SendDiscordKickBanMessage(string aAdminName, string aAdminId, string aTargetName, string aTargetId, string aReason, bool aIndIsBan)
+        {
+            if (DiscordMessages != null) {
+                object fields = new[] {
+                    new {
+                        name = "Player",
+                        value = $"[{aTargetName}](https://steamcommunity.com/profiles/{aTargetId})",
+                        inline = true
+                    },
+                    new {
+                        name = aIndIsBan ? "Banned by" : "Kicked by",
+                        value = $"[{aAdminName}](https://steamcommunity.com/profiles/{aAdminId})",
+                        inline = true
+                    },
+                    new {
+                        name = "Reason",
+                        value = aReason,
+                        inline = false
+                    }
+                };
+                DiscordMessages.Call(
+                    "API_SendFancyMessage",
+                    aIndIsBan ? FConfigData.BanMsgWebhookUrl : FConfigData.KickMsgWebhookUrl,
+                    aIndIsBan ? "Player Ban" : "Player Kick",
+                    3329330,
+                    JsonConvert.SerializeObject(fields)
+                );
+            }
+        }
         #endregion Utility methods
 
         #region Upgrade methods
@@ -1930,32 +1987,7 @@ namespace Oxide.Plugins
             string kickReasonMsg = GetMessage("Kick Reason Message Text", targetId.ToString());
             targetPlayer?.Kick(kickReasonMsg);
             LogInfo($"{player.displayName}: Kicked user ID {targetId}");
-            
-            if (DiscordMessages != null) {
-                object fields = new[] {
-                    new {
-                        name = "Player",
-                        value = string.Format(
-                            "[{0}](https://steamcommunity.com/profiles/{1})",
-                            targetPlayer == null ? targetId.ToString() : targetPlayer.displayName,
-                            targetId
-                        ),
-                        inline = true
-                    },
-                    new {
-                        name = "Kicked by",
-                        value = $"[{player.displayName}](https://steamcommunity.com/profiles/{player.UserIDString})",
-                        inline = true
-                    },
-                    new {
-                        name = "Reason",
-                        value = kickReasonMsg,
-                        inline = false
-                    }
-                };
-                DiscordMessages.Call("API_SendFancyMessage", FConfigData.KickMsgWebhookUrl, "Player Kick", 3329330, JsonConvert.SerializeObject(fields));
-            }
-
+            SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.displayName, targetPlayer.UserIDString, kickReasonMsg, false);
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 
@@ -1973,32 +2005,7 @@ namespace Oxide.Plugins
             string banReasonMsg = GetMessage("Ban Reason Message Text", targetId.ToString());
             Player.Ban(targetId, banReasonMsg);
             LogInfo($"{player.displayName}: Banned user ID {targetId}");
-
-            if (DiscordMessages != null) {
-                object fields = new[] {
-                    new {
-                        name = "Player",
-                        value = string.Format(
-                            "[{0}](https://steamcommunity.com/profiles/{1})",
-                            targetPlayer == null ? targetId.ToString() : targetPlayer.displayName,
-                            targetId
-                        ),
-                        inline = true
-                    },
-                    new {
-                        name = "Banned by",
-                        value = $"[{player.displayName}](https://steamcommunity.com/profiles/{player.UserIDString})",
-                        inline = true
-                    },
-                    new {
-                        name = "Reason",
-                        value = banReasonMsg,
-                        inline = false
-                    }
-                };
-                DiscordMessages.Call("API_SendFancyMessage", FConfigData.KickMsgWebhookUrl, "Player Ban", 3329330, JsonConvert.SerializeObject(fields));
-            }
-
+            SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.displayName, targetPlayer.UserIDString, banReasonMsg, true);
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 
@@ -2017,32 +2024,7 @@ namespace Oxide.Plugins
             string banReasonMsg = GetMessage("Ban Reason Message Text", targetId.ToString());
             Player.Ban(targetId, banReasonMsg);
             LogInfo($"{player.displayName}: Banned user ID {targetId}");
-
-            if (DiscordMessages != null) {
-                object fields = new[] {
-                    new {
-                        name = "Player",
-                        value = string.Format(
-                            "[{0}](https://steamcommunity.com/profiles/{1})",
-                            targetPlayer == null ? targetId.ToString() : targetPlayer.displayName,
-                            targetId
-                        ),
-                        inline = true
-                    },
-                    new {
-                        name = "Banned by",
-                        value = $"[{player.displayName}](https://steamcommunity.com/profiles/{player.UserIDString})",
-                        inline = true
-                    },
-                    new {
-                        name = "Reason",
-                        value = banReasonMsg,
-                        inline = false
-                    }
-                };
-                DiscordMessages.Call("API_SendFancyMessage", FConfigData.KickMsgWebhookUrl, "Player Ban", 3329330, JsonConvert.SerializeObject(fields));
-            }
-
+            SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.displayName, targetPlayer.UserIDString, banReasonMsg, true);
             BuildUI(player, UiPage.Main);
         }
 
@@ -2280,7 +2262,12 @@ namespace Oxide.Plugins
             if (!VerifyPermission(ref player, CPermHeal, true) || !GetTargetAmountFromArg(ref aArg, out targetId, out amount))
                 return;
 
-            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Heal(amount);
+            BasePlayer targetPlayer = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
+
+            if (targetPlayer.IsWounded())
+                targetPlayer.StopWounded();
+
+            targetPlayer.Heal(amount);
             LogInfo($"{player.displayName}: Healed user ID {targetId} for {amount} points");
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
