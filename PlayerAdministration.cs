@@ -1494,6 +1494,8 @@ namespace Oxide.Plugins
         private const string CHurtUserCmd = "padm_hurtuser";
         private const string CHealUserCmd = "padm_healuser";
         private const string CTeleportToUserCmd = "padm_tptouser";
+        private const string CTeleportUserCmd = "padm_tpuser";
+        private const string CSpectateUserCmd = "padm_spectateuser";
         private const string CMainPageBanIdInputTextCmd = "padm_mainpagebanidinputtext";
         private const string CUserBtnPageSearchInputTextCmd = "padm_userbtnpagesearchinputtext";
         #endregion Local commands
@@ -1529,6 +1531,7 @@ namespace Oxide.Plugins
         private const string CPermHurt = "playeradministration.hurt";
         private const string CPermHeal = "playeradministration.heal";
         private const string CPermTeleport = "playeradministration.teleport";
+        private const string CPermSpectate = "playeradministration.spectate";
         #endregion Local permissions
         #region Foreign permissions
         private const string CPermFreezeFrozen = "freeze.frozen";
@@ -1711,6 +1714,7 @@ namespace Oxide.Plugins
             permission.RegisterPermission(CPermHurt, this);
             permission.RegisterPermission(CPermHeal, this);
             permission.RegisterPermission(CPermTeleport, this);
+            permission.RegisterPermission(CPermSpectate, this);
             FPluginInstance = this;
         }
 
@@ -1826,7 +1830,11 @@ namespace Oxide.Plugins
                 { "Voice Mute Button Text", "Mute Voice" },
                 { "Voice Unmute Button Text", "Unmute Voice" },
                 { "Chat Mute Button Text", "Mute Chat" },
-                { "Chat Unmute Button Text", "Unmute Chat" }
+                { "Chat Unmute Button Text", "Unmute Chat" },
+
+                { "Teleport To Player Button Text", "Teleport To Player" },
+                { "Teleport Player Button Text", "Teleport Player" },
+                { "Spectate Player Button Text", "Spectate Player" }
             }, this, "en");
             LogDebug("Default messages loaded");
         }
@@ -2289,6 +2297,41 @@ namespace Oxide.Plugins
 
             player.Teleport(BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId));
             LogInfo($"{player.displayName}: Teleported to user ID {targetId}");
+            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+        }
+
+        [ConsoleCommand(CTeleportUserCmd)]
+        private void PlayerAdministrationTeleportUserCallback(ConsoleSystem.Arg aArg)
+        {
+            LogDebug("PlayerAdministrationTeleportUserCallback was called");
+            BasePlayer player = aArg.Player();
+            ulong targetId;
+
+            if (!VerifyPermission(ref player, CPermTeleport, true) || !GetTargetFromArg(ref aArg, out targetId))
+                return;
+
+            BasePlayer targetPlayer = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
+            targetPlayer.Teleport(player);
+            LogInfo($"{targetPlayer.displayName}: Teleported to admin {player.displayName}");
+            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+        }
+
+        [ConsoleCommand(CSpectateUserCmd)]
+        private void PlayerAdministrationSpectateUserCallback(ConsoleSystem.Arg aArg)
+        {
+            LogDebug("PlayerAdministrationSpectateUserCallback was called");
+            BasePlayer player = aArg.Player();
+            ulong targetId;
+
+            if (!VerifyPermission(ref player, CPermSpectate, true) || !GetTargetFromArg(ref aArg, out targetId))
+                return;
+
+            if (!player.IsDead())
+                player.DieInstantly();
+
+            player.StartSpectating();
+            player.UpdateSpectateTarget(targetId.ToString());
+            LogInfo($"{player.displayName}: Started spectating user ID {targetId}");
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
         #endregion Command Callbacks

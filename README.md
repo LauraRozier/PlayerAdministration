@@ -13,7 +13,9 @@
 - Recover a user's metabolism (Gives the user a healthy metabolic state by filling their hunger, thirst, oxygen, and removing bleeding and radiation.)
 - Hurting a user
 - Healing a user
-- Teleporting to a user
+- Teleporting yourself to a user
+- Teleporting a player to yourself
+- Spectating a player
 - The ability to see a user's vitals, status and steamID64
 - Use of PermissionsManager plugin to edit Oxide user permissions on a user
 - Use of Freeze plugin to freeze/unfreeze user position (Only for English language users, Freeze uses localized commands!!!)
@@ -38,6 +40,7 @@
 - **playeradministration.perms** -- Allows the user to use the "Permissions" button for any player
 - **playeradministration.freeze** -- Allows the user to freeze and unfreeze any player
 - **playeradministration.teleport** -- Allows the user to teleport to any player
+- **playeradministration.spectate** -- Allows the user to spectate any player
 
 ## Chat Commands
 
@@ -143,6 +146,10 @@ The default messages are in the `PlayerAdministration.json` file under the `oxid
   "Voice Mute Button Text": "Mute Voice",
   "Voice Unmute Button Text": "Unmute Voice",
   "Chat Mute Button Text": "Mute Chat",
-  "Chat Unmute Button Text": "Unmute Chat"
+  "Chat Unmute Button Text": "Unmute Chat",
+
+  "Teleport To Player Button Text": "Teleport To Player",
+  "Teleport Player Button Text": "Teleport Player",
+  "Spectate Player Button Text": "Spectate Player"
 }
 ```
