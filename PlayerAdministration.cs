@@ -5,7 +5,7 @@
  * -- Authors --
  * Thimo (ThibmoRozier) <thibmorozier@live.nl>
  * rfc1920 <no@email.com>
- * Mheetu <no@email.com>s
+ * Mheetu <no@email.com>
  *
  * -- Naming --
  * Avoid using non-alphabetic characters, eg: _
