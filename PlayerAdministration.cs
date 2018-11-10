@@ -38,18 +38,10 @@ using UnityEngine;
 //TODO: Implement Better Chat Mute API_Mute - https://umod.org/plugins/better-chat-mute
 //TODO: Implement Better Chat Mute API_Unmute - https://umod.org/plugins/better-chat-mute
 //TODO: Implement Better Chat Mute API_IsMuted - https://umod.org/plugins/better-chat-mute
-//TODO: Optimize button sizes
-//TODO: Optimize UI layout
-//TODO: Move Kill button to Hurt row
-//TODO: Add Heal Wounds button to Heal row
-//TODO: Add button for Teleport to player (Callback and permissions exist already)
-//TODO: Add button for Teleport player (Callback and permissions exist already)
-//TODO: Add button for Spectate player (Callback and permissions exist already)
-//TODO: Determine if Server Rewards is worth adding to the info panel
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.3.14", ResourceId = 0)]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.3.15", ResourceId = 0)]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : RustPlugin
     {
@@ -65,6 +57,8 @@ namespace Oxide.Plugins
         private Plugin DiscordMessages;
         [PluginReference]
         private Plugin BetterChatMute;
+        [PluginReference]
+        private Plugin ServerRewards;
 #pragma warning restore IDE0044, CS0649
         #endregion Plugin References
 
@@ -1132,9 +1126,15 @@ namespace Oxide.Plugins
                             GetMessage("Idle Time Label Format", aUiUserId, Convert.ToInt32(aPlayer.IdleTime)), string.Empty, 14, TextAnchor.MiddleLeft);
 
             if (Economics != null) {
-                double balance = (double)Economics.CallHook("Balance", aPlayerId);
+                double balance = (double)Economics.Call("Balance", aPlayerId);
                 aUIObj.AddLabel(aParent, CUserPageLblBalanceLbAnchor, CUserPageLblBalanceRtAnchor, CuiDefaultColors.TextAlt,
                             GetMessage("Economics Balance Label Format", aUiUserId, Convert.ToInt32(balance)), string.Empty, 14, TextAnchor.MiddleLeft);
+            }
+
+            if (ServerRewards != null) {
+                int points = (int)(ServerRewards.Call("CheckPoints", aPlayerId) ?? 0);
+                aUIObj.AddLabel(aParent, CUserPageLblRewardPointsLbAnchor, CUserPageLblRewardPointsRtAnchor, CuiDefaultColors.TextAlt,
+                            GetMessage("ServerRewards Points Label Format", aUiUserId, Convert.ToInt32(points)), string.Empty, 14, TextAnchor.MiddleLeft);
             }
 
             aUIObj.AddLabel(aParent, CUserPageLblHealthLbAnchor, CUserPageLblHealthRtAnchor, CuiDefaultColors.TextAlt,
@@ -1181,25 +1181,6 @@ namespace Oxide.Plugins
             } else {
                 aUIObj.AddButton(aParent, CUserPageBtnKickLbAnchor, CUserPageBtnKickRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                  GetMessage("Kick Button Text", aUiUserId));
-            }
-
-            if (VerifyPermission(aUiUserId, CPermKill)) {
-                aUIObj.AddButton(aParent, CUserPageBtnKillLbAnchor, CUserPageBtnKillRtAnchor, CuiDefaultColors.ButtonWarning, CuiDefaultColors.TextAlt,
-                                 GetMessage("Kill Button Text", aUiUserId), $"{CKillUserCmd} {aPlayerId}");
-            } else {
-                aUIObj.AddButton(aParent, CUserPageBtnKillLbAnchor, CUserPageBtnKillRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
-                                 GetMessage("Kill Button Text", aUiUserId));
-            }
-
-            if (PermissionsManager == null) {
-                aUIObj.AddButton(aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
-                                 GetMessage("Perms Not Installed Button Text", aUiUserId));
-            } else if (VerifyPermission(aUiUserId, CPermPerms)) {
-                aUIObj.AddButton(aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
-                                 GetMessage("Perms Button Text", aUiUserId), $"{CPermsCmd} {aPlayerId}");
-            } else {
-                aUIObj.AddButton(aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
-                                 GetMessage("Perms Button Text", aUiUserId));
             }
         }
 
@@ -1338,6 +1319,57 @@ namespace Oxide.Plugins
         /// <param name="aPlayerId">Player ID (SteamId64)</param>
         private void AddUserPageFifthActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId)
         {
+            if (VerifyPermission(aUiUserId, CPermTeleport)) {
+                aUIObj.AddButton(aParent, CUserPageBtnTeleportToLbAnchor, CUserPageBtnTeleportToRtAnchor, CuiDefaultColors.ButtonSuccess,
+                                 CuiDefaultColors.TextAlt, GetMessage("Teleport To Player Button Text", aUiUserId), $"{CTeleportToUserCmd} {aPlayerId}");
+                aUIObj.AddButton(aParent, CUserPageBtnTeleportLbAnchor, CUserPageBtnTeleportRtAnchor, CuiDefaultColors.ButtonSuccess,
+                                 CuiDefaultColors.TextAlt, GetMessage("Teleport Player Button Text", aUiUserId), $"{CTeleportUserCmd} {aPlayerId}");
+            } else {
+                aUIObj.AddButton(aParent, CUserPageBtnTeleportToLbAnchor, CUserPageBtnTeleportToRtAnchor, CuiDefaultColors.ButtonInactive,
+                                 CuiDefaultColors.Text, GetMessage("Teleport To Player Button Text", aUiUserId));
+                aUIObj.AddButton(aParent, CUserPageBtnTeleportLbAnchor, CUserPageBtnTeleportRtAnchor, CuiDefaultColors.ButtonInactive,
+                                 CuiDefaultColors.Text, GetMessage("Teleport Player Button Text", aUiUserId));
+            }
+
+            if (VerifyPermission(aUiUserId, CPermSpectate)) {
+                aUIObj.AddButton(aParent, CUserPageBtnSpectateLbAnchor, CUserPageBtnSpectateRtAnchor, CuiDefaultColors.ButtonSuccess,
+                                 CuiDefaultColors.TextAlt, GetMessage("Spectate Player Button Text", aUiUserId), $"{CSpectateUserCmd} {aPlayerId}");
+            } else {
+                aUIObj.AddButton(aParent, CUserPageBtnSpectateLbAnchor, CUserPageBtnSpectateRtAnchor, CuiDefaultColors.ButtonInactive,
+                                 CuiDefaultColors.Text, GetMessage("Spectate Player Button Text", aUiUserId));
+            }
+        }
+
+        /// <summary>
+        /// Add the sixth row of actions to the parent element
+        /// </summary>
+        /// <param name="aUIObj">Cui object</param>
+        /// <param name="aParent">Parent panel name</param>
+        /// <param name="aUiUserId">UI destination Player ID (SteamId64)</param>
+        /// <param name="aPlayerId">Player ID (SteamId64)</param>
+        private void AddUserPageSixthActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId)
+        {
+            if (PermissionsManager == null) {
+                aUIObj.AddButton(aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                                 GetMessage("Perms Not Installed Button Text", aUiUserId));
+            } else if (VerifyPermission(aUiUserId, CPermPerms)) {
+                aUIObj.AddButton(aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
+                                 GetMessage("Perms Button Text", aUiUserId), $"{CPermsCmd} {aPlayerId}");
+            } else {
+                aUIObj.AddButton(aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                                 GetMessage("Perms Button Text", aUiUserId));
+            }
+        }
+
+        /// <summary>
+        /// Add the eleventh row of actions to the parent element
+        /// </summary>
+        /// <param name="aUIObj">Cui object</param>
+        /// <param name="aParent">Parent panel name</param>
+        /// <param name="aUiUserId">UI destination Player ID (SteamId64)</param>
+        /// <param name="aPlayerId">Player ID (SteamId64)</param>
+        private void AddUserPageEleventhActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId)
+        {
             if (VerifyPermission(aUiUserId, CPermHurt)) {
                 aUIObj.AddButton(aParent, CUserPageBtnHurt25LbAnchor, CUserPageBtnHurt25RtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
                                  GetMessage("Hurt 25 Button Text", aUiUserId), $"{CHurtUserCmd} {aPlayerId} 25");
@@ -1357,16 +1389,24 @@ namespace Oxide.Plugins
                 aUIObj.AddButton(aParent, CUserPageBtnHurt100LbAnchor, CUserPageBtnHurt100RtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                  GetMessage("Hurt 100 Button Text", aUiUserId));
             }
+
+            if (VerifyPermission(aUiUserId, CPermKill)) {
+                aUIObj.AddButton(aParent, CUserPageBtnKillLbAnchor, CUserPageBtnKillRtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
+                                 GetMessage("Kill Button Text", aUiUserId), $"{CKillUserCmd} {aPlayerId}");
+            } else {
+                aUIObj.AddButton(aParent, CUserPageBtnKillLbAnchor, CUserPageBtnKillRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                                 GetMessage("Kill Button Text", aUiUserId));
+            }
         }
 
         /// <summary>
-        /// Add the sixth row of actions to the parent element
+        /// Add the twelfth row of actions to the parent element
         /// </summary>
         /// <param name="aUIObj">Cui object</param>
         /// <param name="aParent">Parent panel name</param>
         /// <param name="aUiUserId">UI destination Player ID (SteamId64)</param>
         /// <param name="aPlayerId">Player ID (SteamId64)</param>
-        private void AddUserPageSixthActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId)
+        private void AddUserPageTwelfthActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId)
         {
             if (VerifyPermission(aUiUserId, CPermHeal)) {
                 aUIObj.AddButton(aParent, CUserPageBtnHeal25LbAnchor, CUserPageBtnHeal25RtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
@@ -1377,6 +1417,8 @@ namespace Oxide.Plugins
                                  GetMessage("Heal 75 Button Text", aUiUserId), $"{CHealUserCmd} {aPlayerId} 75");
                 aUIObj.AddButton(aParent, CUserPageBtnHeal100LbAnchor, CUserPageBtnHeal100RtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
                                  GetMessage("Heal 100 Button Text", aUiUserId), $"{CHealUserCmd} {aPlayerId} 100");
+                aUIObj.AddButton(aParent, CUserPageBtnHealWoundsLbAnchor, CUserPageBtnHealWoundsRtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
+                                 GetMessage("Heal Wounds Button Text", aUiUserId), $"{CHealUserCmd} {aPlayerId} 0");
             } else {
                 aUIObj.AddButton(aParent, CUserPageBtnHeal25LbAnchor, CUserPageBtnHeal25RtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                  GetMessage("Heal 25 Button Text", aUiUserId));
@@ -1386,6 +1428,8 @@ namespace Oxide.Plugins
                                  GetMessage("Heal 75 Button Text", aUiUserId));
                 aUIObj.AddButton(aParent, CUserPageBtnHeal100LbAnchor, CUserPageBtnHeal100RtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
                                  GetMessage("Heal 100 Button Text", aUiUserId));
+                aUIObj.AddButton(aParent, CUserPageBtnHealWoundsLbAnchor, CUserPageBtnHealWoundsRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                                 GetMessage("Heal Wounds Button Text", aUiUserId));
             }
         }
 
@@ -1419,7 +1463,7 @@ namespace Oxide.Plugins
                 AddUserPageInfoLabels(ref aUIObj, infoPanel, uiUserId, aPlayerId, ref player);
 
                 // --- Build player action panel
-                // Ban, Kick, Kill, Perms
+                // Ban, Kick
                 AddUserPageFirstActionRow(ref aUIObj, actionPanel, uiUserId, aPlayerId, ref player);
                 // Mute voice, Unmute voice, Mute chat, Unmute chat
                 AddUserPageSecondActionRow(ref aUIObj, actionPanel, uiUserId, aPlayerId, ref player);
@@ -1427,10 +1471,14 @@ namespace Oxide.Plugins
                 AddUserPageThirdActionRow(ref aUIObj, actionPanel, uiUserId, aPlayerId, ref player);
                 // Clear inventory, Reset BP, Reset metabolism
                 AddUserPageFourthActionRow(ref aUIObj, actionPanel, uiUserId, aPlayerId);
-                // Hurt 25, Hurt 50, Hurt 75, Hurt 100
+                // Teleport to, Teleport, Spectate
                 AddUserPageFifthActionRow(ref aUIObj, actionPanel, uiUserId, aPlayerId);
-                // Heal 25, Heal 50, Heal 75, Heal 100
+                // Perms
                 AddUserPageSixthActionRow(ref aUIObj, actionPanel, uiUserId, aPlayerId);
+                // Hurt 25, Hurt 50, Hurt 75, Hurt 100, Kill
+                AddUserPageEleventhActionRow(ref aUIObj, actionPanel, uiUserId, aPlayerId);
+                // Heal 25, Heal 50, Heal 75, Heal 100, Heal wounds
+                AddUserPageTwelfthActionRow(ref aUIObj, actionPanel, uiUserId, aPlayerId);
             } else {
                 ServerUsers.User serverUser = ServerUsers.Get(aPlayerId);
                 aUIObj.AddLabel(panel, CMainLblTitleLbAnchor, CMainLblTitleRtAnchor, CuiDefaultColors.TextAlt,
@@ -1536,7 +1584,6 @@ namespace Oxide.Plugins
         private const string CBanUserCmd = "padm_banuser";
         private const string CMainPageBanByIdCmd = "padm_mainpagebanbyid";
         private const string CUnbanUserCmd = "padm_unbanuser";
-        private const string CKillUserCmd = "padm_killuser";
         private const string CPermsCmd = "padm_perms";
         private const string CVoiceMuteUserCmd = "padm_vmuteuser";
         private const string CVoiceUnmuteUserCmd = "padm_vunmuteuser";
@@ -1549,6 +1596,7 @@ namespace Oxide.Plugins
         private const string CResetUserMetabolismCmd = "padm_resetusermetabolism";
         private const string CRecoverUserMetabolismCmd = "padm_recoverusermetabolism";
         private const string CHurtUserCmd = "padm_hurtuser";
+        private const string CKillUserCmd = "padm_killuser";
         private const string CHealUserCmd = "padm_healuser";
         private const string CTeleportToUserCmd = "padm_tptouser";
         private const string CTeleportUserCmd = "padm_tpuser";
@@ -1650,90 +1698,110 @@ namespace Oxide.Plugins
         private readonly CuiPoint CUserPageLblActionTitleRtAnchor = new CuiPoint(0.99f, 0.99f);
         #endregion User page title label bounds
         #region User page info label bounds
-        private readonly CuiPoint CUserPageLblIdLbAnchor = new CuiPoint(0.025f, 0.87f);
+        // Top part
+        private readonly CuiPoint CUserPageLblIdLbAnchor = new CuiPoint(0.025f, 0.88f);
         private readonly CuiPoint CUserPageLblIdRtAnchor = new CuiPoint(0.975f, 0.92f);
-        private readonly CuiPoint CUserPageLblAuthLbAnchor = new CuiPoint(0.025f, 0.81f);
-        private readonly CuiPoint CUserPageLblAuthRtAnchor = new CuiPoint(0.975f, 0.86f);
-        private readonly CuiPoint CUserPageLblConnectLbAnchor = new CuiPoint(0.025f, 0.75f);
-        private readonly CuiPoint CUserPageLblConnectRtAnchor = new CuiPoint(0.975f, 0.80f);
-        private readonly CuiPoint CUserPageLblSleepLbAnchor = new CuiPoint(0.025f, 0.69f);
-        private readonly CuiPoint CUserPageLblSleepRtAnchor = new CuiPoint(0.975f, 0.74f);
-        private readonly CuiPoint CUserPageLblFlagLbAnchor = new CuiPoint(0.025f, 0.63f);
-        private readonly CuiPoint CUserPageLblFlagRtAnchor = new CuiPoint(0.975f, 0.68f);
-        private readonly CuiPoint CUserPageLblPosLbAnchor = new CuiPoint(0.025f, 0.57f);
-        private readonly CuiPoint CUserPageLblPosRtAnchor = new CuiPoint(0.975f, 0.62f);
-        private readonly CuiPoint CUserPageLblRotLbAnchor = new CuiPoint(0.025f, 0.51f);
-        private readonly CuiPoint CUserPageLblRotRtAnchor = new CuiPoint(0.975f, 0.56f);
-        private readonly CuiPoint CUserPageLblAdminCheatLbAnchor = new CuiPoint(0.025f, 0.45f);
-        private readonly CuiPoint CUserPageLblAdminCheatRtAnchor = new CuiPoint(0.975f, 0.50f);
-        private readonly CuiPoint CUserPageLblIdleLbAnchor = new CuiPoint(0.025f, 0.39f);
-        private readonly CuiPoint CUserPageLblIdleRtAnchor = new CuiPoint(0.975f, 0.44f);
-        private readonly CuiPoint CUserPageLblBalanceLbAnchor = new CuiPoint(0.025f, 0.33f);
-        private readonly CuiPoint CUserPageLblBalanceRtAnchor = new CuiPoint(0.975f, 0.38f);
-        private readonly CuiPoint CUserPageLblHealthLbAnchor = new CuiPoint(0.025f, 0.25f);
-        private readonly CuiPoint CUserPageLblHealthRtAnchor = new CuiPoint(0.975f, 0.30f);
-        private readonly CuiPoint CUserPageLblCalLbAnchor = new CuiPoint(0.025f, 0.19f);
-        private readonly CuiPoint CUserPageLblCalRtAnchor = new CuiPoint(0.5f, 0.24f);
-        private readonly CuiPoint CUserPageLblHydraLbAnchor = new CuiPoint(0.5f, 0.19f);
-        private readonly CuiPoint CUserPageLblHydraRtAnchor = new CuiPoint(0.975f, 0.24f);
-        private readonly CuiPoint CUserPageLblTempLbAnchor = new CuiPoint(0.025f, 0.13f);
-        private readonly CuiPoint CUserPageLblTempRtAnchor = new CuiPoint(0.5f, 0.18f);
-        private readonly CuiPoint CUserPageLblWetLbAnchor = new CuiPoint(0.5f, 0.13f);
-        private readonly CuiPoint CUserPageLblWetRtAnchor = new CuiPoint(0.975f, 0.18f);
-        private readonly CuiPoint CUserPageLblComfortLbAnchor = new CuiPoint(0.025f, 0.07f);
-        private readonly CuiPoint CUserPageLblComfortRtAnchor = new CuiPoint(0.5f, 0.12f);
-        private readonly CuiPoint CUserPageLblBleedLbAnchor = new CuiPoint(0.5f, 0.07f);
-        private readonly CuiPoint CUserPageLblBleedRtAnchor = new CuiPoint(0.975f, 0.12f);
+        private readonly CuiPoint CUserPageLblAuthLbAnchor = new CuiPoint(0.025f, 0.835f);
+        private readonly CuiPoint CUserPageLblAuthRtAnchor = new CuiPoint(0.975f, 0.875f);
+        private readonly CuiPoint CUserPageLblConnectLbAnchor = new CuiPoint(0.025f, 0.79f);
+        private readonly CuiPoint CUserPageLblConnectRtAnchor = new CuiPoint(0.975f, 0.83f);
+        private readonly CuiPoint CUserPageLblSleepLbAnchor = new CuiPoint(0.025f, 0.745f);
+        private readonly CuiPoint CUserPageLblSleepRtAnchor = new CuiPoint(0.975f, 0.785f);
+        private readonly CuiPoint CUserPageLblFlagLbAnchor = new CuiPoint(0.025f, 0.70f);
+        private readonly CuiPoint CUserPageLblFlagRtAnchor = new CuiPoint(0.975f, 0.74f);
+        private readonly CuiPoint CUserPageLblPosLbAnchor = new CuiPoint(0.025f, 0.655f);
+        private readonly CuiPoint CUserPageLblPosRtAnchor = new CuiPoint(0.975f, 0.695f);
+        private readonly CuiPoint CUserPageLblRotLbAnchor = new CuiPoint(0.025f, 0.61f);
+        private readonly CuiPoint CUserPageLblRotRtAnchor = new CuiPoint(0.975f, 0.65f);
+        private readonly CuiPoint CUserPageLblAdminCheatLbAnchor = new CuiPoint(0.025f, 0.555f);
+        private readonly CuiPoint CUserPageLblAdminCheatRtAnchor = new CuiPoint(0.975f, 0.605f);
+        private readonly CuiPoint CUserPageLblIdleLbAnchor = new CuiPoint(0.025f, 0.51f);
+        private readonly CuiPoint CUserPageLblIdleRtAnchor = new CuiPoint(0.975f, 0.55f);
+        private readonly CuiPoint CUserPageLblBalanceLbAnchor = new CuiPoint(0.025f, 0.465f);
+        private readonly CuiPoint CUserPageLblBalanceRtAnchor = new CuiPoint(0.975f, 0.505f);
+        private readonly CuiPoint CUserPageLblRewardPointsLbAnchor = new CuiPoint(0.025f, 0.42f);
+        private readonly CuiPoint CUserPageLblRewardPointsRtAnchor = new CuiPoint(0.975f, 0.46f);
+        // Bottom part
+        private readonly CuiPoint CUserPageLblHealthLbAnchor = new CuiPoint(0.025f, 0.195f);
+        private readonly CuiPoint CUserPageLblHealthRtAnchor = new CuiPoint(0.975f, 0.235f);
+        private readonly CuiPoint CUserPageLblCalLbAnchor = new CuiPoint(0.025f, 0.145f);
+        private readonly CuiPoint CUserPageLblCalRtAnchor = new CuiPoint(0.5f, 0.19f);
+        private readonly CuiPoint CUserPageLblHydraLbAnchor = new CuiPoint(0.5f, 0.145f);
+        private readonly CuiPoint CUserPageLblHydraRtAnchor = new CuiPoint(0.975f, 0.19f);
+        private readonly CuiPoint CUserPageLblTempLbAnchor = new CuiPoint(0.025f, 0.10f);
+        private readonly CuiPoint CUserPageLblTempRtAnchor = new CuiPoint(0.5f, 0.14f);
+        private readonly CuiPoint CUserPageLblWetLbAnchor = new CuiPoint(0.5f, 0.10f);
+        private readonly CuiPoint CUserPageLblWetRtAnchor = new CuiPoint(0.975f, 0.14f);
+        private readonly CuiPoint CUserPageLblComfortLbAnchor = new CuiPoint(0.025f, 0.055f);
+        private readonly CuiPoint CUserPageLblComfortRtAnchor = new CuiPoint(0.5f, 0.095f);
+        private readonly CuiPoint CUserPageLblBleedLbAnchor = new CuiPoint(0.5f, 0.055f);
+        private readonly CuiPoint CUserPageLblBleedRtAnchor = new CuiPoint(0.975f, 0.095f);
         private readonly CuiPoint CUserPageLblRads1LbAnchor = new CuiPoint(0.025f, 0.01f);
-        private readonly CuiPoint CUserPageLblRads1RtAnchor = new CuiPoint(0.5f, 0.06f);
+        private readonly CuiPoint CUserPageLblRads1RtAnchor = new CuiPoint(0.5f, 0.05f);
         private readonly CuiPoint CUserPageLblRads2LbAnchor = new CuiPoint(0.5f, 0.01f);
-        private readonly CuiPoint CUserPageLblRads2RtAnchor = new CuiPoint(0.975f, 0.06f);
+        private readonly CuiPoint CUserPageLblRads2RtAnchor = new CuiPoint(0.975f, 0.05f);
         #endregion User page info label bounds
         #region User page button bounds
-        private readonly CuiPoint CUserPageBtnBanLbAnchor = new CuiPoint(0.01f, 0.85f);
+        // Row 1
+        private readonly CuiPoint CUserPageBtnBanLbAnchor = new CuiPoint(0.01f, 0.86f);
         private readonly CuiPoint CUserPageBtnBanRtAnchor = new CuiPoint(0.16f, 0.92f);
-        private readonly CuiPoint CUserPageBtnKickLbAnchor = new CuiPoint(0.17f, 0.85f);
+        private readonly CuiPoint CUserPageBtnKickLbAnchor = new CuiPoint(0.17f, 0.86f);
         private readonly CuiPoint CUserPageBtnKickRtAnchor = new CuiPoint(0.32f, 0.92f);
-        private readonly CuiPoint CUserPageBtnKillLbAnchor = new CuiPoint(0.33f, 0.85f);
-        private readonly CuiPoint CUserPageBtnKillRtAnchor = new CuiPoint(0.48f, 0.92f);
-        private readonly CuiPoint CUserPageBtnPermsLbAnchor = new CuiPoint(0.49f, 0.85f);
-        private readonly CuiPoint CUserPageBtnPermsRtAnchor = new CuiPoint(0.64f, 0.92f);
-        private readonly CuiPoint CUserPageBtnVMuteLbAnchor = new CuiPoint(0.01f, 0.76f);
-        private readonly CuiPoint CUserPageBtnVMuteRtAnchor = new CuiPoint(0.16f, 0.83f);
-        private readonly CuiPoint CUserPageBtnVUnmuteLbAnchor = new CuiPoint(0.17f, 0.76f);
-        private readonly CuiPoint CUserPageBtnVUnmuteRtAnchor = new CuiPoint(0.32f, 0.83f);
-        private readonly CuiPoint CUserPageBtnCMuteLbAnchor = new CuiPoint(0.33f, 0.76f);
-        private readonly CuiPoint CUserPageBtnCMuteRtAnchor = new CuiPoint(0.48f, 0.83f);
-        private readonly CuiPoint CUserPageBtnCUnmuteLbAnchor = new CuiPoint(0.49f, 0.76f);
-        private readonly CuiPoint CUserPageBtnCUnmuteRtAnchor = new CuiPoint(0.64f, 0.83f);
-        private readonly CuiPoint CUserPageBtnFreezeLbAnchor = new CuiPoint(0.01f, 0.67f);
-        private readonly CuiPoint CUserPageBtnFreezeRtAnchor = new CuiPoint(0.16f, 0.74f);
-        private readonly CuiPoint CUserPageBtnUnFreezeLbAnchor = new CuiPoint(0.17f, 0.67f);
-        private readonly CuiPoint CUserPageBtnUnFreezeRtAnchor = new CuiPoint(0.32f, 0.74f);
-        private readonly CuiPoint CUserPageBtnClearInventoryLbAnchor = new CuiPoint(0.01f, 0.58f);
-        private readonly CuiPoint CUserPageBtnClearInventoryRtAnchor = new CuiPoint(0.16f, 0.65f);
-        private readonly CuiPoint CUserPageBtnResetBPLbAnchor = new CuiPoint(0.17f, 0.58f);
-        private readonly CuiPoint CUserPageBtnResetBPRtAnchor = new CuiPoint(0.32f, 0.65f);
-        private readonly CuiPoint CUserPageBtnResetMetabolismLbAnchor = new CuiPoint(0.33f, 0.58f);
-        private readonly CuiPoint CUserPageBtnResetMetabolismRtAnchor = new CuiPoint(0.48f, 0.65f);
-        private readonly CuiPoint CUserPageBtnRecoverMetabolismLbAnchor = new CuiPoint(0.49f, 0.58f);
-        private readonly CuiPoint CUserPageBtnRecoverMetabolismRtAnchor = new CuiPoint(0.64f, 0.65f);
-        private readonly CuiPoint CUserPageBtnHurt25LbAnchor = new CuiPoint(0.01f, 0.40f);
-        private readonly CuiPoint CUserPageBtnHurt25RtAnchor = new CuiPoint(0.16f, 0.47f);
-        private readonly CuiPoint CUserPageBtnHurt50LbAnchor = new CuiPoint(0.17f, 0.40f);
-        private readonly CuiPoint CUserPageBtnHurt50RtAnchor = new CuiPoint(0.32f, 0.47f);
-        private readonly CuiPoint CUserPageBtnHurt75LbAnchor = new CuiPoint(0.33f, 0.40f);
-        private readonly CuiPoint CUserPageBtnHurt75RtAnchor = new CuiPoint(0.48f, 0.47f);
-        private readonly CuiPoint CUserPageBtnHurt100LbAnchor = new CuiPoint(0.49f, 0.40f);
-        private readonly CuiPoint CUserPageBtnHurt100RtAnchor = new CuiPoint(0.64f, 0.47f);
-        private readonly CuiPoint CUserPageBtnHeal25LbAnchor = new CuiPoint(0.01f, 0.31f);
-        private readonly CuiPoint CUserPageBtnHeal25RtAnchor = new CuiPoint(0.16f, 0.38f);
-        private readonly CuiPoint CUserPageBtnHeal50LbAnchor = new CuiPoint(0.17f, 0.31f);
-        private readonly CuiPoint CUserPageBtnHeal50RtAnchor = new CuiPoint(0.32f, 0.38f);
-        private readonly CuiPoint CUserPageBtnHeal75LbAnchor = new CuiPoint(0.33f, 0.31f);
-        private readonly CuiPoint CUserPageBtnHeal75RtAnchor = new CuiPoint(0.48f, 0.38f);
-        private readonly CuiPoint CUserPageBtnHeal100LbAnchor = new CuiPoint(0.49f, 0.31f);
-        private readonly CuiPoint CUserPageBtnHeal100RtAnchor = new CuiPoint(0.64f, 0.38f);
+        // Row 2
+        private readonly CuiPoint CUserPageBtnVMuteLbAnchor = new CuiPoint(0.01f, 0.78f);
+        private readonly CuiPoint CUserPageBtnVMuteRtAnchor = new CuiPoint(0.16f, 0.84f);
+        private readonly CuiPoint CUserPageBtnVUnmuteLbAnchor = new CuiPoint(0.17f, 0.78f);
+        private readonly CuiPoint CUserPageBtnVUnmuteRtAnchor = new CuiPoint(0.32f, 0.84f);
+        private readonly CuiPoint CUserPageBtnCMuteLbAnchor = new CuiPoint(0.49f, 0.78f);
+        private readonly CuiPoint CUserPageBtnCMuteRtAnchor = new CuiPoint(0.64f, 0.84f);
+        private readonly CuiPoint CUserPageBtnCUnmuteLbAnchor = new CuiPoint(0.65f, 0.78f);
+        private readonly CuiPoint CUserPageBtnCUnmuteRtAnchor = new CuiPoint(0.80f, 0.84f);
+        // Row 3
+        private readonly CuiPoint CUserPageBtnFreezeLbAnchor = new CuiPoint(0.01f, 0.70f);
+        private readonly CuiPoint CUserPageBtnFreezeRtAnchor = new CuiPoint(0.16f, 0.76f);
+        private readonly CuiPoint CUserPageBtnUnFreezeLbAnchor = new CuiPoint(0.17f, 0.70f);
+        private readonly CuiPoint CUserPageBtnUnFreezeRtAnchor = new CuiPoint(0.32f, 0.76f);
+        // Row 4
+        private readonly CuiPoint CUserPageBtnClearInventoryLbAnchor = new CuiPoint(0.01f, 0.62f);
+        private readonly CuiPoint CUserPageBtnClearInventoryRtAnchor = new CuiPoint(0.16f, 0.68f);
+        private readonly CuiPoint CUserPageBtnResetBPLbAnchor = new CuiPoint(0.17f, 0.62f);
+        private readonly CuiPoint CUserPageBtnResetBPRtAnchor = new CuiPoint(0.32f, 0.68f);
+        private readonly CuiPoint CUserPageBtnResetMetabolismLbAnchor = new CuiPoint(0.33f, 0.62f);
+        private readonly CuiPoint CUserPageBtnResetMetabolismRtAnchor = new CuiPoint(0.48f, 0.68f);
+        private readonly CuiPoint CUserPageBtnRecoverMetabolismLbAnchor = new CuiPoint(0.49f, 0.62f);
+        private readonly CuiPoint CUserPageBtnRecoverMetabolismRtAnchor = new CuiPoint(0.64f, 0.68f);
+        // Row 5
+        private readonly CuiPoint CUserPageBtnTeleportToLbAnchor = new CuiPoint(0.01f, 0.54f);
+        private readonly CuiPoint CUserPageBtnTeleportToRtAnchor = new CuiPoint(0.16f, 0.60f);
+        private readonly CuiPoint CUserPageBtnTeleportLbAnchor = new CuiPoint(0.17f, 0.54f);
+        private readonly CuiPoint CUserPageBtnTeleportRtAnchor = new CuiPoint(0.32f, 0.60f);
+        private readonly CuiPoint CUserPageBtnSpectateLbAnchor = new CuiPoint(0.33f, 0.54f);
+        private readonly CuiPoint CUserPageBtnSpectateRtAnchor = new CuiPoint(0.48f, 0.60f);
+        // Row 6
+        private readonly CuiPoint CUserPageBtnPermsLbAnchor = new CuiPoint(0.01f, 0.46f);
+        private readonly CuiPoint CUserPageBtnPermsRtAnchor = new CuiPoint(0.16f, 0.52f);
+        // Row 11
+        private readonly CuiPoint CUserPageBtnHurt25LbAnchor = new CuiPoint(0.01f, 0.10f);
+        private readonly CuiPoint CUserPageBtnHurt25RtAnchor = new CuiPoint(0.16f, 0.16f);
+        private readonly CuiPoint CUserPageBtnHurt50LbAnchor = new CuiPoint(0.17f, 0.10f);
+        private readonly CuiPoint CUserPageBtnHurt50RtAnchor = new CuiPoint(0.32f, 0.16f);
+        private readonly CuiPoint CUserPageBtnHurt75LbAnchor = new CuiPoint(0.33f, 0.10f);
+        private readonly CuiPoint CUserPageBtnHurt75RtAnchor = new CuiPoint(0.48f, 0.16f);
+        private readonly CuiPoint CUserPageBtnHurt100LbAnchor = new CuiPoint(0.49f, 0.10f);
+        private readonly CuiPoint CUserPageBtnHurt100RtAnchor = new CuiPoint(0.64f, 0.16f);
+        private readonly CuiPoint CUserPageBtnKillLbAnchor = new CuiPoint(0.65f, 0.10f);
+        private readonly CuiPoint CUserPageBtnKillRtAnchor = new CuiPoint(0.80f, 0.16f);
+        // Row 12
+        private readonly CuiPoint CUserPageBtnHeal25LbAnchor = new CuiPoint(0.01f, 0.02f);
+        private readonly CuiPoint CUserPageBtnHeal25RtAnchor = new CuiPoint(0.16f, 0.08f);
+        private readonly CuiPoint CUserPageBtnHeal50LbAnchor = new CuiPoint(0.17f, 0.02f);
+        private readonly CuiPoint CUserPageBtnHeal50RtAnchor = new CuiPoint(0.32f, 0.08f);
+        private readonly CuiPoint CUserPageBtnHeal75LbAnchor = new CuiPoint(0.33f, 0.02f);
+        private readonly CuiPoint CUserPageBtnHeal75RtAnchor = new CuiPoint(0.48f, 0.08f);
+        private readonly CuiPoint CUserPageBtnHeal100LbAnchor = new CuiPoint(0.49f, 0.02f);
+        private readonly CuiPoint CUserPageBtnHeal100RtAnchor = new CuiPoint(0.64f, 0.08f);
+        private readonly CuiPoint CUserPageBtnHealWoundsLbAnchor = new CuiPoint(0.65f, 0.02f);
+        private readonly CuiPoint CUserPageBtnHealWoundsRtAnchor = new CuiPoint(0.80f, 0.08f);
         #endregion User page button bounds
         #endregion User page panel bounds
         #endregion Constants
@@ -1841,6 +1909,7 @@ namespace Oxide.Plugins
                 { "Last Admin Cheat Label Format", "Last admin cheat: {0}" },
                 { "Idle Time Label Format", "Idle time: {0} seconds" },
                 { "Economics Balance Label Format", "Balance: {0} coins" },
+                { "ServerRewards Points Label Format", "Reward points: {0}" },
                 { "Health Label Format", "Health: {0}" },
                 { "Calories Label Format", "Calories: {0}" },
                 { "Hydration Label Format", "Hydration: {0}" },
@@ -1867,15 +1936,16 @@ namespace Oxide.Plugins
                 { "Hurt 50 Button Text", "Hurt 50" },
                 { "Hurt 75 Button Text", "Hurt 75" },
                 { "Hurt 100 Button Text", "Hurt 100" },
+                { "Kill Button Text", "Kill" },
 
                 { "Heal 25 Button Text", "Heal 25" },
                 { "Heal 50 Button Text", "Heal 50" },
                 { "Heal 75 Button Text", "Heal 75" },
                 { "Heal 100 Button Text", "Heal 100" },
+                { "Heal Wounds Button Text", "Heal Wounds" },
 
                 { "Ban Button Text", "Ban" },
                 { "Kick Button Text", "Kick" },
-                { "Kill Button Text", "Kill" },
                 { "Unban Button Text", "Unban" },
 
                 { "Perms Button Text", "Permissions" },
@@ -2041,21 +2111,6 @@ namespace Oxide.Plugins
             Player.Unban(targetId);
             LogInfo($"{player.displayName}: Unbanned user ID {targetId}");
             BuildUI(player, UiPage.Main);
-        }
-
-        [ConsoleCommand(CKillUserCmd)]
-        private void PlayerAdministrationKillUserCallback(ConsoleSystem.Arg aArg)
-        {
-            LogDebug("PlayerAdministrationKillUserCallback was called");
-            BasePlayer player = aArg.Player();
-            ulong targetId;
-
-            if (!VerifyPermission(ref player, CPermKill, true) || !GetTargetFromArg(ref aArg, out targetId))
-                return;
-
-            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Die();
-            LogInfo($"{player.displayName}: Killed user ID {targetId}");
-            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 
         [ConsoleCommand(CPermsCmd)]
@@ -2248,6 +2303,21 @@ namespace Oxide.Plugins
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Hurt(amount);
             LogInfo($"{player.displayName}: Hurt user ID {targetId} for {amount} points");
+            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+        }
+
+        [ConsoleCommand(CKillUserCmd)]
+        private void PlayerAdministrationKillUserCallback(ConsoleSystem.Arg aArg)
+        {
+            LogDebug("PlayerAdministrationKillUserCallback was called");
+            BasePlayer player = aArg.Player();
+            ulong targetId;
+
+            if (!VerifyPermission(ref player, CPermKill, true) || !GetTargetFromArg(ref aArg, out targetId))
+                return;
+
+            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Die();
+            LogInfo($"{player.displayName}: Killed user ID {targetId}");
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 

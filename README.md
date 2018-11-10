@@ -20,6 +20,7 @@
 - Use of PermissionsManager plugin to edit Oxide user permissions on a user
 - Use of Freeze plugin to freeze/unfreeze user position (Only for English language users, Freeze uses localized commands!!!)
 - Use of Economics plugin to show player's current balance
+- Use of ServerRewards plugin to show player's current reward points
 - Use of DiscordMessages plugin to send a fancy message to Discord for each ban and kick
 - Filtering through users via the "search" function (Case insensitive and selects both names and IDs that contain the text written in the input)
 
@@ -100,6 +101,7 @@ The default messages are in the `PlayerAdministration.json` file under the `oxid
   "Last Admin Cheat Label Format": "Last admin cheat: {0}",
   "Idle Time Label Format": "Idle time: {0} seconds",
   "Economics Balance Label Format": "Balance: {0} coins",
+  "ServerRewards Points Label Format": "Reward points: {0}",
   "Health Label Format": "Health: {0}",
   "Calories Label Format": "Calories: {0}",
   "Hydration Label Format": "Hydration: {0}",
@@ -126,15 +128,16 @@ The default messages are in the `PlayerAdministration.json` file under the `oxid
   "Hurt 50 Button Text": "Hurt 50",
   "Hurt 75 Button Text": "Hurt 75",
   "Hurt 100 Button Text": "Hurt 100",
+  "Kill Button Text": "Kill",
 
   "Heal 25 Button Text": "Heal 25",
   "Heal 50 Button Text": "Heal 50",
   "Heal 75 Button Text": "Heal 75",
   "Heal 100 Button Text": "Heal 100",
+  "Heal Wounds Button Text": "Heal Wounds",
 
   "Ban Button Text": "Ban",
   "Kick Button Text": "Kick",
-  "Kill Button Text": "Kill",
   "Unban Button Text": "Unban",
 
   "Perms Button Text": "Permissions",
