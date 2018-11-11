@@ -41,7 +41,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.3.15", ResourceId = 0)]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.3.17")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : RustPlugin
     {
@@ -802,6 +802,9 @@ namespace Oxide.Plugins
         private void SendDiscordKickBanMessage(string aAdminName, string aAdminId, string aTargetName, string aTargetId, string aReason, bool aIndIsBan)
         {
             if (DiscordMessages != null) {
+                if (CUnknownNameList.Contains(aTargetName.ToLower()))
+                    aTargetName = aTargetId;
+
                 object fields = new[] {
                     new {
                         name = "Player",
@@ -2071,11 +2074,11 @@ namespace Oxide.Plugins
             if (!VerifyPermission(ref player, CPermBan, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
-            BasePlayer targetPlayer = BasePlayer.FindByID(targetId);
             string banReasonMsg = GetMessage("Ban Reason Message Text", targetId.ToString());
             Player.Ban(targetId, banReasonMsg);
+            ServerUsers.User targetPlayer = ServerUsers.Get(targetId);
             LogInfo($"{player.displayName}: Banned user ID {targetId}");
-            SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.displayName, targetPlayer.UserIDString, banReasonMsg, true);
+            SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.username, targetId.ToString(), banReasonMsg, true);
             BuildUI(player, UiPage.PlayerPage, targetId.ToString());
         }
 
@@ -2090,11 +2093,11 @@ namespace Oxide.Plugins
                 !ulong.TryParse(FMainPageBanIdInputText[player.userID], out targetId))
                 return;
 
-            BasePlayer targetPlayer = BasePlayer.FindByID(targetId);
             string banReasonMsg = GetMessage("Ban Reason Message Text", targetId.ToString());
             Player.Ban(targetId, banReasonMsg);
+            ServerUsers.User targetPlayer = ServerUsers.Get(targetId);
             LogInfo($"{player.displayName}: Banned user ID {targetId}");
-            SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.displayName, targetPlayer.UserIDString, banReasonMsg, true);
+            SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.username, targetId.ToString(), banReasonMsg, true);
             BuildUI(player, UiPage.Main);
         }
 
