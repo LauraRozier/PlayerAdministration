@@ -32,19 +32,19 @@ using System.ComponentModel;
 using System.Linq;
 using UnityEngine;
 
-//TODO: Implement Better Chat Mute API_TimeMute 15 min - https://umod.org/plugins/better-chat-mute
-//TODO: Implement Better Chat Mute API_TimeMute 30 min - https://umod.org/plugins/better-chat-mute
-//TODO: Implement Better Chat Mute API_TimeMute 60 min - https://umod.org/plugins/better-chat-mute
-//TODO: Implement Better Chat Mute API_Mute - https://umod.org/plugins/better-chat-mute
-//TODO: Implement Better Chat Mute API_Unmute - https://umod.org/plugins/better-chat-mute
-//TODO: Implement Better Chat Mute API_IsMuted - https://umod.org/plugins/better-chat-mute
-
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.3.17")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.3.18")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : RustPlugin
     {
+        //TODO: Implement Better Chat Mute API_TimeMute 15 min - https://umod.org/plugins/better-chat-mute
+        //TODO: Implement Better Chat Mute API_TimeMute 30 min - https://umod.org/plugins/better-chat-mute
+        //TODO: Implement Better Chat Mute API_TimeMute 60 min - https://umod.org/plugins/better-chat-mute
+        //TODO: Implement Better Chat Mute API_Mute - https://umod.org/plugins/better-chat-mute
+        //TODO: Implement Better Chat Mute API_Unmute - https://umod.org/plugins/better-chat-mute
+        //TODO: Implement Better Chat Mute API_IsMuted - https://umod.org/plugins/better-chat-mute
+
         #region Plugin References
 #pragma warning disable IDE0044, CS0649
         [PluginReference]
@@ -1819,14 +1819,7 @@ namespace Oxide.Plugins
         #region Hooks
         void Loaded()
         {
-            FConfigData = Config.ReadObject<ConfigData>();
-
-            if (UpgradeTo1310())
-                LogDebug("Upgraded the config to version 1.3.10");
-
-            if (UpgradeTo1313())
-                LogDebug("Upgraded the config to version 1.3.13");
-
+            LoadConfig();
             permission.RegisterPermission(CPermUiShow, this);
             permission.RegisterPermission(CPermKick, this);
             permission.RegisterPermission(CPermBan, this);
@@ -1864,12 +1857,35 @@ namespace Oxide.Plugins
                 FMainPageBanIdInputText.Remove(player.userID);
         }
 
+        protected override void LoadConfig()
+        {
+            base.LoadConfig();
+
+            try {
+                FConfigData = Config.ReadObject<ConfigData>();
+
+                if (FConfigData == null)
+                    LoadDefaultConfig();
+
+                if (UpgradeTo1310())
+                    LogDebug("Upgraded the config to version 1.3.10");
+
+                if (UpgradeTo1313())
+                    LogDebug("Upgraded the config to version 1.3.13");
+            } catch {
+                LoadDefaultConfig();
+            }
+
+            SaveConfig();
+        }
+
         protected override void LoadDefaultConfig()
         {
-            ConfigData config = new ConfigData {
-                UsePermSystem = true
+            FConfigData = new ConfigData {
+                UsePermSystem = true,
+                BanMsgWebhookUrl = "",
+                KickMsgWebhookUrl = ""
             };
-            Config.WriteObject(config);
             LogDebug("Default config loaded");
         }
 
@@ -1968,6 +1984,8 @@ namespace Oxide.Plugins
             }, this, "en");
             LogDebug("Default messages loaded");
         }
+
+        protected override void SaveConfig() => Config.WriteObject(FConfigData);
         #endregion Hooks
 
         #region Command Callbacks
