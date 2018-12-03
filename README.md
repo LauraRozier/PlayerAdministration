@@ -17,11 +17,12 @@
 - Teleporting a player to yourself
 - Spectating a player
 - The ability to see a user's vitals, status and steamID64
-- Use of PermissionsManager plugin to edit Oxide user permissions on a user
-- Use of Freeze plugin to freeze/unfreeze user position (Only for English language users, Freeze uses localized commands!!!)
 - Use of Economics plugin to show player's current balance
 - Use of ServerRewards plugin to show player's current reward points
+- Use of Freeze plugin to freeze/unfreeze user position (Only for English language users, Freeze uses localized commands!!!)
+- Use of PermissionsManager plugin to edit Oxide user permissions on a user
 - Use of DiscordMessages plugin to send a fancy message to Discord for each ban and kick
+- Use of BetterChatMute plugin to mute players in an improved manner
 - Filtering through users via the "search" function (Case insensitive and selects both names and IDs that contain the text written in the input)
 
 ## Permissions
@@ -145,10 +146,34 @@ The default messages are in the `PlayerAdministration.json` file under the `oxid
 
   "Go Button Text": "Go",
 
+  "Unban Button Text": "Unban",
+  "Ban Button Text": "Ban",
+  "Kick Button Text": "Kick",
+
+  "Voice Unmute Button Text": "Unmute Voice",
+  "Voice Mute Button Text": "Mute Voice",
+
+  "Chat Unmute Button Text": "Unmute Chat",
+  "Chat Mute Button Text": "Mute Chat",
+  "Chat Mute Button Text 15": "Mute Chat 15 Min",
+  "Chat Mute Button Text 30": "Mute Chat 30 Min",
+  "Chat Mute Button Text 60": "Mute Chat 60 Min",
+
+  "UnFreeze Button Text": "UnFreeze",
+  "Freeze Button Text": "Freeze",
+  "Freeze Not Installed Button Text": "Freeze Not Installed",
+
   "Clear Inventory Button Text": "Clear Inventory",
   "Reset Blueprints Button Text": "Reset Blueprints",
   "Reset Metabolism Button Text": "Reset Metabolism",
   "Recover Metabolism Button Text": "Recover Metabolism",
+
+  "Teleport To Player Button Text": "Teleport To Player",
+  "Teleport Player Button Text": "Teleport Player",
+  "Spectate Player Button Text": "Spectate Player",
+
+  "Perms Button Text": "Permissions",
+  "Perms Not Installed Button Text": "Perms Not Installed",
 
   "Hurt 25 Button Text": "Hurt 25",
   "Hurt 50 Button Text": "Hurt 50",
@@ -160,25 +185,6 @@ The default messages are in the `PlayerAdministration.json` file under the `oxid
   "Heal 50 Button Text": "Heal 50",
   "Heal 75 Button Text": "Heal 75",
   "Heal 100 Button Text": "Heal 100",
-  "Heal Wounds Button Text": "Heal Wounds",
-
-  "Ban Button Text": "Ban",
-  "Kick Button Text": "Kick",
-  "Unban Button Text": "Unban",
-
-  "Perms Button Text": "Permissions",
-  "Perms Not Installed Button Text": "Perms Not Installed",
-  "Freeze Button Text": "Freeze",
-  "Freeze Not Installed Button Text": "Freeze Not Installed",
-  "UnFreeze Button Text": "UnFreeze",
-
-  "Voice Mute Button Text": "Mute Voice",
-  "Voice Unmute Button Text": "Unmute Voice",
-  "Chat Mute Button Text": "Mute Chat",
-  "Chat Unmute Button Text": "Unmute Chat",
-
-  "Teleport To Player Button Text": "Teleport To Player",
-  "Teleport Player Button Text": "Teleport Player",
-  "Spectate Player Button Text": "Spectate Player"
+  "Heal Wounds Button Text": "Heal Wounds"
 }
 ```
