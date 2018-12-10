@@ -34,7 +34,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.3.20")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.3.21")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : RustPlugin
     {
@@ -775,7 +775,7 @@ namespace Oxide.Plugins
         private bool GetIsChatMuted(ref BasePlayer aPlayer)
         {
             bool isServerMuted = aPlayer.HasPlayerFlag(BasePlayer.PlayerFlags.ChatMute);
-            
+
             if (BetterChatMute != null) {
                 return isServerMuted || (bool)BetterChatMute.Call("API_IsMuted", aPlayer.IPlayer);
             } else {
@@ -2107,7 +2107,7 @@ namespace Oxide.Plugins
                     BuildUI(player, UiPage.Main);
                     break;
                 }
-            };
+            }
         }
 
         [ConsoleCommand(CUnbanUserCmd)]
@@ -2223,7 +2223,7 @@ namespace Oxide.Plugins
             BasePlayer target = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
 
             if (BetterChatMute != null && target != null)
-                BetterChatMute.Call("API_Unmute", target.IPlayer);
+                BetterChatMute.Call("API_Unmute", target.IPlayer, player.IPlayer);
 
             target?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, false);
             LogInfo($"{player.displayName}: Chat unmuted user ID {targetId}");
@@ -2488,13 +2488,13 @@ namespace Oxide.Plugins
                     FMainPageBanIdInputText.Remove(player.userID);
 
                 return;
-            };
+            }
 
             if (FMainPageBanIdInputText.ContainsKey(player.userID)) {
                 FMainPageBanIdInputText[player.userID] = aArg.Args[0];
             } else {
                 FMainPageBanIdInputText.Add(player.userID, aArg.Args[0]);
-            };
+            }
         }
 
         [ConsoleCommand(CUserBtnPageSearchInputTextCmd)]
@@ -2507,13 +2507,13 @@ namespace Oxide.Plugins
                     FUserBtnPageSearchInputText.Remove(player.userID);
 
                 return;
-            };
+            }
 
             if (FUserBtnPageSearchInputText.ContainsKey(player.userID)) {
                 FUserBtnPageSearchInputText[player.userID] = aArg.Args[0];
             } else {
                 FUserBtnPageSearchInputText.Add(player.userID, aArg.Args[0]);
-            };
+            }
         }
         #endregion Text Update Callbacks
     }
