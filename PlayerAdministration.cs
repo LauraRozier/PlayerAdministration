@@ -34,7 +34,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.3.22")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.3.23")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : RustPlugin
     {
@@ -235,7 +235,8 @@ namespace Oxide.Plugins
             /// <returns>New object name</returns>
             public string AddPanel(string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset,
                                    bool aIndCursorEnabled, CuiColor aColor = null, string aName = "", string aPng = ""
-            ) {
+            )
+            {
                 if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null) {
                     FPluginInstance.LogError($"Cui::AddPanel > One of the required parameters is null");
                     return string.Empty;
@@ -298,7 +299,8 @@ namespace Oxide.Plugins
             /// <returns>New object name</returns>
             public string AddLabel(string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset,
                                    CuiColor aColor, string aText, string aName = "", int aFontSize = 14, TextAnchor aAlign = TextAnchor.UpperLeft
-            ) {
+            )
+            {
                 if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null || aColor == null) {
                     FPluginInstance.LogError($"Cui::AddLabel > One of the required parameters is null");
                     return string.Empty;
@@ -306,19 +308,19 @@ namespace Oxide.Plugins
 
                 FPluginInstance.LogDebug("Added label to container");
                 return FContainer.Add(new CuiLabel() {
-                        Text = {
+                    Text = {
                             Text = aText ?? string.Empty,
                             FontSize = aFontSize,
                             Align = aAlign,
                             Color = aColor.ToString()
                         },
-                        RectTransform = {
+                    RectTransform = {
                             AnchorMin = aLeftBottomAnchor.ToString(),
                             AnchorMax = aRightTopAnchor.ToString(),
                             OffsetMin = aLeftBottomOffset.ToString(),
                             OffsetMax = aRightTopOffset.ToString()
                         }
-                    }, aParent, string.IsNullOrEmpty(aName) ? null : aName
+                }, aParent, string.IsNullOrEmpty(aName) ? null : aName
                 );
             }
 
@@ -363,7 +365,8 @@ namespace Oxide.Plugins
             public string AddButton(string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset,
                                     CuiColor aButtonColor, CuiColor aTextColor, string aText, string aCommand = "", string aClose = "", string aName = "",
                                     int aFontSize = 14, TextAnchor aAlign = TextAnchor.MiddleCenter
-            ) {
+            )
+            {
                 if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null ||
                     aButtonColor == null || aTextColor == null) {
                     FPluginInstance.LogError($"Cui::AddButton > One of the required parameters is null");
@@ -372,24 +375,24 @@ namespace Oxide.Plugins
 
                 FPluginInstance.LogDebug("Added button to container");
                 return FContainer.Add(new CuiButton() {
-                        Button = {
+                    Button = {
                             Command = aCommand ?? string.Empty,
                             Close = aClose ?? string.Empty,
                             Color = aButtonColor.ToString()
                         },
-                        RectTransform = {
+                    RectTransform = {
                             AnchorMin = aLeftBottomAnchor.ToString(),
                             AnchorMax = aRightTopAnchor.ToString(),
                             OffsetMin = aLeftBottomOffset.ToString(),
                             OffsetMax = aRightTopOffset.ToString()
                         },
-                        Text = {
+                    Text = {
                             Text = aText ?? string.Empty,
                             FontSize = aFontSize,
                             Align = aAlign,
                             Color = aTextColor.ToString()
                         }
-                    }, aParent, string.IsNullOrEmpty(aName) ? null : aName
+                }, aParent, string.IsNullOrEmpty(aName) ? null : aName
                 );
             }
 
@@ -435,7 +438,8 @@ namespace Oxide.Plugins
             public string AddInputField(string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset,
                                         CuiColor aColor, string aText = "", int aCharsLimit = 100, string aCommand = "", bool aIndPassword = false,
                                         string aName = "", int aFontSize = 14, TextAnchor aAlign = TextAnchor.MiddleLeft
-            ) {
+            )
+            {
                 if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null || aColor == null) {
                     FPluginInstance.LogError($"Cui::AddInputField > One of the required parameters is null");
                     return string.Empty;
@@ -443,7 +447,7 @@ namespace Oxide.Plugins
 
                 FPluginInstance.LogDebug("Added input field to container");
                 return FContainer.Add(new CuiInputField() {
-                        InputField = {
+                    InputField = {
                             Text = aText ?? string.Empty,
                             FontSize = aFontSize,
                             Align = aAlign,
@@ -452,13 +456,13 @@ namespace Oxide.Plugins
                             Command = aCommand ?? string.Empty,
                             IsPassword = aIndPassword
                         },
-                        RectTransform = {
+                    RectTransform = {
                             AnchorMin = aLeftBottomAnchor.ToString(),
                             AnchorMax = aRightTopAnchor.ToString(),
                             OffsetMin = aLeftBottomOffset.ToString(),
                             OffsetMax = aRightTopOffset.ToString()
                         }
-                    }, aParent, string.IsNullOrEmpty(aName) ? null : aName
+                }, aParent, string.IsNullOrEmpty(aName) ? null : aName
                 );
             }
 
@@ -2281,7 +2285,7 @@ namespace Oxide.Plugins
 
             Player.Unban(targetId);
             LogInfo($"{player.displayName}: Unbanned user ID {targetId}");
-            BuildUI(player, UiPage.Main);
+            timer.Once(0.01f, () => BuildUI(player, UiPage.Main));
         }
 
         [ConsoleCommand(CBanUserCmd)]
@@ -2309,7 +2313,7 @@ namespace Oxide.Plugins
             ServerUsers.User targetPlayer = ServerUsers.Get(targetId);
             LogInfo($"{player.displayName}: Banned user ID {targetId}");
             SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.username, targetId.ToString(), banReasonMsg, true);
-            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [ConsoleCommand(CMainPageBanByIdCmd)]
@@ -2329,7 +2333,7 @@ namespace Oxide.Plugins
             ServerUsers.User targetPlayer = ServerUsers.Get(targetId);
             LogInfo($"{player.displayName}: Banned user ID {targetId}");
             SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.username, targetId.ToString(), banReasonMsg, true);
-            BuildUI(player, UiPage.Main);
+            timer.Once(0.01f, () => BuildUI(player, UiPage.Main));
         }
 
         [ConsoleCommand(CKickUserCmd)]
@@ -2347,7 +2351,7 @@ namespace Oxide.Plugins
             targetPlayer?.Kick(kickReasonMsg);
             LogInfo($"{player.displayName}: Kicked user ID {targetId}");
             SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.displayName, targetPlayer.UserIDString, kickReasonMsg, false);
-            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [ConsoleCommand(CVoiceUnmuteUserCmd)]
@@ -2362,7 +2366,7 @@ namespace Oxide.Plugins
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, false);
             LogInfo($"{player.displayName}: Voice unmuted user ID {targetId}");
-            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [ConsoleCommand(CVoiceMuteUserCmd)]
@@ -2377,7 +2381,7 @@ namespace Oxide.Plugins
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, true);
             LogInfo($"{player.displayName}: Voice muted user ID {targetId}");
-            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [ConsoleCommand(CChatUnmuteUserCmd)]
@@ -2397,7 +2401,7 @@ namespace Oxide.Plugins
 
             target?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, false);
             LogInfo($"{player.displayName}: Chat unmuted user ID {targetId}");
-            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [ConsoleCommand(CChatMuteUserCmd)]
@@ -2424,7 +2428,7 @@ namespace Oxide.Plugins
             }
 
             LogInfo($"{player.displayName}: Chat muted user ID {targetId}");
-            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [ConsoleCommand(CUnreezeCmd)]
@@ -2471,7 +2475,7 @@ namespace Oxide.Plugins
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.inventory.Strip();
             LogInfo($"{player.displayName}: Cleared the inventory of user ID {targetId}");
-            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [ConsoleCommand(CResetUserBPCmd)]
@@ -2486,7 +2490,7 @@ namespace Oxide.Plugins
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.blueprints.Reset();
             LogInfo($"{player.displayName}: Reset the blueprints of user ID {targetId}");
-            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [ConsoleCommand(CResetUserMetabolismCmd)]
@@ -2501,7 +2505,7 @@ namespace Oxide.Plugins
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.metabolism.Reset();
             LogInfo($"{player.displayName}: Reset the metabolism of user ID {targetId}");
-            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [ConsoleCommand(CRecoverUserMetabolismCmd)]
@@ -2527,7 +2531,7 @@ namespace Oxide.Plugins
             playerState.wetness.value = playerState.wetness.min;
 
             LogInfo($"{player.displayName}: Recovered the metabolism of user ID {targetId}");
-            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [ConsoleCommand(CTeleportToUserCmd)]
@@ -2542,7 +2546,7 @@ namespace Oxide.Plugins
 
             player.Teleport(BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId));
             LogInfo($"{player.displayName}: Teleported to user ID {targetId}");
-            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [ConsoleCommand(CTeleportUserCmd)]
@@ -2558,7 +2562,7 @@ namespace Oxide.Plugins
             BasePlayer targetPlayer = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
             targetPlayer.Teleport(player);
             LogInfo($"{targetPlayer.displayName}: Teleported to admin {player.displayName}");
-            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [ConsoleCommand(CSpectateUserCmd)]
@@ -2577,7 +2581,7 @@ namespace Oxide.Plugins
             player.StartSpectating();
             player.UpdateSpectateTarget(targetId.ToString());
             LogInfo($"{player.displayName}: Started spectating user ID {targetId}");
-            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [ConsoleCommand(CPermsCmd)]
@@ -2591,7 +2595,7 @@ namespace Oxide.Plugins
                 return;
 
             player.SendConsoleCommand($"chat.say \"/{CPermsPermsCmd} {targetId}\"");
-            LogInfo($"{player.displayName}: Opened the permissions manager for user ID {targetId}");
+            timer.Once(0.01f, () => LogInfo($"{player.displayName}: Opened the permissions manager for user ID {targetId}"));
         }
 
         [ConsoleCommand(CHurtUserCmd)]
@@ -2607,7 +2611,7 @@ namespace Oxide.Plugins
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Hurt(amount);
             LogInfo($"{player.displayName}: Hurt user ID {targetId} for {amount} points");
-            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [ConsoleCommand(CKillUserCmd)]
@@ -2622,7 +2626,7 @@ namespace Oxide.Plugins
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Die();
             LogInfo($"{player.displayName}: Killed user ID {targetId}");
-            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [ConsoleCommand(CHealUserCmd)]
@@ -2643,7 +2647,7 @@ namespace Oxide.Plugins
 
             targetPlayer.Heal(amount);
             LogInfo($"{player.displayName}: Healed user ID {targetId} for {amount} points");
-            BuildUI(player, UiPage.PlayerPage, targetId.ToString());
+            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
         #endregion Command Callbacks
 
