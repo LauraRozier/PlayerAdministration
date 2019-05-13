@@ -149,6 +149,7 @@ The default messages are in the `PlayerAdministration.json` file under the `oxid
   "Unban Button Text": "Unban",
   "Ban Button Text": "Ban",
   "Kick Button Text": "Kick",
+  "Reason Input Label Text": "Reason:",
 
   "Voice Unmute Button Text": "Unmute Voice",
   "Voice Mute Button Text": "Mute Voice",
