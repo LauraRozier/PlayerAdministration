@@ -46,7 +46,7 @@
 
 ## Chat Commands
 
-- **/padmin** -- Show the player administration menu ***(requires `playeradministration.show` permission)***
+- **/padmin** -- Show the player administration menu ***(requires `playeradministration.show` permission)*** To bind a key: `bind "p" chat.say "/padmin"`
 
 ## Console Commands
 
