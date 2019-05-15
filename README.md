@@ -46,7 +46,14 @@
 
 ## Chat Commands
 
-- **/padmin** -- Show the player administration menu ***(requires `playeradministration.show` permission)*** To bind a key: `bind "p" chat.say "/padmin"`
+Binding keys and saving the keybinds:
+ `bind p chat.say /padmin`
+or:
+ `bind p "chat.say /padmin"`
+Then to save it:
+ `writecfg`
+
+- **/padmin** -- Show the player administration menu ***(requires `playeradministration.show` permission)***
 
 ## Console Commands
 

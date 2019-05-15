@@ -34,7 +34,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.3.23")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.4.0")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : RustPlugin
     {
@@ -186,8 +186,9 @@ namespace Oxide.Plugins
         {
             public const string ParentHud = "Hud";
             public const string ParentOverlay = "Overlay";
-            public string MainPanelName { get; set; }
             private readonly BasePlayer FPlayer;
+            public readonly ulong PlayerId;
+            public readonly string PlayerIdString;
             private readonly CustomCuiElementContainer FContainer = new CustomCuiElementContainer();
 
             /// <summary>
@@ -202,6 +203,8 @@ namespace Oxide.Plugins
                 }
 
                 FPlayer = aPlayer;
+                PlayerId = aPlayer.userID;
+                PlayerIdString = aPlayer.UserIDString;
                 FPluginInstance.LogDebug("Cui instance created");
             }
 
@@ -235,8 +238,7 @@ namespace Oxide.Plugins
             /// <returns>New object name</returns>
             public string AddPanel(string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset,
                                    bool aIndCursorEnabled, CuiColor aColor = null, string aName = "", string aPng = ""
-            )
-            {
+            ) {
                 if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null) {
                     FPluginInstance.LogError($"Cui::AddPanel > One of the required parameters is null");
                     return string.Empty;
@@ -299,28 +301,30 @@ namespace Oxide.Plugins
             /// <returns>New object name</returns>
             public string AddLabel(string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset,
                                    CuiColor aColor, string aText, string aName = "", int aFontSize = 14, TextAnchor aAlign = TextAnchor.UpperLeft
-            )
-            {
+            ) {
                 if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null || aColor == null) {
                     FPluginInstance.LogError($"Cui::AddLabel > One of the required parameters is null");
                     return string.Empty;
                 }
 
                 FPluginInstance.LogDebug("Added label to container");
-                return FContainer.Add(new CuiLabel() {
-                    Text = {
+                return FContainer.Add(
+                    new CuiLabel() {
+                        Text = {
                             Text = aText ?? string.Empty,
                             FontSize = aFontSize,
                             Align = aAlign,
                             Color = aColor.ToString()
                         },
-                    RectTransform = {
+                        RectTransform = {
                             AnchorMin = aLeftBottomAnchor.ToString(),
                             AnchorMax = aRightTopAnchor.ToString(),
                             OffsetMin = aLeftBottomOffset.ToString(),
                             OffsetMax = aRightTopOffset.ToString()
                         }
-                }, aParent, string.IsNullOrEmpty(aName) ? null : aName
+                    },
+                    aParent,
+                    string.IsNullOrEmpty(aName) ? null : aName
                 );
             }
 
@@ -365,8 +369,7 @@ namespace Oxide.Plugins
             public string AddButton(string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset,
                                     CuiColor aButtonColor, CuiColor aTextColor, string aText, string aCommand = "", string aClose = "", string aName = "",
                                     int aFontSize = 14, TextAnchor aAlign = TextAnchor.MiddleCenter
-            )
-            {
+            ) {
                 if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null ||
                     aButtonColor == null || aTextColor == null) {
                     FPluginInstance.LogError($"Cui::AddButton > One of the required parameters is null");
@@ -374,25 +377,28 @@ namespace Oxide.Plugins
                 }
 
                 FPluginInstance.LogDebug("Added button to container");
-                return FContainer.Add(new CuiButton() {
-                    Button = {
+                return FContainer.Add(
+                    new CuiButton() {
+                        Button = {
                             Command = aCommand ?? string.Empty,
                             Close = aClose ?? string.Empty,
                             Color = aButtonColor.ToString()
                         },
-                    RectTransform = {
+                        RectTransform = {
                             AnchorMin = aLeftBottomAnchor.ToString(),
                             AnchorMax = aRightTopAnchor.ToString(),
                             OffsetMin = aLeftBottomOffset.ToString(),
                             OffsetMax = aRightTopOffset.ToString()
                         },
-                    Text = {
+                        Text = {
                             Text = aText ?? string.Empty,
                             FontSize = aFontSize,
                             Align = aAlign,
                             Color = aTextColor.ToString()
                         }
-                }, aParent, string.IsNullOrEmpty(aName) ? null : aName
+                    },
+                    aParent,
+                    string.IsNullOrEmpty(aName) ? null : aName
                 );
             }
 
@@ -438,16 +444,16 @@ namespace Oxide.Plugins
             public string AddInputField(string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset,
                                         CuiColor aColor, string aText = "", int aCharsLimit = 100, string aCommand = "", bool aIndPassword = false,
                                         string aName = "", int aFontSize = 14, TextAnchor aAlign = TextAnchor.MiddleLeft
-            )
-            {
+            ) {
                 if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null || aColor == null) {
                     FPluginInstance.LogError($"Cui::AddInputField > One of the required parameters is null");
                     return string.Empty;
                 }
 
                 FPluginInstance.LogDebug("Added input field to container");
-                return FContainer.Add(new CuiInputField() {
-                    InputField = {
+                return FContainer.Add(
+                    new CuiInputField() {
+                        InputField = {
                             Text = aText ?? string.Empty,
                             FontSize = aFontSize,
                             Align = aAlign,
@@ -456,36 +462,76 @@ namespace Oxide.Plugins
                             Command = aCommand ?? string.Empty,
                             IsPassword = aIndPassword
                         },
-                    RectTransform = {
+                        RectTransform = {
                             AnchorMin = aLeftBottomAnchor.ToString(),
                             AnchorMax = aRightTopAnchor.ToString(),
                             OffsetMin = aLeftBottomOffset.ToString(),
                             OffsetMax = aRightTopOffset.ToString()
                         }
-                }, aParent, string.IsNullOrEmpty(aName) ? null : aName
+                    },
+                    aParent,
+                    string.IsNullOrEmpty(aName) ? null : aName
                 );
+            }
+
+            /// <summary>
+            /// Add a new element
+            /// </summary>
+            /// <param name="aParent">The parent object name</param>
+            /// <param name="aElement">The object itself</param>
+            /// <param name="aName">The object's name</param>
+            /// <returns>New object name</returns>
+            public string AddElement(string aParent, CuiPanel aElement, string aName = "")
+            {
+                FPluginInstance.LogDebug("Added CuiPanel element to container");
+                return FContainer.Add(aElement, aParent, string.IsNullOrEmpty(aName) ? null : aName);
+            }
+
+            /// <summary>
+            /// Add a new element
+            /// </summary>
+            /// <param name="aParent">The parent object name</param>
+            /// <param name="aElement">The object itself</param>
+            /// <param name="aName">The object's name</param>
+            /// <returns>New object name</returns>
+            public string AddElement(string aParent, CuiLabel aElement, string aName = "")
+            {
+                FPluginInstance.LogDebug("Added CuiLabel element to container");
+                return FContainer.Add(aElement, aParent, string.IsNullOrEmpty(aName) ? null : aName);
+            }
+
+            /// <summary>
+            /// Add a new element
+            /// </summary>
+            /// <param name="aParent">The parent object name</param>
+            /// <param name="aElement">The object itself</param>
+            /// <param name="aName">The object's name</param>
+            /// <returns>New object name</returns>
+            public string AddElement(string aParent, CuiButton aElement, string aName = "")
+            {
+                FPluginInstance.LogDebug("Added CuiButton element to container");
+                return FContainer.Add(aElement, aParent, string.IsNullOrEmpty(aName) ? null : aName);
+            }
+
+            /// <summary>
+            /// Add a new element
+            /// </summary>
+            /// <param name="aParent">The parent object name</param>
+            /// <param name="aElement">The object itself</param>
+            /// <param name="aName">The object's name</param>
+            /// <returns>New object name</returns>
+            public string AddElement(string aParent, CuiInputField aElement, string aName = "")
+            {
+                FPluginInstance.LogDebug("Added CuiInputField element to container");
+                return FContainer.Add(aElement, aParent, string.IsNullOrEmpty(aName) ? null : aName);
             }
 
             /// <summary>
             /// Draw the UI to the player's client
             /// </summary>
             /// <returns></returns>
-            public bool Draw()
-            {
-                if (!string.IsNullOrEmpty(MainPanelName)) {
-                    FPluginInstance.LogDebug("Sent the container for drawing to the client");
-                    return CuiHelper.AddUi(FPlayer, FContainer);
-                }
-
-                return false;
-            }
-
-            /// <summary>
-            /// Retrieve the userId of the player this GUI is intended for
-            /// </summary>
-            /// <returns>Player ID</returns>
-            public string GetPlayerId() =>
-                FPlayer.UserIDString;
+            public bool Draw() =>
+                CuiHelper.AddUi(FPlayer, CuiHelper.ToJson(FContainer, false));
         }
         #endregion GUI
 
@@ -910,31 +956,22 @@ namespace Oxide.Plugins
         /// <param name="aPageType">The active page type</param>
         private void BuildTabMenu(ref Cui aUIObj, UiPage aPageType)
         {
-            string uiUserId = aUIObj.GetPlayerId();
             // Add the panels and title label
-            string headerPanel = aUIObj.AddPanel(aUIObj.MainPanelName, CMainMenuHeaderContainerLbAnchor, CMainMenuHeaderContainerRtAnchor, false,
-                CuiDefaultColors.None
-            );
-            string tabBtnPanel = aUIObj.AddPanel(aUIObj.MainPanelName, CMainMenuTabBtnContainerLbAnchor, CMainMenuTabBtnContainerRtAnchor, false,
-                CuiDefaultColors.Background
-            );
-            aUIObj.AddLabel(headerPanel, CMainMenuHeaderLblLbAnchor, CMainMenuHeaderLblRtAnchor, CuiDefaultColors.TextTitle,
-                "Player Administration by ThibmoRozier", string.Empty, 22, TextAnchor.MiddleCenter
-            );
-            aUIObj.AddButton(headerPanel, CMainMenuCloseBtnLbAnchor, CMainMenuCloseBtnRtAnchor, CuiDefaultColors.ButtonDecline, CuiDefaultColors.TextAlt, "X",
-                CCloseUiCmd, string.Empty, string.Empty, 22
-            );
+            string headerPanel = aUIObj.AddElement(CMainPanelName, CTabHeaderPanel);
+            string tabBtnPanel = aUIObj.AddElement(CMainPanelName, CTabTabBtnPanel);
+            aUIObj.AddElement(headerPanel, CTabMenuHeaderLbl);
+            aUIObj.AddElement(headerPanel, CTabMenuCloseBtn);
             // Add the tab menu buttons
-            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Main Tab Text", uiUserId), $"{CSwitchUiCmd} {CCmdArgMain}", 0,
+            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Main Tab Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgMain}", 0,
                 aPageType == UiPage.Main ? true : false
             );
-            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Online Player Tab Text", uiUserId), $"{CSwitchUiCmd} {CCmdArgPlayersOnline} 0", 1,
+            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Online Player Tab Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOnline} 0", 1,
                 aPageType == UiPage.PlayersOnline ? true : false
             );
-            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Offline Player Tab Text", uiUserId), $"{CSwitchUiCmd} {CCmdArgPlayersOffline} 0", 2,
+            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Offline Player Tab Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOffline} 0", 2,
                 aPageType == UiPage.PlayersOffline ? true : false
             );
-            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Banned Player Tab Text", uiUserId), $"{CSwitchUiCmd} {CCmdArgPlayersBanned} 0", 3,
+            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Banned Player Tab Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersBanned} 0", 3,
                 aPageType == UiPage.PlayersBanned ? true : false
             );
             LogDebug("Built the tab menu");
@@ -946,28 +983,23 @@ namespace Oxide.Plugins
         /// <param name="aUIObj">Cui object</param>
         private void BuildMainPage(ref Cui aUIObj)
         {
-            string uiUserId = aUIObj.GetPlayerId();
             // Add the panels and title
-            string panel = aUIObj.AddPanel(aUIObj.MainPanelName, CMainPanelLbAnchor, CMainPanelRtAnchor, false, CuiDefaultColors.Background);
-            aUIObj.AddLabel(panel, CMainLblTitleLbAnchor, CMainLblTitleRtAnchor, CuiDefaultColors.TextAlt, "Main", string.Empty, 18, TextAnchor.MiddleLeft);
+            string panel = aUIObj.AddElement(CMainPanelName, CMainPagePanel);
+            aUIObj.AddElement(panel, CMainPageTitleLbl);
             // Add the ban by ID group
             aUIObj.AddLabel(panel, CMainPageLblBanByIdTitleLbAnchor, CMainPageLblBanByIdTitleRtAnchor, CuiDefaultColors.TextTitle,
-                GetMessage("Ban By ID Title Text", uiUserId), string.Empty, 16, TextAnchor.MiddleLeft
+                GetMessage("Ban By ID Title Text", aUIObj.PlayerIdString), string.Empty, 16, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(panel, CMainPageLblBanByIdLbAnchor, CMainPageLblBanByIdRtAnchor, CuiDefaultColors.TextAlt, GetMessage("Ban By ID Label Text", uiUserId),
-                string.Empty, 14, TextAnchor.MiddleLeft
+            aUIObj.AddLabel(panel, CMainPageLblBanByIdLbAnchor, CMainPageLblBanByIdRtAnchor, CuiDefaultColors.TextAlt,
+                GetMessage("Ban By ID Label Text", aUIObj.PlayerIdString), string.Empty, 14, TextAnchor.MiddleLeft
             );
-            string panelBanByIdGroup = aUIObj.AddPanel(panel, CMainPagePanelBanByIdLbAnchor, CMainPagePanelBanByIdRtAnchor, false, CuiDefaultColors.BackgroundDark);
+            string panelBanByIdGroup = aUIObj.AddElement(panel, CBanByIdGroupPanel);
 
-            if (VerifyPermission(uiUserId, CPermBan)) {
-                aUIObj.AddInputField(panelBanByIdGroup, CMainPageEdtBanByIdLbAnchor, CMainPageEdtBanByIdRtAnchor, CuiDefaultColors.TextAlt, string.Empty, 24,
-                    CMainPageBanIdInputTextCmd
-                );
-                aUIObj.AddButton(panel, CMainPageBtnBanByIdLbAnchor, CMainPageBtnBanByIdRtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt, "Ban",
-                    CMainPageBanByIdCmd
-                );
+            if (VerifyPermission(aUIObj.PlayerIdString, CPermBan)) {
+                aUIObj.AddElement(panelBanByIdGroup, CBanByIdEdt);
+                aUIObj.AddElement(panel, CBanByIdActiveBtn);
             } else {
-                aUIObj.AddButton(panel, CMainPageBtnBanByIdLbAnchor, CMainPageBtnBanByIdRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.TextAlt, "Ban");
+                aUIObj.AddElement(panel, CBanByIdInactiveBtn);
             }
 
             LogDebug("Built the main page");
@@ -982,46 +1014,41 @@ namespace Oxide.Plugins
         /// <param name="aIndFiltered">Indicates if the output should be filtered</param>
         private void BuildUserBtnPage(ref Cui aUIObj, UiPage aPageType, int aPage, bool aIndFiltered)
         {
-            string uiUserId = aUIObj.GetPlayerId();
-            ulong uiUserIdInt = ulong.Parse(uiUserId);
-            string pageTitleLabel = GetMessage("User Button Page Title Text", aUIObj.GetPlayerId());
             string npBtnCommandFmt;
             int userCount;
 
-            string panel = aUIObj.AddPanel(aUIObj.MainPanelName, CMainPanelLbAnchor, CMainPanelRtAnchor, false, CuiDefaultColors.Background);
-            aUIObj.AddLabel(panel, CUserBtnPageLblTitleLbAnchor, CUserBtnPageLblTitleRtAnchor, CuiDefaultColors.TextAlt, pageTitleLabel, string.Empty, 18,
-                TextAnchor.MiddleLeft
+            string panel = aUIObj.AddElement(CMainPanelName, CMainPagePanel);
+            aUIObj.AddLabel(panel, CUserBtnPageLblTitleLbAnchor, CUserBtnPageLblTitleRtAnchor, CuiDefaultColors.TextAlt,
+                GetMessage("User Button Page Title Text", aUIObj.PlayerIdString), string.Empty, 18, TextAnchor.MiddleLeft
             );
             // Add search elements
-            aUIObj.AddLabel(panel, CUserBtnPageLblSearchLbAnchor, CUserBtnPageLblSearchRtAnchor, CuiDefaultColors.TextAlt, GetMessage("Search Label Text", uiUserId),
-                string.Empty, 16, TextAnchor.MiddleLeft
+            aUIObj.AddLabel(panel, CUserBtnPageLblSearchLbAnchor, CUserBtnPageLblSearchRtAnchor, CuiDefaultColors.TextAlt,
+                GetMessage("Search Label Text", aUIObj.PlayerIdString), string.Empty, 16, TextAnchor.MiddleLeft
             );
-            string panelSearchGroup = aUIObj.AddPanel(panel, CUserBtnPagePanelSearchInputLbAnchor, CUserBtnPagePanelSearchInputRtAnchor, false,
-                CuiDefaultColors.BackgroundDark
-            );
+            string panelSearchGroup = aUIObj.AddElement(panel, CUserBtnPageSearchInputPanel);
             aUIObj.AddInputField(panelSearchGroup, CUserBtnPageEdtSearchInputLbAnchor, CUserBtnPageEdtSearchInputRtAnchor, CuiDefaultColors.TextAlt,
-                (FUserBtnPageSearchInputText.ContainsKey(uiUserIdInt) ? FUserBtnPageSearchInputText[uiUserIdInt] : string.Empty), 100,
+                (FUserBtnPageSearchInputText.ContainsKey(aUIObj.PlayerId) ? FUserBtnPageSearchInputText[aUIObj.PlayerId] : string.Empty), 100,
                 CUserBtnPageSearchInputTextCmd, false, string.Empty, 16
             );
 
             switch (aPageType) {
                 case UiPage.PlayersOnline: {
                     aUIObj.AddButton(panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
-                        GetMessage("Go Button Text", uiUserId), $"{CSwitchUiCmd} {CCmdArgPlayersOnlineSearch} 0", string.Empty, string.Empty, 16
+                        GetMessage("Go Button Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOnlineSearch} 0", string.Empty, string.Empty, 16
                     );
                     BuildUserButtons(ref aUIObj, panel, aPageType, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
                     break;
                 }
                 case UiPage.PlayersOffline: {
                     aUIObj.AddButton(panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
-                        GetMessage("Go Button Text", uiUserId), $"{CSwitchUiCmd} {CCmdArgPlayersOfflineSearch} 0", string.Empty, string.Empty, 16
+                        GetMessage("Go Button Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOfflineSearch} 0", string.Empty, string.Empty, 16
                     );
                     BuildUserButtons(ref aUIObj, panel, aPageType, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
                     break;
                 }
                 default: {
                     aUIObj.AddButton(panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
-                        GetMessage("Go Button Text", uiUserId), $"{CSwitchUiCmd} {CCmdArgPlayersBannedSearch} 0", string.Empty, string.Empty, 16
+                        GetMessage("Go Button Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersBannedSearch} 0", string.Empty, string.Empty, 16
                     );
                     BuildBannedUserButtons(ref aUIObj, panel, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
                     break;
@@ -1036,9 +1063,7 @@ namespace Oxide.Plugins
 
             // Decide whether or not to activate the "previous" button
             if (aPage == 0) {
-                aUIObj.AddButton(panel, CUserBtnPageBtnPreviousLbAnchor, CUserBtnPageBtnPreviousRtAnchor, CuiDefaultColors.ButtonInactive,
-                    CuiDefaultColors.TextAlt, "<<", string.Empty, string.Empty, string.Empty, 18
-                );
+                aUIObj.AddElement(panel, CUserBtnPagePreviousInactiveBtn);
             } else {
                 aUIObj.AddButton(panel, CUserBtnPageBtnPreviousLbAnchor, CUserBtnPageBtnPreviousRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
                     "<<", string.Format(npBtnCommandFmt, aPage - 1), string.Empty, string.Empty, 18
@@ -1051,9 +1076,7 @@ namespace Oxide.Plugins
                     string.Format(npBtnCommandFmt, aPage + 1), string.Empty, string.Empty, 18
                 );
             } else {
-                aUIObj.AddButton(panel, CUserBtnPageBtnNextLbAnchor, CUserBtnPageBtnNextRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.TextAlt,
-                    ">>", string.Empty, string.Empty, string.Empty, 18
-                );
+                aUIObj.AddElement(panel, CUserBtnPageNextInactiveBtn);
             }
 
             LogDebug("Built the user button page");
@@ -1075,10 +1098,10 @@ namespace Oxide.Plugins
             List<BasePlayer> userList;
 
             if (aPageType == UiPage.PlayersOnline) {
-                userList = GetServerUserList(aIndFiltered, aUIObj.GetPlayerId());
+                userList = GetServerUserList(aIndFiltered, aUIObj.PlayerIdString);
                 aBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersOnlineSearch : CCmdArgPlayersOnline)} {{0}}";
             } else {
-                userList = GetServerUserList(aIndFiltered, aUIObj.GetPlayerId(), true);
+                userList = GetServerUserList(aIndFiltered, aUIObj.PlayerIdString, true);
                 aBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersOfflineSearch : CCmdArgPlayersOffline)} {{0}}";
             }
 
@@ -1103,7 +1126,7 @@ namespace Oxide.Plugins
         private void BuildBannedUserButtons(ref Cui aUIObj, string aParent, ref int aPage, out string aBtnCommandFmt, out int aUserCount, bool aIndFiltered)
         {
             string commandFmt = $"{CSwitchUiCmd} {CCmdArgPlayerPageBanned} {{0}}";
-            List<ServerUsers.User> userList = GetBannedUserList(aIndFiltered, aUIObj.GetPlayerId());
+            List<ServerUsers.User> userList = GetBannedUserList(aIndFiltered, aUIObj.PlayerIdString);
             aBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersBannedSearch : CCmdArgPlayersBanned)} {{0}}";
             aUserCount = userList.Count;
 
@@ -1611,19 +1634,18 @@ namespace Oxide.Plugins
         /// <param name="aPlayerId">Player ID (SteamId64)</param>
         private void BuildUserPage(ref Cui aUIObj, UiPage aPageType, ulong aPlayerId)
         {
-            string uiUserId = aUIObj.GetPlayerId();
             // Add panels
-            string panel = aUIObj.AddPanel(aUIObj.MainPanelName, CMainPanelLbAnchor, CMainPanelRtAnchor, false, CuiDefaultColors.Background);
+            string panel = aUIObj.AddPanel(CMainPanelName, CMainPanelLbAnchor, CMainPanelRtAnchor, false, CuiDefaultColors.Background);
             string infoPanel = aUIObj.AddPanel(panel, CUserPageInfoPanelLbAnchor, CUserPageInfoPanelRtAnchor, false, CuiDefaultColors.BackgroundMedium);
             string actionPanel = aUIObj.AddPanel(panel, CUserPageActionPanelLbAnchor, CUserPageActionPanelRtAnchor, false, CuiDefaultColors.BackgroundMedium);
             LogDebug("BuildUserPage > Panels have been added.");
 
             // Add title labels
             aUIObj.AddLabel(infoPanel, CUserPageLblinfoTitleLbAnchor, CUserPageLblinfoTitleRtAnchor, CuiDefaultColors.TextTitle,
-                GetMessage("Player Info Label Text", uiUserId), string.Empty, 14, TextAnchor.MiddleLeft
+                GetMessage("Player Info Label Text", aUIObj.PlayerIdString), string.Empty, 14, TextAnchor.MiddleLeft
             );
             aUIObj.AddLabel(actionPanel, CUserPageLblActionTitleLbAnchor, CUserPageLblActionTitleRtAnchor, CuiDefaultColors.TextTitle,
-                GetMessage("Player Actions Label Text", uiUserId), string.Empty, 14, TextAnchor.MiddleLeft
+                GetMessage("Player Actions Label Text", aUIObj.PlayerIdString), string.Empty, 14, TextAnchor.MiddleLeft
             );
             LogDebug("BuildUserPage > Title lables have been added.");
 
@@ -1632,49 +1654,49 @@ namespace Oxide.Plugins
                 LogDebug("BuildUserPage > player = null? " + InternalAssert(player == null));
 
                 aUIObj.AddLabel(panel, CMainLblTitleLbAnchor, CMainLblTitleRtAnchor, CuiDefaultColors.TextAlt,
-                    GetMessage("User Page Title Format", uiUserId, player.displayName, string.Empty), string.Empty, 18, TextAnchor.MiddleLeft
+                    GetMessage("User Page Title Format", aUIObj.PlayerIdString, player.displayName, string.Empty), string.Empty, 18, TextAnchor.MiddleLeft
                 );
                 // Add user info labels
-                AddUserPageInfoLabels(ref aUIObj, infoPanel, uiUserId, aPlayerId, ref player);
+                AddUserPageInfoLabels(ref aUIObj, infoPanel, aUIObj.PlayerIdString, aPlayerId, ref player);
 
                 // --- Build player action panel
                 // Ban, Kick
-                AddUserPageFirstActionRow(ref aUIObj, actionPanel, uiUserId, aPlayerId, ref player);
+                AddUserPageFirstActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId, ref player);
                 // Unmute voice, Mute voice
-                AddUserPageSecondActionRow(ref aUIObj, actionPanel, uiUserId, aPlayerId, ref player);
+                AddUserPageSecondActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId, ref player);
                 // Unmute chat, Mute chat (And timed ones if BetterChat is available)
-                AddUserPageThirdActionRow(ref aUIObj, actionPanel, uiUserId, aPlayerId, ref player);
+                AddUserPageThirdActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId, ref player);
                 // Unfreeze, Freeze
-                AddUserPageFourthActionRow(ref aUIObj, actionPanel, uiUserId, aPlayerId, ref player);
+                AddUserPageFourthActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId, ref player);
                 // Clear inventory, Reset BP, Reset metabolism
-                AddUserPageFifthActionRow(ref aUIObj, actionPanel, uiUserId, aPlayerId);
+                AddUserPageFifthActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId);
                 // Teleport to, Teleport, Spectate
-                AddUserPageSixthActionRow(ref aUIObj, actionPanel, uiUserId, aPlayerId);
+                AddUserPageSixthActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId);
                 // Perms
-                AddUserPageSeventhActionRow(ref aUIObj, actionPanel, uiUserId, aPlayerId);
+                AddUserPageSeventhActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId);
                 // Hurt 25, Hurt 50, Hurt 75, Hurt 100, Kill
-                AddUserPageEleventhActionRow(ref aUIObj, actionPanel, uiUserId, aPlayerId);
+                AddUserPageEleventhActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId);
                 // Heal 25, Heal 50, Heal 75, Heal 100, Heal wounds
-                AddUserPageTwelfthActionRow(ref aUIObj, actionPanel, uiUserId, aPlayerId);
+                AddUserPageTwelfthActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId);
             } else {
                 ServerUsers.User serverUser = ServerUsers.Get(aPlayerId);
                 aUIObj.AddLabel(panel, CMainLblTitleLbAnchor, CMainLblTitleRtAnchor, CuiDefaultColors.TextAlt,
-                    GetMessage("User Page Title Format", uiUserId, serverUser.username, GetMessage("Banned Label Text", uiUserId)), string.Empty, 18,
-                    TextAnchor.MiddleLeft
+                    GetMessage("User Page Title Format", aUIObj.PlayerIdString, serverUser.username, GetMessage("Banned Label Text", aUIObj.PlayerIdString)),
+                    string.Empty, 18, TextAnchor.MiddleLeft
                 );
                 // Add user info labels
                 aUIObj.AddLabel(infoPanel, CUserPageLblIdLbAnchor, CUserPageLblIdRtAnchor, CuiDefaultColors.TextAlt,
-                    GetMessage("Id Label Format", uiUserId, aPlayerId, string.Empty), string.Empty, 14, TextAnchor.MiddleLeft
+                    GetMessage("Id Label Format", aUIObj.PlayerIdString, aPlayerId, string.Empty), string.Empty, 14, TextAnchor.MiddleLeft
                 );
 
                 // --- Build player action panel
-                if (VerifyPermission(uiUserId, CPermBan)) {
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermBan)) {
                     aUIObj.AddButton(actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
-                        GetMessage("Unban Button Text", uiUserId), $"{CUnbanUserCmd} {aPlayerId}"
+                        GetMessage("Unban Button Text", aUIObj.PlayerIdString), $"{CUnbanUserCmd} {aPlayerId}"
                     );
                 } else {
                     aUIObj.AddButton(actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
-                        GetMessage("Unban Button Text", uiUserId)
+                        GetMessage("Unban Button Text", aUIObj.PlayerIdString)
                     );
                 }
             }
@@ -1693,7 +1715,7 @@ namespace Oxide.Plugins
         {
             // Initiate the new UI and panel
             Cui newUiLib = new Cui(aPlayer);
-            newUiLib.MainPanelName = newUiLib.AddPanel(Cui.ParentOverlay, CMainLbAnchor, CMainRtAnchor, true, CuiDefaultColors.BackgroundDark, CMainPanelName);
+            newUiLib.AddElement(CBasePanelName, CMainPanel, CMainPanelName);
             BuildTabMenu(ref newUiLib, aPageType);
 
             switch (aPageType) {
@@ -1749,12 +1771,14 @@ namespace Oxide.Plugins
         #endregion
 
         #region Constants
-        private readonly bool CDebugEnabled = false;
+        private static readonly bool CDebugEnabled = false;
         private const int CMaxPlayerCols = 5;
         private const int CMaxPlayerRows = 12;
         private const int CMaxPlayerButtons = CMaxPlayerCols * CMaxPlayerRows;
+        private const string CBasePanelName = "PAdm_BasePanel";
         private const string CMainPanelName = "PAdm_MainPanel";
-        private readonly List<string> CUnknownNameList = new List<string> { "unnamed", "unknown" };
+        private static readonly List<string> CUnknownNameList = new List<string> { "unnamed", "unknown" };
+
         #region Local commands
         private const string CPadminCmd = "padmin";
         private const string CCloseUiCmd = "padm_closeui";
@@ -1784,11 +1808,13 @@ namespace Oxide.Plugins
         private const string CUserBtnPageSearchInputTextCmd = "padm_userbtnpagesearchinputtext";
         private const string CUserPageReasonInputTextCmd = "padm_userpagereasoninputtext";
         #endregion Local commands
+
         #region Foreign commands
         private const string CPermsPermsCmd = "perms player";
         private const string CFreezeFreezeCmd = "freeze";
         private const string CFreezeUnfreezeCmd = "unfreeze";
         #endregion Foreign commands
+
         #region Local Command Static Arguments
         private const string CCmdArgMain = "main";
         private const string CCmdArgPlayersOnline = "playersonline";
@@ -1800,6 +1826,7 @@ namespace Oxide.Plugins
         private const string CCmdArgPlayerPage = "playerpage";
         private const string CCmdArgPlayerPageBanned = "playerpagebanned";
         #endregion Local Command Static Arguments
+
         #region Local permissions
         private const string CPermUiShow = "playeradministration.show";
         private const string CPermKick = "playeradministration.kick";
@@ -1818,193 +1845,412 @@ namespace Oxide.Plugins
         private const string CPermTeleport = "playeradministration.teleport";
         private const string CPermSpectate = "playeradministration.spectate";
         #endregion Local permissions
+
         #region Foreign permissions
         private const string CPermFreezeFrozen = "freeze.frozen";
         #endregion Foreign permissions
+
         /* Define layout */
         #region Main bounds
-        private readonly CuiPoint CMainLbAnchor = new CuiPoint(0.03f, 0.15f);
-        private readonly CuiPoint CMainRtAnchor = new CuiPoint(0.97f, 0.97f);
-        private readonly CuiPoint CMainMenuHeaderContainerLbAnchor = new CuiPoint(0.005f, 0.937f);
-        private readonly CuiPoint CMainMenuHeaderContainerRtAnchor = new CuiPoint(0.995f, 0.99f);
-        private readonly CuiPoint CMainMenuTabBtnContainerLbAnchor = new CuiPoint(0.005f, 0.867f);
-        private readonly CuiPoint CMainMenuTabBtnContainerRtAnchor = new CuiPoint(0.995f, 0.927f);
-        private readonly CuiPoint CMainMenuHeaderLblLbAnchor = new CuiPoint(0f, 0f);
-        private readonly CuiPoint CMainMenuHeaderLblRtAnchor = new CuiPoint(1f, 1f);
-        private readonly CuiPoint CMainMenuCloseBtnLbAnchor = new CuiPoint(0.965f, 0f);
-        private readonly CuiPoint CMainMenuCloseBtnRtAnchor = new CuiPoint(1f, 1f);
-        private readonly CuiPoint CMainPanelLbAnchor = new CuiPoint(0.005f, 0.01f);
-        private readonly CuiPoint CMainPanelRtAnchor = new CuiPoint(0.995f, 0.857f);
-        private readonly CuiPoint CMainLblTitleLbAnchor = new CuiPoint(0.005f, 0.93f);
-        private readonly CuiPoint CMainLblTitleRtAnchor = new CuiPoint(0.995f, 0.99f);
+        private static readonly CuiPoint CMainLbAnchor = new CuiPoint(0.03f, 0.15f);
+        private static readonly CuiPoint CMainRtAnchor = new CuiPoint(0.97f, 0.97f);
+        private static readonly CuiPoint CMainMenuHeaderContainerLbAnchor = new CuiPoint(0.005f, 0.937f);
+        private static readonly CuiPoint CMainMenuHeaderContainerRtAnchor = new CuiPoint(0.995f, 0.99f);
+        private static readonly CuiPoint CMainMenuTabBtnContainerLbAnchor = new CuiPoint(0.005f, 0.867f);
+        private static readonly CuiPoint CMainMenuTabBtnContainerRtAnchor = new CuiPoint(0.995f, 0.927f);
+        private static readonly CuiPoint CMainMenuHeaderLblLbAnchor = new CuiPoint(0f, 0f);
+        private static readonly CuiPoint CMainMenuHeaderLblRtAnchor = new CuiPoint(1f, 1f);
+        private static readonly CuiPoint CMainMenuCloseBtnLbAnchor = new CuiPoint(0.965f, 0f);
+        private static readonly CuiPoint CMainMenuCloseBtnRtAnchor = new CuiPoint(1f, 1f);
+        private static readonly CuiPoint CMainPanelLbAnchor = new CuiPoint(0.005f, 0.01f);
+        private static readonly CuiPoint CMainPanelRtAnchor = new CuiPoint(0.995f, 0.857f);
+        private static readonly CuiPoint CMainLblTitleLbAnchor = new CuiPoint(0.005f, 0.93f);
+        private static readonly CuiPoint CMainLblTitleRtAnchor = new CuiPoint(0.995f, 0.99f);
         #endregion Main bounds
+
         #region Main page bounds
-        private readonly CuiPoint CMainPageLblBanByIdTitleLbAnchor = new CuiPoint(0.005f, 0.84f);
-        private readonly CuiPoint CMainPageLblBanByIdTitleRtAnchor = new CuiPoint(0.995f, 0.89f);
-        private readonly CuiPoint CMainPageLblBanByIdLbAnchor = new CuiPoint(0.005f, 0.76f);
-        private readonly CuiPoint CMainPageLblBanByIdRtAnchor = new CuiPoint(0.05f, 0.81f);
-        private readonly CuiPoint CMainPagePanelBanByIdLbAnchor = new CuiPoint(0.055f, 0.76f);
-        private readonly CuiPoint CMainPagePanelBanByIdRtAnchor = new CuiPoint(0.305f, 0.81f);
-        private readonly CuiPoint CMainPageEdtBanByIdLbAnchor = new CuiPoint(0.005f, 0f);
-        private readonly CuiPoint CMainPageEdtBanByIdRtAnchor = new CuiPoint(0.995f, 1f);
-        private readonly CuiPoint CMainPageBtnBanByIdLbAnchor = new CuiPoint(0.315f, 0.76f);
-        private readonly CuiPoint CMainPageBtnBanByIdRtAnchor = new CuiPoint(0.365f, 0.81f);
+        private static readonly CuiPoint CMainPageLblBanByIdTitleLbAnchor = new CuiPoint(0.005f, 0.84f);
+        private static readonly CuiPoint CMainPageLblBanByIdTitleRtAnchor = new CuiPoint(0.995f, 0.89f);
+        private static readonly CuiPoint CMainPageLblBanByIdLbAnchor = new CuiPoint(0.005f, 0.76f);
+        private static readonly CuiPoint CMainPageLblBanByIdRtAnchor = new CuiPoint(0.05f, 0.81f);
+        private static readonly CuiPoint CMainPagePanelBanByIdLbAnchor = new CuiPoint(0.055f, 0.76f);
+        private static readonly CuiPoint CMainPagePanelBanByIdRtAnchor = new CuiPoint(0.305f, 0.81f);
+        private static readonly CuiPoint CMainPageEdtBanByIdLbAnchor = new CuiPoint(0.005f, 0f);
+        private static readonly CuiPoint CMainPageEdtBanByIdRtAnchor = new CuiPoint(0.995f, 1f);
+        private static readonly CuiPoint CMainPageBtnBanByIdLbAnchor = new CuiPoint(0.315f, 0.76f);
+        private static readonly CuiPoint CMainPageBtnBanByIdRtAnchor = new CuiPoint(0.365f, 0.81f);
         #endregion Main page bounds
+
         #region User button page bounds
-        private readonly CuiPoint CUserBtnPageLblTitleLbAnchor = new CuiPoint(0.005f, 0.93f);
-        private readonly CuiPoint CUserBtnPageLblTitleRtAnchor = new CuiPoint(0.495f, 0.99f);
-        private readonly CuiPoint CUserBtnPageLblSearchLbAnchor = new CuiPoint(0.52f, 0.93f);
-        private readonly CuiPoint CUserBtnPageLblSearchRtAnchor = new CuiPoint(0.565f, 0.99f);
-        private readonly CuiPoint CUserBtnPagePanelSearchInputLbAnchor = new CuiPoint(0.57f, 0.94f);
-        private readonly CuiPoint CUserBtnPagePanelSearchInputRtAnchor = new CuiPoint(0.945f, 0.99f);
-        private readonly CuiPoint CUserBtnPageEdtSearchInputLbAnchor = new CuiPoint(0.005f, 0f);
-        private readonly CuiPoint CUserBtnPageEdtSearchInputRtAnchor = new CuiPoint(0.995f, 1f);
-        private readonly CuiPoint CUserBtnPageBtnSearchLbAnchor = new CuiPoint(0.95f, 0.94f);
-        private readonly CuiPoint CUserBtnPageBtnSearchRtAnchor = new CuiPoint(0.995f, 0.99f);
-        private readonly CuiPoint CUserBtnPageBtnPreviousLbAnchor = new CuiPoint(0.005f, 0.01f);
-        private readonly CuiPoint CUserBtnPageBtnPreviousRtAnchor = new CuiPoint(0.035f, 0.06f);
-        private readonly CuiPoint CUserBtnPageBtnNextLbAnchor = new CuiPoint(0.96f, 0.01f);
-        private readonly CuiPoint CUserBtnPageBtnNextRtAnchor = new CuiPoint(0.995f, 0.06f);
+        private static readonly CuiPoint CUserBtnPageLblTitleLbAnchor = new CuiPoint(0.005f, 0.93f);
+        private static readonly CuiPoint CUserBtnPageLblTitleRtAnchor = new CuiPoint(0.495f, 0.99f);
+        private static readonly CuiPoint CUserBtnPageLblSearchLbAnchor = new CuiPoint(0.52f, 0.93f);
+        private static readonly CuiPoint CUserBtnPageLblSearchRtAnchor = new CuiPoint(0.565f, 0.99f);
+        private static readonly CuiPoint CUserBtnPagePanelSearchInputLbAnchor = new CuiPoint(0.57f, 0.94f);
+        private static readonly CuiPoint CUserBtnPagePanelSearchInputRtAnchor = new CuiPoint(0.945f, 0.99f);
+        private static readonly CuiPoint CUserBtnPageEdtSearchInputLbAnchor = new CuiPoint(0.005f, 0f);
+        private static readonly CuiPoint CUserBtnPageEdtSearchInputRtAnchor = new CuiPoint(0.995f, 1f);
+        private static readonly CuiPoint CUserBtnPageBtnSearchLbAnchor = new CuiPoint(0.95f, 0.94f);
+        private static readonly CuiPoint CUserBtnPageBtnSearchRtAnchor = new CuiPoint(0.995f, 0.99f);
+        private static readonly CuiPoint CUserBtnPageBtnPreviousLbAnchor = new CuiPoint(0.005f, 0.01f);
+        private static readonly CuiPoint CUserBtnPageBtnPreviousRtAnchor = new CuiPoint(0.035f, 0.06f);
+        private static readonly CuiPoint CUserBtnPageBtnNextLbAnchor = new CuiPoint(0.96f, 0.01f);
+        private static readonly CuiPoint CUserBtnPageBtnNextRtAnchor = new CuiPoint(0.995f, 0.06f);
         #endregion User button page bounds
+
         #region User page panel bounds
-        private readonly CuiPoint CUserPageInfoPanelLbAnchor = new CuiPoint(0.005f, 0.01f);
-        private readonly CuiPoint CUserPageInfoPanelRtAnchor = new CuiPoint(0.28f, 0.92f);
-        private readonly CuiPoint CUserPageActionPanelLbAnchor = new CuiPoint(0.285f, 0.01f);
-        private readonly CuiPoint CUserPageActionPanelRtAnchor = new CuiPoint(0.995f, 0.92f);
+        private static readonly CuiPoint CUserPageInfoPanelLbAnchor = new CuiPoint(0.005f, 0.01f);
+        private static readonly CuiPoint CUserPageInfoPanelRtAnchor = new CuiPoint(0.28f, 0.92f);
+        private static readonly CuiPoint CUserPageActionPanelLbAnchor = new CuiPoint(0.285f, 0.01f);
+        private static readonly CuiPoint CUserPageActionPanelRtAnchor = new CuiPoint(0.995f, 0.92f);
         #region User page title label bounds
-        private readonly CuiPoint CUserPageLblinfoTitleLbAnchor = new CuiPoint(0.025f, 0.94f);
-        private readonly CuiPoint CUserPageLblinfoTitleRtAnchor = new CuiPoint(0.975f, 0.99f);
-        private readonly CuiPoint CUserPageLblActionTitleLbAnchor = new CuiPoint(0.01f, 0.94f);
-        private readonly CuiPoint CUserPageLblActionTitleRtAnchor = new CuiPoint(0.99f, 0.99f);
+        private static readonly CuiPoint CUserPageLblinfoTitleLbAnchor = new CuiPoint(0.025f, 0.94f);
+        private static readonly CuiPoint CUserPageLblinfoTitleRtAnchor = new CuiPoint(0.975f, 0.99f);
+        private static readonly CuiPoint CUserPageLblActionTitleLbAnchor = new CuiPoint(0.01f, 0.94f);
+        private static readonly CuiPoint CUserPageLblActionTitleRtAnchor = new CuiPoint(0.99f, 0.99f);
         #endregion User page title label bounds
         #region User page info label bounds
         // Top part
-        private readonly CuiPoint CUserPageLblIdLbAnchor = new CuiPoint(0.025f, 0.88f);
-        private readonly CuiPoint CUserPageLblIdRtAnchor = new CuiPoint(0.975f, 0.92f);
-        private readonly CuiPoint CUserPageLblAuthLbAnchor = new CuiPoint(0.025f, 0.835f);
-        private readonly CuiPoint CUserPageLblAuthRtAnchor = new CuiPoint(0.975f, 0.875f);
-        private readonly CuiPoint CUserPageLblConnectLbAnchor = new CuiPoint(0.025f, 0.79f);
-        private readonly CuiPoint CUserPageLblConnectRtAnchor = new CuiPoint(0.975f, 0.83f);
-        private readonly CuiPoint CUserPageLblSleepLbAnchor = new CuiPoint(0.025f, 0.745f);
-        private readonly CuiPoint CUserPageLblSleepRtAnchor = new CuiPoint(0.975f, 0.785f);
-        private readonly CuiPoint CUserPageLblFlagLbAnchor = new CuiPoint(0.025f, 0.70f);
-        private readonly CuiPoint CUserPageLblFlagRtAnchor = new CuiPoint(0.975f, 0.74f);
-        private readonly CuiPoint CUserPageLblPosLbAnchor = new CuiPoint(0.025f, 0.655f);
-        private readonly CuiPoint CUserPageLblPosRtAnchor = new CuiPoint(0.975f, 0.695f);
-        private readonly CuiPoint CUserPageLblRotLbAnchor = new CuiPoint(0.025f, 0.61f);
-        private readonly CuiPoint CUserPageLblRotRtAnchor = new CuiPoint(0.975f, 0.65f);
-        private readonly CuiPoint CUserPageLblAdminCheatLbAnchor = new CuiPoint(0.025f, 0.555f);
-        private readonly CuiPoint CUserPageLblAdminCheatRtAnchor = new CuiPoint(0.975f, 0.605f);
-        private readonly CuiPoint CUserPageLblIdleLbAnchor = new CuiPoint(0.025f, 0.51f);
-        private readonly CuiPoint CUserPageLblIdleRtAnchor = new CuiPoint(0.975f, 0.55f);
-        private readonly CuiPoint CUserPageLblBalanceLbAnchor = new CuiPoint(0.025f, 0.465f);
-        private readonly CuiPoint CUserPageLblBalanceRtAnchor = new CuiPoint(0.975f, 0.505f);
-        private readonly CuiPoint CUserPageLblRewardPointsLbAnchor = new CuiPoint(0.025f, 0.42f);
-        private readonly CuiPoint CUserPageLblRewardPointsRtAnchor = new CuiPoint(0.975f, 0.46f);
+        private static readonly CuiPoint CUserPageLblIdLbAnchor = new CuiPoint(0.025f, 0.88f);
+        private static readonly CuiPoint CUserPageLblIdRtAnchor = new CuiPoint(0.975f, 0.92f);
+        private static readonly CuiPoint CUserPageLblAuthLbAnchor = new CuiPoint(0.025f, 0.835f);
+        private static readonly CuiPoint CUserPageLblAuthRtAnchor = new CuiPoint(0.975f, 0.875f);
+        private static readonly CuiPoint CUserPageLblConnectLbAnchor = new CuiPoint(0.025f, 0.79f);
+        private static readonly CuiPoint CUserPageLblConnectRtAnchor = new CuiPoint(0.975f, 0.83f);
+        private static readonly CuiPoint CUserPageLblSleepLbAnchor = new CuiPoint(0.025f, 0.745f);
+        private static readonly CuiPoint CUserPageLblSleepRtAnchor = new CuiPoint(0.975f, 0.785f);
+        private static readonly CuiPoint CUserPageLblFlagLbAnchor = new CuiPoint(0.025f, 0.70f);
+        private static readonly CuiPoint CUserPageLblFlagRtAnchor = new CuiPoint(0.975f, 0.74f);
+        private static readonly CuiPoint CUserPageLblPosLbAnchor = new CuiPoint(0.025f, 0.655f);
+        private static readonly CuiPoint CUserPageLblPosRtAnchor = new CuiPoint(0.975f, 0.695f);
+        private static readonly CuiPoint CUserPageLblRotLbAnchor = new CuiPoint(0.025f, 0.61f);
+        private static readonly CuiPoint CUserPageLblRotRtAnchor = new CuiPoint(0.975f, 0.65f);
+        private static readonly CuiPoint CUserPageLblAdminCheatLbAnchor = new CuiPoint(0.025f, 0.555f);
+        private static readonly CuiPoint CUserPageLblAdminCheatRtAnchor = new CuiPoint(0.975f, 0.605f);
+        private static readonly CuiPoint CUserPageLblIdleLbAnchor = new CuiPoint(0.025f, 0.51f);
+        private static readonly CuiPoint CUserPageLblIdleRtAnchor = new CuiPoint(0.975f, 0.55f);
+        private static readonly CuiPoint CUserPageLblBalanceLbAnchor = new CuiPoint(0.025f, 0.465f);
+        private static readonly CuiPoint CUserPageLblBalanceRtAnchor = new CuiPoint(0.975f, 0.505f);
+        private static readonly CuiPoint CUserPageLblRewardPointsLbAnchor = new CuiPoint(0.025f, 0.42f);
+        private static readonly CuiPoint CUserPageLblRewardPointsRtAnchor = new CuiPoint(0.975f, 0.46f);
         // Bottom part
-        private readonly CuiPoint CUserPageLblHealthLbAnchor = new CuiPoint(0.025f, 0.195f);
-        private readonly CuiPoint CUserPageLblHealthRtAnchor = new CuiPoint(0.975f, 0.235f);
-        private readonly CuiPoint CUserPageLblCalLbAnchor = new CuiPoint(0.025f, 0.145f);
-        private readonly CuiPoint CUserPageLblCalRtAnchor = new CuiPoint(0.5f, 0.19f);
-        private readonly CuiPoint CUserPageLblHydraLbAnchor = new CuiPoint(0.5f, 0.145f);
-        private readonly CuiPoint CUserPageLblHydraRtAnchor = new CuiPoint(0.975f, 0.19f);
-        private readonly CuiPoint CUserPageLblTempLbAnchor = new CuiPoint(0.025f, 0.10f);
-        private readonly CuiPoint CUserPageLblTempRtAnchor = new CuiPoint(0.5f, 0.14f);
-        private readonly CuiPoint CUserPageLblWetLbAnchor = new CuiPoint(0.5f, 0.10f);
-        private readonly CuiPoint CUserPageLblWetRtAnchor = new CuiPoint(0.975f, 0.14f);
-        private readonly CuiPoint CUserPageLblComfortLbAnchor = new CuiPoint(0.025f, 0.055f);
-        private readonly CuiPoint CUserPageLblComfortRtAnchor = new CuiPoint(0.5f, 0.095f);
-        private readonly CuiPoint CUserPageLblBleedLbAnchor = new CuiPoint(0.5f, 0.055f);
-        private readonly CuiPoint CUserPageLblBleedRtAnchor = new CuiPoint(0.975f, 0.095f);
-        private readonly CuiPoint CUserPageLblRads1LbAnchor = new CuiPoint(0.025f, 0.01f);
-        private readonly CuiPoint CUserPageLblRads1RtAnchor = new CuiPoint(0.5f, 0.05f);
-        private readonly CuiPoint CUserPageLblRads2LbAnchor = new CuiPoint(0.5f, 0.01f);
-        private readonly CuiPoint CUserPageLblRads2RtAnchor = new CuiPoint(0.975f, 0.05f);
+        private static readonly CuiPoint CUserPageLblHealthLbAnchor = new CuiPoint(0.025f, 0.195f);
+        private static readonly CuiPoint CUserPageLblHealthRtAnchor = new CuiPoint(0.975f, 0.235f);
+        private static readonly CuiPoint CUserPageLblCalLbAnchor = new CuiPoint(0.025f, 0.145f);
+        private static readonly CuiPoint CUserPageLblCalRtAnchor = new CuiPoint(0.5f, 0.19f);
+        private static readonly CuiPoint CUserPageLblHydraLbAnchor = new CuiPoint(0.5f, 0.145f);
+        private static readonly CuiPoint CUserPageLblHydraRtAnchor = new CuiPoint(0.975f, 0.19f);
+        private static readonly CuiPoint CUserPageLblTempLbAnchor = new CuiPoint(0.025f, 0.10f);
+        private static readonly CuiPoint CUserPageLblTempRtAnchor = new CuiPoint(0.5f, 0.14f);
+        private static readonly CuiPoint CUserPageLblWetLbAnchor = new CuiPoint(0.5f, 0.10f);
+        private static readonly CuiPoint CUserPageLblWetRtAnchor = new CuiPoint(0.975f, 0.14f);
+        private static readonly CuiPoint CUserPageLblComfortLbAnchor = new CuiPoint(0.025f, 0.055f);
+        private static readonly CuiPoint CUserPageLblComfortRtAnchor = new CuiPoint(0.5f, 0.095f);
+        private static readonly CuiPoint CUserPageLblBleedLbAnchor = new CuiPoint(0.5f, 0.055f);
+        private static readonly CuiPoint CUserPageLblBleedRtAnchor = new CuiPoint(0.975f, 0.095f);
+        private static readonly CuiPoint CUserPageLblRads1LbAnchor = new CuiPoint(0.025f, 0.01f);
+        private static readonly CuiPoint CUserPageLblRads1RtAnchor = new CuiPoint(0.5f, 0.05f);
+        private static readonly CuiPoint CUserPageLblRads2LbAnchor = new CuiPoint(0.5f, 0.01f);
+        private static readonly CuiPoint CUserPageLblRads2RtAnchor = new CuiPoint(0.975f, 0.05f);
         #endregion User page info label bounds
         #region User page button bounds
         // Row 1
-        private readonly CuiPoint CUserPageBtnBanLbAnchor = new CuiPoint(0.01f, 0.86f);
-        private readonly CuiPoint CUserPageBtnBanRtAnchor = new CuiPoint(0.16f, 0.92f);
-        private readonly CuiPoint CUserPageBtnKickLbAnchor = new CuiPoint(0.17f, 0.86f);
-        private readonly CuiPoint CUserPageBtnKickRtAnchor = new CuiPoint(0.32f, 0.92f);
-        private readonly CuiPoint CUserPageLblReasonLbAnchor = new CuiPoint(0.33f, 0.86f);
-        private readonly CuiPoint CUserPageLblReasonRtAnchor = new CuiPoint(0.48f, 0.92f);
-        private readonly CuiPoint CUserPagePanelReasonLbAnchor = new CuiPoint(0.49f, 0.86f);
-        private readonly CuiPoint CUserPagePanelReasonRtAnchor = new CuiPoint(0.99f, 0.92f);
-        private readonly CuiPoint CUserPageEdtReasonLbAnchor = new CuiPoint(0.005f, 0f);
-        private readonly CuiPoint CUserPageEdtReasonRtAnchor = new CuiPoint(0.995f, 1f);
+        private static readonly CuiPoint CUserPageBtnBanLbAnchor = new CuiPoint(0.01f, 0.86f);
+        private static readonly CuiPoint CUserPageBtnBanRtAnchor = new CuiPoint(0.16f, 0.92f);
+        private static readonly CuiPoint CUserPageBtnKickLbAnchor = new CuiPoint(0.17f, 0.86f);
+        private static readonly CuiPoint CUserPageBtnKickRtAnchor = new CuiPoint(0.32f, 0.92f);
+        private static readonly CuiPoint CUserPageLblReasonLbAnchor = new CuiPoint(0.33f, 0.86f);
+        private static readonly CuiPoint CUserPageLblReasonRtAnchor = new CuiPoint(0.48f, 0.92f);
+        private static readonly CuiPoint CUserPagePanelReasonLbAnchor = new CuiPoint(0.49f, 0.86f);
+        private static readonly CuiPoint CUserPagePanelReasonRtAnchor = new CuiPoint(0.99f, 0.92f);
+        private static readonly CuiPoint CUserPageEdtReasonLbAnchor = new CuiPoint(0.005f, 0f);
+        private static readonly CuiPoint CUserPageEdtReasonRtAnchor = new CuiPoint(0.995f, 1f);
         // Row 2
-        private readonly CuiPoint CUserPageBtnVUnmuteLbAnchor = new CuiPoint(0.01f, 0.78f);
-        private readonly CuiPoint CUserPageBtnVUnmuteRtAnchor = new CuiPoint(0.16f, 0.84f);
-        private readonly CuiPoint CUserPageBtnVMuteLbAnchor = new CuiPoint(0.17f, 0.78f);
-        private readonly CuiPoint CUserPageBtnVMuteRtAnchor = new CuiPoint(0.32f, 0.84f);
+        private static readonly CuiPoint CUserPageBtnVUnmuteLbAnchor = new CuiPoint(0.01f, 0.78f);
+        private static readonly CuiPoint CUserPageBtnVUnmuteRtAnchor = new CuiPoint(0.16f, 0.84f);
+        private static readonly CuiPoint CUserPageBtnVMuteLbAnchor = new CuiPoint(0.17f, 0.78f);
+        private static readonly CuiPoint CUserPageBtnVMuteRtAnchor = new CuiPoint(0.32f, 0.84f);
         // Row 3
-        private readonly CuiPoint CUserPageBtnCUnmuteLbAnchor = new CuiPoint(0.01f, 0.70f);
-        private readonly CuiPoint CUserPageBtnCUnmuteRtAnchor = new CuiPoint(0.16f, 0.76f);
-        private readonly CuiPoint CUserPageBtnCMuteLbAnchor = new CuiPoint(0.17f, 0.70f);
-        private readonly CuiPoint CUserPageBtnCMuteRtAnchor = new CuiPoint(0.32f, 0.76f);
-        private readonly CuiPoint CUserPageBtnCMuteFifteenLbAnchor = new CuiPoint(0.33f, 0.70f);
-        private readonly CuiPoint CUserPageBtnCMuteFifteenRtAnchor = new CuiPoint(0.48f, 0.76f);
-        private readonly CuiPoint CUserPageBtnCMuteThirtyLbAnchor = new CuiPoint(0.49f, 0.70f);
-        private readonly CuiPoint CUserPageBtnCMuteThirtyRtAnchor = new CuiPoint(0.64f, 0.76f);
-        private readonly CuiPoint CUserPageBtnCMuteSixtyLbAnchor = new CuiPoint(0.65f, 0.70f);
-        private readonly CuiPoint CUserPageBtnCMuteSixtyRtAnchor = new CuiPoint(0.80f, 0.76f);
+        private static readonly CuiPoint CUserPageBtnCUnmuteLbAnchor = new CuiPoint(0.01f, 0.70f);
+        private static readonly CuiPoint CUserPageBtnCUnmuteRtAnchor = new CuiPoint(0.16f, 0.76f);
+        private static readonly CuiPoint CUserPageBtnCMuteLbAnchor = new CuiPoint(0.17f, 0.70f);
+        private static readonly CuiPoint CUserPageBtnCMuteRtAnchor = new CuiPoint(0.32f, 0.76f);
+        private static readonly CuiPoint CUserPageBtnCMuteFifteenLbAnchor = new CuiPoint(0.33f, 0.70f);
+        private static readonly CuiPoint CUserPageBtnCMuteFifteenRtAnchor = new CuiPoint(0.48f, 0.76f);
+        private static readonly CuiPoint CUserPageBtnCMuteThirtyLbAnchor = new CuiPoint(0.49f, 0.70f);
+        private static readonly CuiPoint CUserPageBtnCMuteThirtyRtAnchor = new CuiPoint(0.64f, 0.76f);
+        private static readonly CuiPoint CUserPageBtnCMuteSixtyLbAnchor = new CuiPoint(0.65f, 0.70f);
+        private static readonly CuiPoint CUserPageBtnCMuteSixtyRtAnchor = new CuiPoint(0.80f, 0.76f);
         // Row 4
-        private readonly CuiPoint CUserPageBtnUnFreezeLbAnchor = new CuiPoint(0.01f, 0.62f);
-        private readonly CuiPoint CUserPageBtnUnFreezeRtAnchor = new CuiPoint(0.16f, 0.68f);
-        private readonly CuiPoint CUserPageBtnFreezeLbAnchor = new CuiPoint(0.17f, 0.62f);
-        private readonly CuiPoint CUserPageBtnFreezeRtAnchor = new CuiPoint(0.32f, 0.68f);
+        private static readonly CuiPoint CUserPageBtnUnFreezeLbAnchor = new CuiPoint(0.01f, 0.62f);
+        private static readonly CuiPoint CUserPageBtnUnFreezeRtAnchor = new CuiPoint(0.16f, 0.68f);
+        private static readonly CuiPoint CUserPageBtnFreezeLbAnchor = new CuiPoint(0.17f, 0.62f);
+        private static readonly CuiPoint CUserPageBtnFreezeRtAnchor = new CuiPoint(0.32f, 0.68f);
         // Row 5
-        private readonly CuiPoint CUserPageBtnClearInventoryLbAnchor = new CuiPoint(0.01f, 0.54f);
-        private readonly CuiPoint CUserPageBtnClearInventoryRtAnchor = new CuiPoint(0.16f, 0.60f);
-        private readonly CuiPoint CUserPageBtnResetBPLbAnchor = new CuiPoint(0.17f, 0.54f);
-        private readonly CuiPoint CUserPageBtnResetBPRtAnchor = new CuiPoint(0.32f, 0.60f);
-        private readonly CuiPoint CUserPageBtnResetMetabolismLbAnchor = new CuiPoint(0.33f, 0.54f);
-        private readonly CuiPoint CUserPageBtnResetMetabolismRtAnchor = new CuiPoint(0.48f, 0.60f);
-        private readonly CuiPoint CUserPageBtnRecoverMetabolismLbAnchor = new CuiPoint(0.49f, 0.54f);
-        private readonly CuiPoint CUserPageBtnRecoverMetabolismRtAnchor = new CuiPoint(0.64f, 0.60f);
+        private static readonly CuiPoint CUserPageBtnClearInventoryLbAnchor = new CuiPoint(0.01f, 0.54f);
+        private static readonly CuiPoint CUserPageBtnClearInventoryRtAnchor = new CuiPoint(0.16f, 0.60f);
+        private static readonly CuiPoint CUserPageBtnResetBPLbAnchor = new CuiPoint(0.17f, 0.54f);
+        private static readonly CuiPoint CUserPageBtnResetBPRtAnchor = new CuiPoint(0.32f, 0.60f);
+        private static readonly CuiPoint CUserPageBtnResetMetabolismLbAnchor = new CuiPoint(0.33f, 0.54f);
+        private static readonly CuiPoint CUserPageBtnResetMetabolismRtAnchor = new CuiPoint(0.48f, 0.60f);
+        private static readonly CuiPoint CUserPageBtnRecoverMetabolismLbAnchor = new CuiPoint(0.49f, 0.54f);
+        private static readonly CuiPoint CUserPageBtnRecoverMetabolismRtAnchor = new CuiPoint(0.64f, 0.60f);
         // Row 6
-        private readonly CuiPoint CUserPageBtnTeleportToLbAnchor = new CuiPoint(0.01f, 0.46f);
-        private readonly CuiPoint CUserPageBtnTeleportToRtAnchor = new CuiPoint(0.16f, 0.52f);
-        private readonly CuiPoint CUserPageBtnTeleportLbAnchor = new CuiPoint(0.17f, 0.46f);
-        private readonly CuiPoint CUserPageBtnTeleportRtAnchor = new CuiPoint(0.32f, 0.52f);
-        private readonly CuiPoint CUserPageBtnSpectateLbAnchor = new CuiPoint(0.33f, 0.46f);
-        private readonly CuiPoint CUserPageBtnSpectateRtAnchor = new CuiPoint(0.48f, 0.52f);
+        private static readonly CuiPoint CUserPageBtnTeleportToLbAnchor = new CuiPoint(0.01f, 0.46f);
+        private static readonly CuiPoint CUserPageBtnTeleportToRtAnchor = new CuiPoint(0.16f, 0.52f);
+        private static readonly CuiPoint CUserPageBtnTeleportLbAnchor = new CuiPoint(0.17f, 0.46f);
+        private static readonly CuiPoint CUserPageBtnTeleportRtAnchor = new CuiPoint(0.32f, 0.52f);
+        private static readonly CuiPoint CUserPageBtnSpectateLbAnchor = new CuiPoint(0.33f, 0.46f);
+        private static readonly CuiPoint CUserPageBtnSpectateRtAnchor = new CuiPoint(0.48f, 0.52f);
         // Row 7
-        private readonly CuiPoint CUserPageBtnPermsLbAnchor = new CuiPoint(0.01f, 0.38f);
-        private readonly CuiPoint CUserPageBtnPermsRtAnchor = new CuiPoint(0.16f, 0.44f);
+        private static readonly CuiPoint CUserPageBtnPermsLbAnchor = new CuiPoint(0.01f, 0.38f);
+        private static readonly CuiPoint CUserPageBtnPermsRtAnchor = new CuiPoint(0.16f, 0.44f);
         // Row 11
-        private readonly CuiPoint CUserPageBtnHurt25LbAnchor = new CuiPoint(0.01f, 0.10f);
-        private readonly CuiPoint CUserPageBtnHurt25RtAnchor = new CuiPoint(0.16f, 0.16f);
-        private readonly CuiPoint CUserPageBtnHurt50LbAnchor = new CuiPoint(0.17f, 0.10f);
-        private readonly CuiPoint CUserPageBtnHurt50RtAnchor = new CuiPoint(0.32f, 0.16f);
-        private readonly CuiPoint CUserPageBtnHurt75LbAnchor = new CuiPoint(0.33f, 0.10f);
-        private readonly CuiPoint CUserPageBtnHurt75RtAnchor = new CuiPoint(0.48f, 0.16f);
-        private readonly CuiPoint CUserPageBtnHurt100LbAnchor = new CuiPoint(0.49f, 0.10f);
-        private readonly CuiPoint CUserPageBtnHurt100RtAnchor = new CuiPoint(0.64f, 0.16f);
-        private readonly CuiPoint CUserPageBtnKillLbAnchor = new CuiPoint(0.65f, 0.10f);
-        private readonly CuiPoint CUserPageBtnKillRtAnchor = new CuiPoint(0.80f, 0.16f);
+        private static readonly CuiPoint CUserPageBtnHurt25LbAnchor = new CuiPoint(0.01f, 0.10f);
+        private static readonly CuiPoint CUserPageBtnHurt25RtAnchor = new CuiPoint(0.16f, 0.16f);
+        private static readonly CuiPoint CUserPageBtnHurt50LbAnchor = new CuiPoint(0.17f, 0.10f);
+        private static readonly CuiPoint CUserPageBtnHurt50RtAnchor = new CuiPoint(0.32f, 0.16f);
+        private static readonly CuiPoint CUserPageBtnHurt75LbAnchor = new CuiPoint(0.33f, 0.10f);
+        private static readonly CuiPoint CUserPageBtnHurt75RtAnchor = new CuiPoint(0.48f, 0.16f);
+        private static readonly CuiPoint CUserPageBtnHurt100LbAnchor = new CuiPoint(0.49f, 0.10f);
+        private static readonly CuiPoint CUserPageBtnHurt100RtAnchor = new CuiPoint(0.64f, 0.16f);
+        private static readonly CuiPoint CUserPageBtnKillLbAnchor = new CuiPoint(0.65f, 0.10f);
+        private static readonly CuiPoint CUserPageBtnKillRtAnchor = new CuiPoint(0.80f, 0.16f);
         // Row 12
-        private readonly CuiPoint CUserPageBtnHeal25LbAnchor = new CuiPoint(0.01f, 0.02f);
-        private readonly CuiPoint CUserPageBtnHeal25RtAnchor = new CuiPoint(0.16f, 0.08f);
-        private readonly CuiPoint CUserPageBtnHeal50LbAnchor = new CuiPoint(0.17f, 0.02f);
-        private readonly CuiPoint CUserPageBtnHeal50RtAnchor = new CuiPoint(0.32f, 0.08f);
-        private readonly CuiPoint CUserPageBtnHeal75LbAnchor = new CuiPoint(0.33f, 0.02f);
-        private readonly CuiPoint CUserPageBtnHeal75RtAnchor = new CuiPoint(0.48f, 0.08f);
-        private readonly CuiPoint CUserPageBtnHeal100LbAnchor = new CuiPoint(0.49f, 0.02f);
-        private readonly CuiPoint CUserPageBtnHeal100RtAnchor = new CuiPoint(0.64f, 0.08f);
-        private readonly CuiPoint CUserPageBtnHealWoundsLbAnchor = new CuiPoint(0.65f, 0.02f);
-        private readonly CuiPoint CUserPageBtnHealWoundsRtAnchor = new CuiPoint(0.80f, 0.08f);
+        private static readonly CuiPoint CUserPageBtnHeal25LbAnchor = new CuiPoint(0.01f, 0.02f);
+        private static readonly CuiPoint CUserPageBtnHeal25RtAnchor = new CuiPoint(0.16f, 0.08f);
+        private static readonly CuiPoint CUserPageBtnHeal50LbAnchor = new CuiPoint(0.17f, 0.02f);
+        private static readonly CuiPoint CUserPageBtnHeal50RtAnchor = new CuiPoint(0.32f, 0.08f);
+        private static readonly CuiPoint CUserPageBtnHeal75LbAnchor = new CuiPoint(0.33f, 0.02f);
+        private static readonly CuiPoint CUserPageBtnHeal75RtAnchor = new CuiPoint(0.48f, 0.08f);
+        private static readonly CuiPoint CUserPageBtnHeal100LbAnchor = new CuiPoint(0.49f, 0.02f);
+        private static readonly CuiPoint CUserPageBtnHeal100RtAnchor = new CuiPoint(0.64f, 0.08f);
+        private static readonly CuiPoint CUserPageBtnHealWoundsLbAnchor = new CuiPoint(0.65f, 0.02f);
+        private static readonly CuiPoint CUserPageBtnHealWoundsRtAnchor = new CuiPoint(0.80f, 0.08f);
         #endregion User page button bounds
         #endregion User page panel bounds
+
+        #region Predefined UI elements
+        private static readonly CuiPanel CBasePanel = new CuiPanel() {
+            RectTransform = {
+                AnchorMin = "1 1",
+                AnchorMax = "1 1",
+                OffsetMin = "0 0",
+                OffsetMax = "0 0"
+            },
+            CursorEnabled = true,
+            Image = new CuiImageComponent() { Color = CuiDefaultColors.None.ToString() }
+        };
+        private static readonly CuiPanel CMainPanel = new CuiPanel() {
+            RectTransform = {
+                AnchorMin = CMainLbAnchor.ToString(),
+                AnchorMax = CMainRtAnchor.ToString(),
+                OffsetMin = "0 0",
+                OffsetMax = "0 0"
+            },
+            CursorEnabled = true,
+            Image = new CuiImageComponent() { Color = CuiDefaultColors.BackgroundDark.ToString() }
+        };
+        private static readonly CuiPanel CTabHeaderPanel = new CuiPanel() {
+            RectTransform = {
+                AnchorMin = CMainMenuHeaderContainerLbAnchor.ToString(),
+                AnchorMax = CMainMenuHeaderContainerRtAnchor.ToString(),
+                OffsetMin = "0 0",
+                OffsetMax = "0 0"
+            },
+            CursorEnabled = true,
+            Image = new CuiImageComponent() { Color = CuiDefaultColors.None.ToString() }
+        };
+        private static readonly CuiPanel CTabTabBtnPanel = new CuiPanel() {
+            RectTransform = {
+                AnchorMin = CMainMenuTabBtnContainerLbAnchor.ToString(),
+                AnchorMax = CMainMenuTabBtnContainerRtAnchor.ToString(),
+                OffsetMin = "0 0",
+                OffsetMax = "0 0"
+            },
+            CursorEnabled = true,
+            Image = new CuiImageComponent() { Color = CuiDefaultColors.Background.ToString() }
+        };
+        private static readonly CuiPanel CMainPagePanel = new CuiPanel() {
+            RectTransform = {
+                AnchorMin = CMainPanelLbAnchor.ToString(),
+                AnchorMax = CMainPanelRtAnchor.ToString(),
+                OffsetMin = "0 0",
+                OffsetMax = "0 0"
+            },
+            CursorEnabled = true,
+            Image = new CuiImageComponent() { Color = CuiDefaultColors.Background.ToString() }
+        };
+        private static readonly CuiPanel CBanByIdGroupPanel = new CuiPanel() {
+            RectTransform = {
+                AnchorMin = CMainPagePanelBanByIdLbAnchor.ToString(),
+                AnchorMax = CMainPagePanelBanByIdRtAnchor.ToString(),
+                OffsetMin = "0 0",
+                OffsetMax = "0 0"
+            },
+            CursorEnabled = true,
+            Image = new CuiImageComponent() { Color = CuiDefaultColors.BackgroundDark.ToString() }
+        };
+        private static readonly CuiPanel CUserBtnPageSearchInputPanel = new CuiPanel() {
+            RectTransform = {
+                AnchorMin = CUserBtnPagePanelSearchInputLbAnchor.ToString(),
+                AnchorMax = CUserBtnPagePanelSearchInputRtAnchor.ToString(),
+                OffsetMin = "0 0",
+                OffsetMax = "0 0"
+            },
+            CursorEnabled = true,
+            Image = new CuiImageComponent() { Color = CuiDefaultColors.BackgroundDark.ToString() }
+        };
+        private static readonly CuiLabel CTabMenuHeaderLbl = new CuiLabel() {
+            Text = {
+                Text = "Player Administration by ThibmoRozier",
+                FontSize = 22,
+                Align = TextAnchor.MiddleCenter,
+                Color = CuiDefaultColors.TextTitle.ToString()
+            },
+            RectTransform = {
+                AnchorMin = CMainMenuHeaderLblLbAnchor.ToString(),
+                AnchorMax = CMainMenuHeaderLblRtAnchor.ToString(),
+                OffsetMin = "0 0",
+                OffsetMax = "0 0"
+            }
+        };
+        private static readonly CuiLabel CMainPageTitleLbl = new CuiLabel() {
+            Text = {
+                Text = "Main",
+                FontSize = 18,
+                Align = TextAnchor.MiddleLeft,
+                Color = CuiDefaultColors.TextAlt.ToString()
+            },
+            RectTransform = {
+                AnchorMin = CMainLblTitleLbAnchor.ToString(),
+                AnchorMax = CMainLblTitleRtAnchor.ToString(),
+                OffsetMin = "0 0",
+                OffsetMax = "0 0"
+            }
+        };
+        private static readonly CuiButton CTabMenuCloseBtn = new CuiButton() {
+            Button = {
+                Command = CCloseUiCmd,
+                Close = string.Empty,
+                Color = CuiDefaultColors.ButtonDecline.ToString()
+            },
+            RectTransform = {
+                AnchorMin = CMainMenuCloseBtnLbAnchor.ToString(),
+                AnchorMax = CMainMenuCloseBtnRtAnchor.ToString(),
+                OffsetMin = "0 0",
+                OffsetMax = "0 0"
+            },
+            Text = {
+                Text = "X",
+                FontSize = 22,
+                Align = TextAnchor.MiddleCenter,
+                Color = CuiDefaultColors.TextAlt.ToString()
+            }
+        };
+        private static readonly CuiButton CBanByIdActiveBtn = new CuiButton() {
+            Button = {
+                Command = CMainPageBanByIdCmd,
+                Close = string.Empty,
+                Color = CuiDefaultColors.ButtonDanger.ToString()
+            },
+            RectTransform = {
+                AnchorMin = CMainPageBtnBanByIdLbAnchor.ToString(),
+                AnchorMax = CMainPageBtnBanByIdRtAnchor.ToString(),
+                OffsetMin = "0 0",
+                OffsetMax = "0 0"
+            },
+            Text = {
+                Text = "Ban",
+                FontSize = 14,
+                Align = TextAnchor.MiddleCenter,
+                Color = CuiDefaultColors.TextAlt.ToString()
+            }
+        };
+        private static readonly CuiButton CBanByIdInactiveBtn = new CuiButton() {
+            Button = {
+                Command = string.Empty,
+                Close = string.Empty,
+                Color = CuiDefaultColors.ButtonInactive.ToString()
+            },
+            RectTransform = {
+                AnchorMin = CMainPageBtnBanByIdLbAnchor.ToString(),
+                AnchorMax = CMainPageBtnBanByIdRtAnchor.ToString(),
+                OffsetMin = "0 0",
+                OffsetMax = "0 0"
+            },
+            Text = {
+                Text = "Ban",
+                FontSize = 14,
+                Align = TextAnchor.MiddleCenter,
+                Color = CuiDefaultColors.TextAlt.ToString()
+            }
+        };
+        private static readonly CuiButton CUserBtnPagePreviousInactiveBtn = new CuiButton() {
+            Button = {
+                Command = string.Empty,
+                Close = string.Empty,
+                Color = CuiDefaultColors.ButtonInactive.ToString()
+            },
+            RectTransform = {
+                AnchorMin = CUserBtnPageBtnPreviousLbAnchor.ToString(),
+                AnchorMax = CUserBtnPageBtnPreviousRtAnchor.ToString(),
+                OffsetMin = "0 0",
+                OffsetMax = "0 0"
+            },
+            Text = {
+                Text = "<<",
+                FontSize = 18,
+                Align = TextAnchor.MiddleCenter,
+                Color = CuiDefaultColors.TextAlt.ToString()
+            }
+        };
+        private static readonly CuiButton CUserBtnPageNextInactiveBtn = new CuiButton() {
+            Button = {
+                Command = string.Empty,
+                Close = string.Empty,
+                Color = CuiDefaultColors.ButtonInactive.ToString()
+            },
+            RectTransform = {
+                AnchorMin = CUserBtnPageBtnNextLbAnchor.ToString(),
+                AnchorMax = CUserBtnPageBtnNextRtAnchor.ToString(),
+                OffsetMin = "0 0",
+                OffsetMax = "0 0"
+            },
+            Text = {
+                Text = ">>",
+                FontSize = 18,
+                Align = TextAnchor.MiddleCenter,
+                Color = CuiDefaultColors.TextAlt.ToString()
+            }
+        };
+        private static readonly CuiInputField CBanByIdEdt = new CuiInputField()
+        {
+            InputField = {
+                Text = string.Empty,
+                FontSize = 14,
+                Align = TextAnchor.MiddleLeft,
+                Color = CuiDefaultColors.TextAlt.ToString(),
+                CharsLimit = 24,
+                Command = CMainPageBanIdInputTextCmd,
+                IsPassword = false
+            },
+            RectTransform = {
+                AnchorMin = CMainPageEdtBanByIdLbAnchor.ToString(),
+                AnchorMax = CMainPageEdtBanByIdRtAnchor.ToString(),
+                OffsetMin = "0 0",
+                OffsetMax = "0 0"
+            }
+        };
+        #endregion Predefined UI elements
         #endregion Constants
 
         #region Variables
         private static PlayerAdministration FPluginInstance;
         private ConfigData FConfigData;
-        private Dictionary<ulong, string> FMainPageBanIdInputText = new Dictionary<ulong, string>(); // Format: <userId, text>
+        private Dictionary<ulong, string> FMainPageBanIdInputText = new Dictionary<ulong, string>();     // Format: <userId, text>
         private Dictionary<ulong, string> FUserBtnPageSearchInputText = new Dictionary<ulong, string>(); // Format: <userId, text>
-        private Dictionary<ulong, string> FUserPageReasonInputText = new Dictionary<ulong, string>(); // Format: <userId, text>
+        private Dictionary<ulong, string> FUserPageReasonInputText = new Dictionary<ulong, string>();    // Format: <userId, text>
         #endregion Variables
 
         #region Hooks
@@ -2207,6 +2453,15 @@ namespace Oxide.Plugins
                 return;
 
             LogInfo($"{aPlayer.displayName}: Opened the menu");
+            CuiHelper.AddUi(
+                aPlayer,
+                CuiHelper.ToJson(
+                    new CuiElementContainer {
+                        { CBasePanel, Cui.ParentOverlay, CBasePanelName }
+                    },
+                    false
+                )
+            );
             BuildUI(aPlayer, UiPage.Main);
         }
 
@@ -2215,7 +2470,8 @@ namespace Oxide.Plugins
         {
             LogDebug("PlayerAdministrationCloseUICallback was called");
             BasePlayer player = aArg.Player();
-            CuiHelper.DestroyUi(aArg.Player(), CMainPanelName);
+            // CuiHelper.DestroyUi(aArg.Player(), CMainPanelName);
+            CuiHelper.DestroyUi(aArg.Player(), CBasePanelName);
 
             if (FMainPageBanIdInputText.ContainsKey(player.userID))
                 FMainPageBanIdInputText.Remove(player.userID);
