@@ -34,7 +34,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.4.0")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.4.1")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : RustPlugin
     {
@@ -2033,7 +2033,7 @@ namespace Oxide.Plugins
         #region Predefined UI elements
         private static readonly CuiPanel CBasePanel = new CuiPanel() {
             RectTransform = {
-                AnchorMin = "1 1",
+                AnchorMin = "0 0",
                 AnchorMax = "1 1",
                 OffsetMin = "0 0",
                 OffsetMax = "0 0"
@@ -2041,6 +2041,7 @@ namespace Oxide.Plugins
             CursorEnabled = true,
             Image = new CuiImageComponent() { Color = CuiDefaultColors.None.ToString() }
         };
+
         private static readonly CuiPanel CMainPanel = new CuiPanel() {
             RectTransform = {
                 AnchorMin = CMainLbAnchor.ToString(),
@@ -2051,6 +2052,7 @@ namespace Oxide.Plugins
             CursorEnabled = true,
             Image = new CuiImageComponent() { Color = CuiDefaultColors.BackgroundDark.ToString() }
         };
+
         private static readonly CuiPanel CTabHeaderPanel = new CuiPanel() {
             RectTransform = {
                 AnchorMin = CMainMenuHeaderContainerLbAnchor.ToString(),
@@ -2061,6 +2063,7 @@ namespace Oxide.Plugins
             CursorEnabled = true,
             Image = new CuiImageComponent() { Color = CuiDefaultColors.None.ToString() }
         };
+
         private static readonly CuiPanel CTabTabBtnPanel = new CuiPanel() {
             RectTransform = {
                 AnchorMin = CMainMenuTabBtnContainerLbAnchor.ToString(),
@@ -2071,6 +2074,7 @@ namespace Oxide.Plugins
             CursorEnabled = true,
             Image = new CuiImageComponent() { Color = CuiDefaultColors.Background.ToString() }
         };
+
         private static readonly CuiPanel CMainPagePanel = new CuiPanel() {
             RectTransform = {
                 AnchorMin = CMainPanelLbAnchor.ToString(),
@@ -2081,6 +2085,7 @@ namespace Oxide.Plugins
             CursorEnabled = true,
             Image = new CuiImageComponent() { Color = CuiDefaultColors.Background.ToString() }
         };
+
         private static readonly CuiPanel CBanByIdGroupPanel = new CuiPanel() {
             RectTransform = {
                 AnchorMin = CMainPagePanelBanByIdLbAnchor.ToString(),
@@ -2091,6 +2096,7 @@ namespace Oxide.Plugins
             CursorEnabled = true,
             Image = new CuiImageComponent() { Color = CuiDefaultColors.BackgroundDark.ToString() }
         };
+
         private static readonly CuiPanel CUserBtnPageSearchInputPanel = new CuiPanel() {
             RectTransform = {
                 AnchorMin = CUserBtnPagePanelSearchInputLbAnchor.ToString(),
@@ -2101,6 +2107,7 @@ namespace Oxide.Plugins
             CursorEnabled = true,
             Image = new CuiImageComponent() { Color = CuiDefaultColors.BackgroundDark.ToString() }
         };
+
         private static readonly CuiLabel CTabMenuHeaderLbl = new CuiLabel() {
             Text = {
                 Text = "Player Administration by ThibmoRozier",
@@ -2115,6 +2122,7 @@ namespace Oxide.Plugins
                 OffsetMax = "0 0"
             }
         };
+
         private static readonly CuiLabel CMainPageTitleLbl = new CuiLabel() {
             Text = {
                 Text = "Main",
@@ -2129,6 +2137,7 @@ namespace Oxide.Plugins
                 OffsetMax = "0 0"
             }
         };
+
         private static readonly CuiButton CTabMenuCloseBtn = new CuiButton() {
             Button = {
                 Command = CCloseUiCmd,
@@ -2148,6 +2157,7 @@ namespace Oxide.Plugins
                 Color = CuiDefaultColors.TextAlt.ToString()
             }
         };
+
         private static readonly CuiButton CBanByIdActiveBtn = new CuiButton() {
             Button = {
                 Command = CMainPageBanByIdCmd,
@@ -2167,6 +2177,7 @@ namespace Oxide.Plugins
                 Color = CuiDefaultColors.TextAlt.ToString()
             }
         };
+
         private static readonly CuiButton CBanByIdInactiveBtn = new CuiButton() {
             Button = {
                 Command = string.Empty,
@@ -2186,6 +2197,7 @@ namespace Oxide.Plugins
                 Color = CuiDefaultColors.TextAlt.ToString()
             }
         };
+
         private static readonly CuiButton CUserBtnPagePreviousInactiveBtn = new CuiButton() {
             Button = {
                 Command = string.Empty,
@@ -2205,6 +2217,7 @@ namespace Oxide.Plugins
                 Color = CuiDefaultColors.TextAlt.ToString()
             }
         };
+
         private static readonly CuiButton CUserBtnPageNextInactiveBtn = new CuiButton() {
             Button = {
                 Command = string.Empty,
@@ -2224,6 +2237,7 @@ namespace Oxide.Plugins
                 Color = CuiDefaultColors.TextAlt.ToString()
             }
         };
+
         private static readonly CuiInputField CBanByIdEdt = new CuiInputField()
         {
             InputField = {
@@ -2279,7 +2293,7 @@ namespace Oxide.Plugins
         void Unload()
         {
             foreach (BasePlayer player in Player.Players) {
-                CuiHelper.DestroyUi(player, CMainPanelName);
+                CuiHelper.DestroyUi(player, CBasePanelName);
 
                 if (FMainPageBanIdInputText.ContainsKey(player.userID))
                     FMainPageBanIdInputText.Remove(player.userID);
@@ -2448,20 +2462,18 @@ namespace Oxide.Plugins
         private void PlayerAdministrationUICallback(BasePlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationUICallback was called");
+            CuiHelper.DestroyUi(aPlayer, CBasePanelName);
 
             if (!VerifyPermission(ref aPlayer, string.Empty, true))
                 return;
 
             LogInfo($"{aPlayer.displayName}: Opened the menu");
-            CuiHelper.AddUi(
-                aPlayer,
-                CuiHelper.ToJson(
-                    new CuiElementContainer {
-                        { CBasePanel, Cui.ParentOverlay, CBasePanelName }
-                    },
-                    false
-                )
-            );
+            CuiHelper.AddUi(aPlayer, CuiHelper.ToJson(
+                new CuiElementContainer {
+                    { CBasePanel, Cui.ParentOverlay, CBasePanelName }
+                },
+                false
+            ));
             BuildUI(aPlayer, UiPage.Main);
         }
 
@@ -2470,8 +2482,7 @@ namespace Oxide.Plugins
         {
             LogDebug("PlayerAdministrationCloseUICallback was called");
             BasePlayer player = aArg.Player();
-            // CuiHelper.DestroyUi(aArg.Player(), CMainPanelName);
-            CuiHelper.DestroyUi(aArg.Player(), CBasePanelName);
+            CuiHelper.DestroyUi(player, CBasePanelName);
 
             if (FMainPageBanIdInputText.ContainsKey(player.userID))
                 FMainPageBanIdInputText.Remove(player.userID);
