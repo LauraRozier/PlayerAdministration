@@ -34,7 +34,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.4.1")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.0")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : RustPlugin
     {
@@ -1844,6 +1844,11 @@ namespace Oxide.Plugins
         private const string CPermHeal = "playeradministration.heal";
         private const string CPermTeleport = "playeradministration.teleport";
         private const string CPermSpectate = "playeradministration.spectate";
+        private const string CPermProtectBan = "playeradministration.protect.ban";
+        private const string CPermProtectHurt = "playeradministration.protect.hurt";
+        private const string CPermProtectKick = "playeradministration.protect.kick";
+        private const string CPermProtectKill = "playeradministration.protect.kill";
+        private const string CPermProtectReset = "playeradministration.protect.reset";
         #endregion Local permissions
 
         #region Foreign permissions
@@ -2287,6 +2292,11 @@ namespace Oxide.Plugins
             permission.RegisterPermission(CPermHeal, this);
             permission.RegisterPermission(CPermTeleport, this);
             permission.RegisterPermission(CPermSpectate, this);
+            permission.RegisterPermission(CPermProtectBan, this);
+            permission.RegisterPermission(CPermProtectHurt, this);
+            permission.RegisterPermission(CPermProtectKick, this);
+            permission.RegisterPermission(CPermProtectKill, this);
+            permission.RegisterPermission(CPermProtectReset, this);
             FPluginInstance = this;
         }
 
@@ -2359,6 +2369,7 @@ namespace Oxide.Plugins
                 { "Permission Error Log Text", "{0}: Tried to execute a command requiring the '{1}' permission" },
                 { "Kick Reason Message Text", "Administrative decision" },
                 { "Ban Reason Message Text", "Administrative decision" },
+                { "Protection Active Text", "Unable to perform this action, protection is enabled for this user" },
 
                 { "Never Label Text", "Never" },
                 { "Banned Label Text", " (Banned)" },
@@ -2565,6 +2576,11 @@ namespace Oxide.Plugins
             if (!VerifyPermission(ref player, CPermBan, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
+            if (permission.UserHasPermission(targetId.ToString(), CPermProtectBan)) {
+                SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                return;
+            }
+
             string banReasonMsg;
 
             if (FUserPageReasonInputText.ContainsKey(player.userID)) {
@@ -2579,7 +2595,9 @@ namespace Oxide.Plugins
             Player.Ban(targetId, banReasonMsg);
             ServerUsers.User targetPlayer = ServerUsers.Get(targetId);
             LogInfo($"{player.displayName}: Banned user ID {targetId}");
-            SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.username, targetId.ToString(), banReasonMsg, true);
+            SendDiscordKickBanMessage(
+                player.displayName, player.UserIDString, targetPlayer.username, targetId.ToString(), banReasonMsg, true
+            );
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
@@ -2590,16 +2608,24 @@ namespace Oxide.Plugins
             BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermBan, true) || !FMainPageBanIdInputText.ContainsKey(player.userID) ||
+            if (
+                !VerifyPermission(ref player, CPermBan, true) || !FMainPageBanIdInputText.ContainsKey(player.userID) ||
                 !ulong.TryParse(FMainPageBanIdInputText[player.userID], out targetId)
             )
                 return;
+
+            if (permission.UserHasPermission(targetId.ToString(), CPermProtectBan)) {
+                SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                return;
+            }
 
             string banReasonMsg = GetMessage("Ban Reason Message Text", targetId.ToString());
             Player.Ban(targetId, banReasonMsg);
             ServerUsers.User targetPlayer = ServerUsers.Get(targetId);
             LogInfo($"{player.displayName}: Banned user ID {targetId}");
-            SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.username, targetId.ToString(), banReasonMsg, true);
+            SendDiscordKickBanMessage(
+                player.displayName, player.UserIDString, targetPlayer.username, targetId.ToString(), banReasonMsg, true
+            );
             timer.Once(0.01f, () => BuildUI(player, UiPage.Main));
         }
 
@@ -2613,11 +2639,19 @@ namespace Oxide.Plugins
             if (!VerifyPermission(ref player, CPermKick, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
+            if (permission.UserHasPermission(targetId.ToString(), CPermProtectKick)) {
+                SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                return;
+            }
+
             BasePlayer targetPlayer = BasePlayer.FindByID(targetId);
             string kickReasonMsg = GetMessage("Kick Reason Message Text", targetId.ToString());
             targetPlayer?.Kick(kickReasonMsg);
             LogInfo($"{player.displayName}: Kicked user ID {targetId}");
-            SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.displayName, targetPlayer.UserIDString, kickReasonMsg, false);
+            SendDiscordKickBanMessage(
+                player.displayName, player.UserIDString, targetPlayer.displayName, targetPlayer.UserIDString,
+                kickReasonMsg, false
+            );
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
@@ -2631,7 +2665,9 @@ namespace Oxide.Plugins
             if (!VerifyPermission(ref player, CPermVoiceMute, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
-            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, false);
+            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(
+                BasePlayer.PlayerFlags.VoiceMuted, false
+            );
             LogInfo($"{player.displayName}: Voice unmuted user ID {targetId}");
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
@@ -2646,7 +2682,9 @@ namespace Oxide.Plugins
             if (!VerifyPermission(ref player, CPermVoiceMute, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
-            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, true);
+            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(
+                BasePlayer.PlayerFlags.VoiceMuted, true
+            );
             LogInfo($"{player.displayName}: Voice muted user ID {targetId}");
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
@@ -2679,7 +2717,10 @@ namespace Oxide.Plugins
             ulong targetId;
             float time;
 
-            if (!VerifyPermission(ref player, CPermChatMute, true) || !GetTargetAmountFromArg(ref aArg, out targetId, out time))
+            if (
+                !VerifyPermission(ref player, CPermChatMute, true) ||
+                !GetTargetAmountFromArg(ref aArg, out targetId, out time)
+            )
                 return;
 
             BasePlayer target = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
@@ -2740,6 +2781,11 @@ namespace Oxide.Plugins
             if (!VerifyPermission(ref player, CPermClearInventory, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
+            if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
+                SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                return;
+            }
+
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.inventory.Strip();
             LogInfo($"{player.displayName}: Cleared the inventory of user ID {targetId}");
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
@@ -2754,6 +2800,11 @@ namespace Oxide.Plugins
 
             if (!VerifyPermission(ref player, CPermResetBP, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
+
+            if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
+                SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                return;
+            }
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.blueprints.Reset();
             LogInfo($"{player.displayName}: Reset the blueprints of user ID {targetId}");
@@ -2770,6 +2821,11 @@ namespace Oxide.Plugins
             if (!VerifyPermission(ref player, CPermResetMetabolism, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
+            if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
+                SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                return;
+            }
+
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.metabolism.Reset();
             LogInfo($"{player.displayName}: Reset the metabolism of user ID {targetId}");
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
@@ -2782,10 +2838,14 @@ namespace Oxide.Plugins
             BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermRecoverMetabolism, true) || !GetTargetFromArg(ref aArg, out targetId))
+            if (
+                !VerifyPermission(ref player, CPermRecoverMetabolism, true) ||
+                !GetTargetFromArg(ref aArg, out targetId)
+            )
                 return;
 
-            PlayerMetabolism playerState = (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.metabolism;
+            PlayerMetabolism playerState =
+                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.metabolism;
             playerState.bleeding.value = playerState.bleeding.min;
             playerState.calories.value = playerState.calories.max;
             playerState.comfort.value = 0;
@@ -2862,7 +2922,9 @@ namespace Oxide.Plugins
                 return;
 
             player.SendConsoleCommand($"chat.say \"/{CPermsPermsCmd} {targetId}\"");
-            timer.Once(0.01f, () => LogInfo($"{player.displayName}: Opened the permissions manager for user ID {targetId}"));
+            timer.Once(
+                0.01f, () => LogInfo($"{player.displayName}: Opened the permissions manager for user ID {targetId}")
+            );
         }
 
         [ConsoleCommand(CHurtUserCmd)]
@@ -2873,8 +2935,16 @@ namespace Oxide.Plugins
             ulong targetId;
             float amount;
 
-            if (!VerifyPermission(ref player, CPermHurt, true) || !GetTargetAmountFromArg(ref aArg, out targetId, out amount))
+            if (
+                !VerifyPermission(ref player, CPermHurt, true) ||
+                !GetTargetAmountFromArg(ref aArg, out targetId, out amount)
+            )
                 return;
+
+            if (permission.UserHasPermission(targetId.ToString(), CPermProtectHurt)) {
+                SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                return;
+            }
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Hurt(amount);
             LogInfo($"{player.displayName}: Hurt user ID {targetId} for {amount} points");
@@ -2891,6 +2961,11 @@ namespace Oxide.Plugins
             if (!VerifyPermission(ref player, CPermKill, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
+            if (permission.UserHasPermission(targetId.ToString(), CPermProtectKill)) {
+                SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                return;
+            }
+
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Die();
             LogInfo($"{player.displayName}: Killed user ID {targetId}");
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
@@ -2904,7 +2979,10 @@ namespace Oxide.Plugins
             ulong targetId;
             float amount;
 
-            if (!VerifyPermission(ref player, CPermHeal, true) || !GetTargetAmountFromArg(ref aArg, out targetId, out amount))
+            if (
+                !VerifyPermission(ref player, CPermHeal, true) ||
+                !GetTargetAmountFromArg(ref aArg, out targetId, out amount)
+            )
                 return;
 
             BasePlayer targetPlayer = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);

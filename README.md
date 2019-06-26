@@ -27,6 +27,8 @@
 
 ## Permissions
 
+Hint: To easily add all protections use the RCON command: `oxide.grant {user <username> | group <group name>} playeradministration.protect.*`
+
 - **playeradministration.show** -- Required to be able to use the `/padmin` command and plugin
 - **playeradministration.kick** -- Allows the user to kick any player
 - **playeradministration.ban** -- Allows the user to ban and unban any player
@@ -43,6 +45,11 @@
 - **playeradministration.freeze** -- Allows the user to freeze and unfreeze any player
 - **playeradministration.teleport** -- Allows the user to teleport to any player
 - **playeradministration.spectate** -- Allows the user to spectate any player
+- **playeradministration.protect.ban** -- Protect the user against banning through the panel
+- **playeradministration.protect.hurt** -- Protect the user against hurting through the panel
+- **playeradministration.protect.kick** -- Protect the user against kicking through the panel
+- **playeradministration.protect.kill** -- Protect the user against killing through the panel
+- **playeradministration.protect.reset** -- Protect the user against stat/BP/inventory resetting/clearing through the panel
 
 ## Chat Commands
 
@@ -103,6 +110,7 @@ The default messages are in the `PlayerAdministration.json` file under the `oxid
   "Permission Error Log Text": "{0}: Tried to execute a command requiring the '{1}' permission",
   "Kick Reason Message Text": "Administrative decision",
   "Ban Reason Message Text": "Administrative decision",
+  "Protection Active Text": "Unable to perform this action, protection is enabled for this user",
 
   "Never Label Text": "Never",
   "Banned Label Text": " (Banned)",
