@@ -26,6 +26,7 @@
  */
 using Newtonsoft.Json;
 using Oxide.Core;
+using Oxide.Core.Libraries.Covalence;
 using Oxide.Core.Plugins;
 using Oxide.Game.Rust.Cui;
 using Oxide.Game.Rust.Libraries;
@@ -38,7 +39,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.5.2")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.3")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -788,10 +789,10 @@ namespace Oxide.Plugins
         /// <param name="aArg">Argument object</param>
         /// <param name="aTarget">Player ID</param>
         /// <returns></returns>
-        private bool GetTargetFromArg(ref ConsoleSystem.Arg aArg, out ulong aTarget)
+        private bool GetTargetFromArg(string[] aArgs, out ulong aTarget)
         {
             aTarget = 0;
-            return aArg.HasArgs() && ulong.TryParse(aArg.Args[0], out aTarget);
+            return aArgs.Count() > 0 && ulong.TryParse(aArgs[0], out aTarget);
         }
 
         /// <summary>
@@ -801,11 +802,11 @@ namespace Oxide.Plugins
         /// <param name="aTarget">Player ID</param>
         /// <param name="aAmount">Amount</param>
         /// <returns></returns>
-        private bool GetTargetAmountFromArg(ref ConsoleSystem.Arg aArg, out ulong aTarget, out float aAmount)
+        private bool GetTargetAmountFromArg(string[] aArgs, out ulong aTarget, out float aAmount)
         {
             aTarget = 0;
             aAmount = 0;
-            return aArg.HasArgs(2) && ulong.TryParse(aArg.Args[0], out aTarget) && float.TryParse(aArg.Args[1], out aAmount);
+            return aArgs.Count() >= 2 && ulong.TryParse(aArgs[0], out aTarget) && float.TryParse(aArgs[1], out aAmount);
         }
 
         /// <summary>
@@ -1176,17 +1177,18 @@ namespace Oxide.Plugins
             }
 
             LogDebug("AddUserPageInfoLabels > Time since last admin cheat has been determined.");
-            /*
             aUIObj.AddLabel(
                 aParent, CUserPageLblIdLbAnchor, CUserPageLblIdRtAnchor, CuiColor.TextAlt,
                 GetMessage("Id Label Format", aUiUserId, aPlayerId, (aPlayer.IsDeveloper ? GetMessage("Dev Label Text", aUiUserId) : string.Empty)),
                 string.Empty, 14, TextAnchor.MiddleLeft
             );
-            */
+            /*
             aUIObj.AddInputField(
                 aParent, CUserPageLblIdLbAnchor, CUserPageLblIdRtAnchor, CuiColor.TextAlt,
-                GetMessage("Id Label Format", aUiUserId, aPlayerId, (aPlayer.IsDeveloper ? GetMessage("Dev Label Text", aUiUserId) : string.Empty))
+                GetMessage("Id Label Format", aUiUserId, aPlayerId, (aPlayer.IsDeveloper ? GetMessage("Dev Label Text", aUiUserId) : string.Empty)),
+                100, string.Empty, false, string.Empty, 14, TextAnchor.MiddleLeft
             );
+            */
             aUIObj.AddLabel(
                 aParent, CUserPageLblAuthLbAnchor, CUserPageLblAuthRtAnchor, CuiColor.TextAlt,
                 GetMessage("Auth Level Label Format", aUiUserId, authLevel), string.Empty, 14, TextAnchor.MiddleLeft
@@ -1895,32 +1897,32 @@ namespace Oxide.Plugins
 
         #region Local commands
         private const string CPadminCmd = "padmin";
-        private const string CCloseUiCmd = "padm_closeui";
-        private const string CSwitchUiCmd = "padm_switchui";
-        private const string CKickUserCmd = "padm_kickuser";
-        private const string CBanUserCmd = "padm_banuser";
-        private const string CMainPageBanByIdCmd = "padm_mainpagebanbyid";
-        private const string CUnbanUserCmd = "padm_unbanuser";
-        private const string CPermsCmd = "padm_perms";
-        private const string CVoiceMuteUserCmd = "padm_vmuteuser";
-        private const string CVoiceUnmuteUserCmd = "padm_vunmuteuser";
-        private const string CChatMuteUserCmd = "padm_cmuteuser";
-        private const string CChatUnmuteUserCmd = "padm_cunmuteuser";
-        private const string CFreezeCmd = "padm_freeze";
-        private const string CUnreezeCmd = "padm_unfreeze";
-        private const string CClearUserInventoryCmd = "padm_clearuserinventory";
-        private const string CResetUserBPCmd = "padm_resetuserblueprints";
-        private const string CResetUserMetabolismCmd = "padm_resetusermetabolism";
-        private const string CRecoverUserMetabolismCmd = "padm_recoverusermetabolism";
-        private const string CHurtUserCmd = "padm_hurtuser";
-        private const string CKillUserCmd = "padm_killuser";
-        private const string CHealUserCmd = "padm_healuser";
-        private const string CTeleportToUserCmd = "padm_tptouser";
-        private const string CTeleportUserCmd = "padm_tpuser";
-        private const string CSpectateUserCmd = "padm_spectateuser";
-        private const string CMainPageBanIdInputTextCmd = "padm_mainpagebanidinputtext";
-        private const string CUserBtnPageSearchInputTextCmd = "padm_userbtnpagesearchinputtext";
-        private const string CUserPageReasonInputTextCmd = "padm_userpagereasoninputtext";
+        private const string CCloseUiCmd = "playeradministration.closeui";
+        private const string CSwitchUiCmd = "playeradministration.switchui";
+        private const string CKickUserCmd = "playeradministration.kickuser";
+        private const string CBanUserCmd = "playeradministration.banuser";
+        private const string CMainPageBanByIdCmd = "playeradministration.mainpagebanbyid";
+        private const string CUnbanUserCmd = "playeradministration.unbanuser";
+        private const string CPermsCmd = "playeradministration.perms";
+        private const string CVoiceMuteUserCmd = "playeradministration.vmuteuser";
+        private const string CVoiceUnmuteUserCmd = "playeradministration.vunmuteuser";
+        private const string CChatMuteUserCmd = "playeradministration.cmuteuser";
+        private const string CChatUnmuteUserCmd = "playeradministration.cunmuteuser";
+        private const string CFreezeCmd = "playeradministration.freeze";
+        private const string CUnreezeCmd = "playeradministration.unfreeze";
+        private const string CClearUserInventoryCmd = "playeradministration.clearuserinventory";
+        private const string CResetUserBPCmd = "playeradministration.resetuserblueprints";
+        private const string CResetUserMetabolismCmd = "playeradministration.resetusermetabolism";
+        private const string CRecoverUserMetabolismCmd = "playeradministration.recoverusermetabolism";
+        private const string CHurtUserCmd = "playeradministration.hurtuser";
+        private const string CKillUserCmd = "playeradministration.killuser";
+        private const string CHealUserCmd = "playeradministration.healuser";
+        private const string CTeleportToUserCmd = "playeradministration.tptouser";
+        private const string CTeleportUserCmd = "playeradministration.tpuser";
+        private const string CSpectateUserCmd = "playeradministration.spectateuser";
+        private const string CMainPageBanIdInputTextCmd = "playeradministration.mainpagebanidinputtext";
+        private const string CUserBtnPageSearchInputTextCmd = "playeradministration.userbtnpagesearchinputtext";
+        private const string CUserPageReasonInputTextCmd = "playeradministration.userpagereasoninputtext";
         #endregion Local commands
 
         #region Foreign commands
@@ -2629,25 +2631,26 @@ namespace Oxide.Plugins
         #endregion Hooks
 
         #region Command Callbacks
-        [ChatCommand(CPadminCmd)]
-        private void PlayerAdministrationUICallback(BasePlayer aPlayer, string aCommand, string[] aArgs)
+        [Command(CPadminCmd)]
+        private void PlayerAdministrationUICallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             LogDebug("PlayerAdministrationUICallback was called");
-            CuiHelper.DestroyUi(aPlayer, CBasePanelName);
+            CuiHelper.DestroyUi(player, CBasePanelName);
 
-            if (!VerifyPermission(ref aPlayer, string.Empty, true))
+            if (!VerifyPermission(ref player, string.Empty, true))
                 return;
 
-            LogInfo($"{aPlayer.displayName}: Opened the menu");
-            CuiHelper.AddUi(aPlayer, CuiHelper.ToJson(new CuiElementContainer {{ CBasePanel, Cui.ParentOverlay, CBasePanelName }}, false));
-            BuildUI(aPlayer, UiPage.Main);
+            LogInfo($"{player.displayName}: Opened the menu");
+            CuiHelper.AddUi(player, CuiHelper.ToJson(new CuiElementContainer {{ CBasePanel, Cui.ParentOverlay, CBasePanelName }}, false));
+            BuildUI(player, UiPage.Main);
         }
 
-        [ConsoleCommand(CCloseUiCmd)]
-        private void PlayerAdministrationCloseUICallback(ConsoleSystem.Arg aArg)
+        [Command(CCloseUiCmd)]
+        private void PlayerAdministrationCloseUICallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationCloseUICallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             CuiHelper.DestroyUi(player, CBasePanelName);
 
             if (FMainPageBanIdInputText.ContainsKey(player.userID))
@@ -2657,46 +2660,48 @@ namespace Oxide.Plugins
                 FUserBtnPageSearchInputText.Remove(player.userID);
         }
 
-        [ConsoleCommand(CSwitchUiCmd)]
-        private void PlayerAdministrationSwitchUICallback(ConsoleSystem.Arg aArg)
+        [Command(CSwitchUiCmd)]
+        private void PlayerAdministrationSwitchUICallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationSwitchUICallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
-            if (!VerifyPermission(ref player, string.Empty, true) || !aArg.HasArgs())
+            if (!VerifyPermission(ref player, string.Empty, true) || aArgs.Count() <= 0)
                 return;
 
-            switch (aArg.Args[0].ToLower()) {
+            bool twoOrMore = aArgs.Count() >= 2;
+
+            switch (aArgs[0].ToLower()) {
                 case CCmdArgPlayersOnline: {
-                    BuildUI(player, UiPage.PlayersOnline, (aArg.HasArgs(2) ? aArg.Args[1] : string.Empty));
+                    BuildUI(player, UiPage.PlayersOnline, (twoOrMore ? aArgs[1] : string.Empty));
                     break;
                 }
                 case CCmdArgPlayersOnlineSearch: {
-                    BuildUI(player, UiPage.PlayersOnline, (aArg.HasArgs(2) ? aArg.Args[1] : string.Empty), true);
+                    BuildUI(player, UiPage.PlayersOnline, (twoOrMore ? aArgs[1] : string.Empty), true);
                     break;
                 }
                 case CCmdArgPlayersOffline: {
-                    BuildUI(player, UiPage.PlayersOffline, (aArg.HasArgs(2) ? aArg.Args[1] : string.Empty));
+                    BuildUI(player, UiPage.PlayersOffline, (twoOrMore ? aArgs[1] : string.Empty));
                     break;
                 }
                 case CCmdArgPlayersOfflineSearch: {
-                    BuildUI(player, UiPage.PlayersOffline, (aArg.HasArgs(2) ? aArg.Args[1] : string.Empty), true);
+                    BuildUI(player, UiPage.PlayersOffline, (twoOrMore ? aArgs[1] : string.Empty), true);
                     break;
                 }
                 case CCmdArgPlayersBanned: {
-                    BuildUI(player, UiPage.PlayersBanned, (aArg.HasArgs(2) ? aArg.Args[1] : string.Empty));
+                    BuildUI(player, UiPage.PlayersBanned, (twoOrMore ? aArgs[1] : string.Empty));
                     break;
                 }
                 case CCmdArgPlayersBannedSearch: {
-                    BuildUI(player, UiPage.PlayersBanned, (aArg.HasArgs(2) ? aArg.Args[1] : string.Empty), true);
+                    BuildUI(player, UiPage.PlayersBanned, (twoOrMore ? aArgs[1] : string.Empty), true);
                     break;
                 }
                 case CCmdArgPlayerPage: {
-                    BuildUI(player, UiPage.PlayerPage, (aArg.HasArgs(2) ? aArg.Args[1] : string.Empty));
+                    BuildUI(player, UiPage.PlayerPage, (twoOrMore ? aArgs[1] : string.Empty));
                     break;
                 }
                 case CCmdArgPlayerPageBanned: {
-                    BuildUI(player, UiPage.PlayerPageBanned, (aArg.HasArgs(2) ? aArg.Args[1] : string.Empty));
+                    BuildUI(player, UiPage.PlayerPageBanned, (twoOrMore ? aArgs[1] : string.Empty));
                     break;
                 }
                 default: { // Main is the default for everything
@@ -2706,14 +2711,14 @@ namespace Oxide.Plugins
             }
         }
 
-        [ConsoleCommand(CUnbanUserCmd)]
-        private void PlayerAdministrationUnbanUserCallback(ConsoleSystem.Arg aArg)
+        [Command(CUnbanUserCmd)]
+        private void PlayerAdministrationUnbanUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationUnbanUserCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermBan, true) || !GetTargetFromArg(ref aArg, out targetId))
+            if (!VerifyPermission(ref player, CPermBan, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             Player.Unban(targetId);
@@ -2721,14 +2726,14 @@ namespace Oxide.Plugins
             timer.Once(0.01f, () => BuildUI(player, UiPage.Main));
         }
 
-        [ConsoleCommand(CBanUserCmd)]
-        private void PlayerAdministrationBanUserCallback(ConsoleSystem.Arg aArg)
+        [Command(CBanUserCmd)]
+        private void PlayerAdministrationBanUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationBanUserCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermBan, true) || !GetTargetFromArg(ref aArg, out targetId))
+            if (!VerifyPermission(ref player, CPermBan, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             if (permission.UserHasPermission(targetId.ToString(), CPermProtectBan)) {
@@ -2754,11 +2759,11 @@ namespace Oxide.Plugins
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand(CMainPageBanByIdCmd)]
-        private void PlayerAdministrationMainPageBanByIdCallback(ConsoleSystem.Arg aArg)
+        [Command(CMainPageBanByIdCmd)]
+        private void PlayerAdministrationMainPageBanByIdCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationMainPageBanByIdCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
             if (
@@ -2780,14 +2785,14 @@ namespace Oxide.Plugins
             timer.Once(0.01f, () => BuildUI(player, UiPage.Main));
         }
 
-        [ConsoleCommand(CKickUserCmd)]
-        private void PlayerAdministrationKickUserCallback(ConsoleSystem.Arg aArg)
+        [Command(CKickUserCmd)]
+        private void PlayerAdministrationKickUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationKickUserCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermKick, true) || !GetTargetFromArg(ref aArg, out targetId))
+            if (!VerifyPermission(ref player, CPermKick, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             if (permission.UserHasPermission(targetId.ToString(), CPermProtectKick)) {
@@ -2803,14 +2808,14 @@ namespace Oxide.Plugins
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand(CVoiceUnmuteUserCmd)]
-        private void PlayerAdministrationVoiceUnmuteUserCallback(ConsoleSystem.Arg aArg)
+        [Command(CVoiceUnmuteUserCmd)]
+        private void PlayerAdministrationVoiceUnmuteUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationVoiceUnmuteUserCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermVoiceMute, true) || !GetTargetFromArg(ref aArg, out targetId))
+            if (!VerifyPermission(ref player, CPermVoiceMute, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, false);
@@ -2818,14 +2823,14 @@ namespace Oxide.Plugins
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand(CVoiceMuteUserCmd)]
-        private void PlayerAdministrationVoiceMuteUserCallback(ConsoleSystem.Arg aArg)
+        [Command(CVoiceMuteUserCmd)]
+        private void PlayerAdministrationVoiceMuteUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationVoiceMuteUserCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermVoiceMute, true) || !GetTargetFromArg(ref aArg, out targetId))
+            if (!VerifyPermission(ref player, CPermVoiceMute, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, true);
@@ -2833,14 +2838,14 @@ namespace Oxide.Plugins
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand(CChatUnmuteUserCmd)]
-        private void PlayerAdministrationChatUnmuteUserCallback(ConsoleSystem.Arg aArg)
+        [Command(CChatUnmuteUserCmd)]
+        private void PlayerAdministrationChatUnmuteUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationChatUnmuteUserCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermChatMute, true) || !GetTargetFromArg(ref aArg, out targetId))
+            if (!VerifyPermission(ref player, CPermChatMute, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             BasePlayer target = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
@@ -2853,17 +2858,17 @@ namespace Oxide.Plugins
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand(CChatMuteUserCmd)]
-        private void PlayerAdministrationChatMuteUserCallback(ConsoleSystem.Arg aArg)
+        [Command(CChatMuteUserCmd)]
+        private void PlayerAdministrationChatMuteUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationChatMuteUserCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
             float time;
 
             if (
                 !VerifyPermission(ref player, CPermChatMute, true) ||
-                !GetTargetAmountFromArg(ref aArg, out targetId, out time)
+                !GetTargetAmountFromArg(aArgs, out targetId, out time)
             )
                 return;
 
@@ -2883,14 +2888,14 @@ namespace Oxide.Plugins
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand(CUnreezeCmd)]
-        private void PlayerAdministrationUnfreezeCallback(ConsoleSystem.Arg aArg)
+        [Command(CUnreezeCmd)]
+        private void PlayerAdministrationUnfreezeCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationUnfreezeCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermFreeze, true) || !GetTargetFromArg(ref aArg, out targetId))
+            if (!VerifyPermission(ref player, CPermFreeze, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             player.SendConsoleCommand($"{CFreezeUnfreezeCmd} {targetId}");
@@ -2899,14 +2904,14 @@ namespace Oxide.Plugins
             timer.Once(0.1f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand(CFreezeCmd)]
-        private void PlayerAdministrationFreezeCallback(ConsoleSystem.Arg aArg)
+        [Command(CFreezeCmd)]
+        private void PlayerAdministrationFreezeCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationFreezeCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermFreeze, true) || !GetTargetFromArg(ref aArg, out targetId))
+            if (!VerifyPermission(ref player, CPermFreeze, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             player.SendConsoleCommand($"{CFreezeFreezeCmd} {targetId}");
@@ -2915,14 +2920,14 @@ namespace Oxide.Plugins
             timer.Once(0.1f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand(CClearUserInventoryCmd)]
-        private void PlayerAdministrationClearUserInventoryCallback(ConsoleSystem.Arg aArg)
+        [Command(CClearUserInventoryCmd)]
+        private void PlayerAdministrationClearUserInventoryCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationClearUserInventoryCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermClearInventory, true) || !GetTargetFromArg(ref aArg, out targetId))
+            if (!VerifyPermission(ref player, CPermClearInventory, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
@@ -2935,14 +2940,14 @@ namespace Oxide.Plugins
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand(CResetUserBPCmd)]
-        private void PlayerAdministrationResetUserBlueprintsCallback(ConsoleSystem.Arg aArg)
+        [Command(CResetUserBPCmd)]
+        private void PlayerAdministrationResetUserBlueprintsCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationResetUserBlueprintsCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermResetBP, true) || !GetTargetFromArg(ref aArg, out targetId))
+            if (!VerifyPermission(ref player, CPermResetBP, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
@@ -2955,14 +2960,14 @@ namespace Oxide.Plugins
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand(CResetUserMetabolismCmd)]
-        private void PlayerAdministrationResetUserMetabolismCallback(ConsoleSystem.Arg aArg)
+        [Command(CResetUserMetabolismCmd)]
+        private void PlayerAdministrationResetUserMetabolismCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationResetUserMetabolismCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermResetMetabolism, true) || !GetTargetFromArg(ref aArg, out targetId))
+            if (!VerifyPermission(ref player, CPermResetMetabolism, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
@@ -2975,14 +2980,14 @@ namespace Oxide.Plugins
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand(CRecoverUserMetabolismCmd)]
-        private void PlayerAdministrationRecoverUserMetabolismCallback(ConsoleSystem.Arg aArg)
+        [Command(CRecoverUserMetabolismCmd)]
+        private void PlayerAdministrationRecoverUserMetabolismCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationRecoverUserMetabolismCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermRecoverMetabolism, true) || !GetTargetFromArg(ref aArg, out targetId))
+            if (!VerifyPermission(ref player, CPermRecoverMetabolism, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             PlayerMetabolism playerState = (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.metabolism;
@@ -3001,14 +3006,14 @@ namespace Oxide.Plugins
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand(CTeleportToUserCmd)]
-        private void PlayerAdministrationTeleportToUserCallback(ConsoleSystem.Arg aArg)
+        [Command(CTeleportToUserCmd)]
+        private void PlayerAdministrationTeleportToUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationTeleportToUserCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermTeleport, true) || !GetTargetFromArg(ref aArg, out targetId))
+            if (!VerifyPermission(ref player, CPermTeleport, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             player.Teleport(BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId));
@@ -3016,14 +3021,14 @@ namespace Oxide.Plugins
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand(CTeleportUserCmd)]
-        private void PlayerAdministrationTeleportUserCallback(ConsoleSystem.Arg aArg)
+        [Command(CTeleportUserCmd)]
+        private void PlayerAdministrationTeleportUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationTeleportUserCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermTeleport, true) || !GetTargetFromArg(ref aArg, out targetId))
+            if (!VerifyPermission(ref player, CPermTeleport, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             BasePlayer targetPlayer = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
@@ -3032,14 +3037,14 @@ namespace Oxide.Plugins
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand(CSpectateUserCmd)]
-        private void PlayerAdministrationSpectateUserCallback(ConsoleSystem.Arg aArg)
+        [Command(CSpectateUserCmd)]
+        private void PlayerAdministrationSpectateUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationSpectateUserCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermSpectate, true) || !GetTargetFromArg(ref aArg, out targetId))
+            if (!VerifyPermission(ref player, CPermSpectate, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             if (!player.IsDead())
@@ -3051,29 +3056,29 @@ namespace Oxide.Plugins
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand(CPermsCmd)]
-        private void PlayerAdministrationRunPermsCallback(ConsoleSystem.Arg aArg)
+        [Command(CPermsCmd)]
+        private void PlayerAdministrationRunPermsCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationRunPermsCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermPerms, true) || !GetTargetFromArg(ref aArg, out targetId))
+            if (!VerifyPermission(ref player, CPermPerms, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             player.SendConsoleCommand($"chat.say \"/{CPermsPermsCmd} {targetId}\"");
             timer.Once(0.01f, () => LogInfo($"{player.displayName}: Opened the permissions manager for user ID {targetId}"));
         }
 
-        [ConsoleCommand(CHurtUserCmd)]
-        private void PlayerAdministrationHurtUserCallback(ConsoleSystem.Arg aArg)
+        [Command(CHurtUserCmd)]
+        private void PlayerAdministrationHurtUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationHurtUserCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
             float amount;
 
-            if (!VerifyPermission(ref player, CPermHurt, true) || !GetTargetAmountFromArg(ref aArg, out targetId, out amount))
+            if (!VerifyPermission(ref player, CPermHurt, true) || !GetTargetAmountFromArg(aArgs, out targetId, out amount))
                 return;
 
             if (permission.UserHasPermission(targetId.ToString(), CPermProtectHurt)) {
@@ -3086,14 +3091,14 @@ namespace Oxide.Plugins
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand(CKillUserCmd)]
-        private void PlayerAdministrationKillUserCallback(ConsoleSystem.Arg aArg)
+        [Command(CKillUserCmd)]
+        private void PlayerAdministrationKillUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationKillUserCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermKill, true) || !GetTargetFromArg(ref aArg, out targetId))
+            if (!VerifyPermission(ref player, CPermKill, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             if (permission.UserHasPermission(targetId.ToString(), CPermProtectKill)) {
@@ -3106,15 +3111,15 @@ namespace Oxide.Plugins
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
-        [ConsoleCommand(CHealUserCmd)]
-        private void PlayerAdministrationHealUserCallback(ConsoleSystem.Arg aArg)
+        [Command(CHealUserCmd)]
+        private void PlayerAdministrationHealUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationHealUserCallback was called");
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
             float amount;
 
-            if (!VerifyPermission(ref player, CPermHeal, true) || !GetTargetAmountFromArg(ref aArg, out targetId, out amount))
+            if (!VerifyPermission(ref player, CPermHeal, true) || !GetTargetAmountFromArg(aArgs, out targetId, out amount))
                 return;
 
             BasePlayer targetPlayer = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
@@ -3129,12 +3134,12 @@ namespace Oxide.Plugins
         #endregion Command Callbacks
 
         #region Text Update Callbacks
-        [ConsoleCommand(CMainPageBanIdInputTextCmd)]
-        private void PlayerAdministrationMainPageBanIdInputTextCallback(ConsoleSystem.Arg aArg)
+        [Command(CMainPageBanIdInputTextCmd)]
+        private void PlayerAdministrationMainPageBanIdInputTextCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !aArg.HasArgs()) {
+            if (!VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0) {
                 if (FMainPageBanIdInputText.ContainsKey(player.userID))
                     FMainPageBanIdInputText.Remove(player.userID);
 
@@ -3142,18 +3147,18 @@ namespace Oxide.Plugins
             }
 
             if (FMainPageBanIdInputText.ContainsKey(player.userID)) {
-                FMainPageBanIdInputText[player.userID] = aArg.Args[0];
+                FMainPageBanIdInputText[player.userID] = aArgs[0];
             } else {
-                FMainPageBanIdInputText.Add(player.userID, aArg.Args[0]);
+                FMainPageBanIdInputText.Add(player.userID, aArgs[0]);
             }
         }
 
-        [ConsoleCommand(CUserBtnPageSearchInputTextCmd)]
-        private void PlayerAdministrationUserBtnPageSearchInputTextCallback(ConsoleSystem.Arg aArg)
+        [Command(CUserBtnPageSearchInputTextCmd)]
+        private void PlayerAdministrationUserBtnPageSearchInputTextCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !aArg.HasArgs()) {
+            if (!VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0) {
                 if (FUserBtnPageSearchInputText.ContainsKey(player.userID))
                     FUserBtnPageSearchInputText.Remove(player.userID);
 
@@ -3161,18 +3166,18 @@ namespace Oxide.Plugins
             }
 
             if (FUserBtnPageSearchInputText.ContainsKey(player.userID)) {
-                FUserBtnPageSearchInputText[player.userID] = aArg.Args[0];
+                FUserBtnPageSearchInputText[player.userID] = aArgs[0];
             } else {
-                FUserBtnPageSearchInputText.Add(player.userID, aArg.Args[0]);
+                FUserBtnPageSearchInputText.Add(player.userID, aArgs[0]);
             }
         }
 
-        [ConsoleCommand(CUserPageReasonInputTextCmd)]
-        private void PlayerAdministrationUserPageReasonInputTextCallback(ConsoleSystem.Arg aArg)
+        [Command(CUserPageReasonInputTextCmd)]
+        private void PlayerAdministrationUserPageReasonInputTextCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
-            BasePlayer player = aArg.Player();
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
-            if (!VerifyPermission(ref player, CPermUiShow) || !aArg.HasArgs()) {
+            if (!VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0) {
                 if (FUserPageReasonInputText.ContainsKey(player.userID))
                     FUserPageReasonInputText.Remove(player.userID);
 
@@ -3180,9 +3185,9 @@ namespace Oxide.Plugins
             }
 
             if (FUserPageReasonInputText.ContainsKey(player.userID)) {
-                FUserPageReasonInputText[player.userID] = aArg.Args[0];
+                FUserPageReasonInputText[player.userID] = aArgs[0];
             } else {
-                FUserPageReasonInputText.Add(player.userID, aArg.Args[0]);
+                FUserPageReasonInputText.Add(player.userID, aArgs[0]);
             }
         }
         #endregion Text Update Callbacks
