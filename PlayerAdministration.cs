@@ -20,12 +20,16 @@
  * Variables ---------------------------- SHOULD start with a lowercase character (camelCase)
  *
  * -- Style --
+ * Max-line-width ------- 160
  * Single-line comments - // Single-line comment
  * Multi-line comments -- Just like this comment block!
  */
 using Newtonsoft.Json;
+using Oxide.Core;
 using Oxide.Core.Plugins;
 using Oxide.Game.Rust.Cui;
+using Oxide.Game.Rust.Libraries;
+using RustLib = Oxide.Game.Rust.Libraries.Rust;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -34,9 +38,9 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.5.0")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.2")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
-    public class PlayerAdministration : RustPlugin
+    public class PlayerAdministration : CovalencePlugin
     {
         #region Plugin References
 #pragma warning disable IDE0044, CS0649
@@ -55,6 +59,11 @@ namespace Oxide.Plugins
 #pragma warning restore IDE0044, CS0649
         #endregion Plugin References
 
+        #region Library Imports
+        private RustLib rust = Interface.Oxide.GetLibrary<RustLib>();
+        private Player Player = Interface.Oxide.GetLibrary<Player>();
+        #endregion Library Imports
+
         #region GUI
         #region Types
         /// <summary>
@@ -62,14 +71,12 @@ namespace Oxide.Plugins
         /// </summary>
         private class CuiColor
         {
-            public byte R { get; set; } = 255;
-            public byte G { get; set; } = 255;
-            public byte B { get; set; } = 255;
-            public float A { get; set; } = 1f;
+            public byte R { get; set; }
+            public byte G { get; set; }
+            public byte B { get; set; }
+            public float A { get; set; }
 
-            public CuiColor() { }
-
-            public CuiColor(byte aRed, byte aGreen, byte aBlue, float aAlpha = 1f)
+            public CuiColor(byte aRed = 255, byte aGreen = 255, byte aBlue = 255, float aAlpha = 1f)
             {
                 R = aRed;
                 G = aGreen;
@@ -77,8 +84,21 @@ namespace Oxide.Plugins
                 A = aAlpha;
             }
 
-            public override string ToString() =>
-                $"{(double)R / 255} {(double)G / 255} {(double)B / 255} {A}";
+            public override string ToString() => $"{(double)R / 255} {(double)G / 255} {(double)B / 255} {A}";
+
+            public static readonly CuiColor Background = new CuiColor(240, 240, 240, 0.3f);
+            public static readonly CuiColor BackgroundMedium = new CuiColor(76, 74, 72, 0.83f);
+            public static readonly CuiColor BackgroundDark = new CuiColor(42, 42, 42, 0.93f);
+            public static readonly CuiColor Button = new CuiColor(42, 42, 42, 1f);
+            public static readonly CuiColor ButtonInactive = new CuiColor(168, 168, 168, 1f);
+            public static readonly CuiColor ButtonDecline = new CuiColor(192, 0, 0, 1f);
+            public static readonly CuiColor ButtonDanger = new CuiColor(193, 46, 42, 1f);
+            public static readonly CuiColor ButtonWarning = new CuiColor(213, 133, 18, 1f);
+            public static readonly CuiColor ButtonSuccess = new CuiColor(57, 132, 57, 1f);
+            public static readonly CuiColor Text = new CuiColor(0, 0, 0, 1f);
+            public static readonly CuiColor TextAlt = new CuiColor(255, 255, 255, 1f);
+            public static readonly CuiColor TextTitle = new CuiColor(206, 66, 43, 1f);
+            public static readonly CuiColor None = new CuiColor(0, 0, 0, 0f);
         }
 
         /// <summary>
@@ -86,19 +106,18 @@ namespace Oxide.Plugins
         /// </summary>
         private class CuiPoint
         {
-            public float X { get; set; } = 0f;
-            public float Y { get; set; } = 0f;
+            public float X { get; set; }
+            public float Y { get; set; }
 
-            public CuiPoint() { }
-
-            public CuiPoint(float aX, float aY)
+            public CuiPoint(float aX = 0f, float aY = 0f)
             {
                 X = aX;
                 Y = aY;
             }
 
-            public override string ToString() =>
-                $"{X} {Y}";
+            public override string ToString() => $"{X} {Y}";
+
+            public static readonly CuiPoint Zero = new CuiPoint();
         }
 
         /// <summary>
@@ -114,28 +133,6 @@ namespace Oxide.Plugins
             PlayerPageBanned
         }
         #endregion Types
-
-        #region Defaults
-        /// <summary>
-        /// Predefined default color set
-        /// </summary>
-        private static class CuiDefaultColors
-        {
-            public static readonly CuiColor Background = new CuiColor(240, 240, 240, 0.3f);
-            public static readonly CuiColor BackgroundMedium = new CuiColor(76, 74, 72, 0.83f);
-            public static readonly CuiColor BackgroundDark = new CuiColor(42, 42, 42, 0.93f);
-            public static readonly CuiColor Button = new CuiColor(42, 42, 42, 1f);
-            public static readonly CuiColor ButtonInactive = new CuiColor(168, 168, 168, 1f);
-            public static readonly CuiColor ButtonDecline = new CuiColor(192, 0, 0, 1f);
-            public static readonly CuiColor ButtonDanger = new CuiColor(193, 46, 42, 1f);
-            public static readonly CuiColor ButtonWarning = new CuiColor(213, 133, 18, 1f);
-            public static readonly CuiColor ButtonSuccess = new CuiColor(57, 132, 57, 1f);
-            public static readonly CuiColor Text = new CuiColor(0, 0, 0, 1f);
-            public static readonly CuiColor TextAlt = new CuiColor(255, 255, 255, 1f);
-            public static readonly CuiColor TextTitle = new CuiColor(206, 66, 43, 1f);
-            public static readonly CuiColor None = new CuiColor(0, 0, 0, 0f);
-        }
-        #endregion Defaults
 
         #region UI object definitions
         /// <summary>
@@ -186,10 +183,11 @@ namespace Oxide.Plugins
         {
             public const string ParentHud = "Hud";
             public const string ParentOverlay = "Overlay";
+
+            private readonly CustomCuiElementContainer FContainer = new CustomCuiElementContainer();
             private readonly BasePlayer FPlayer;
             public readonly ulong PlayerId;
             public readonly string PlayerIdString;
-            private readonly CustomCuiElementContainer FContainer = new CustomCuiElementContainer();
 
             /// <summary>
             /// Constructor
@@ -198,7 +196,7 @@ namespace Oxide.Plugins
             public Cui(BasePlayer aPlayer)
             {
                 if (aPlayer == null) {
-                    FPluginInstance.LogError($"Cui::Cui > Parameter 'aPlayer' is null");
+                    FPluginInstance.LogError("Cui::Cui > Parameter 'aPlayer' is null");
                     return;
                 }
 
@@ -219,9 +217,10 @@ namespace Oxide.Plugins
             /// <param name="aName">The object's name</param>
             /// <param name="aPng">Image PNG file path</param>
             /// <returns>New object name</returns>
-            public string AddPanel(string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, bool aIndCursorEnabled, CuiColor aColor = null,
-                                   string aName = "", string aPng = ""
-            ) => AddPanel(aParent, aLeftBottomAnchor, aRightTopAnchor, new CuiPoint(), new CuiPoint(), aIndCursorEnabled, aColor, aName, aPng);
+            public string AddPanel(
+                string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, bool aIndCursorEnabled, CuiColor aColor = null, string aName = "",
+                string aPng = ""
+            ) => AddPanel(aParent, aLeftBottomAnchor, aRightTopAnchor, CuiPoint.Zero, CuiPoint.Zero, aIndCursorEnabled, aColor, aName, aPng);
 
             /// <summary>
             /// Add a new panel
@@ -236,16 +235,19 @@ namespace Oxide.Plugins
             /// <param name="aName">The object's name</param>
             /// <param name="aPng">Image PNG file path</param>
             /// <returns>New object name</returns>
-            public string AddPanel(string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset,
-                                   bool aIndCursorEnabled, CuiColor aColor = null, string aName = "", string aPng = ""
+            public string AddPanel(
+                string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset,
+                bool aIndCursorEnabled, CuiColor aColor = null, string aName = "", string aPng = ""
             ) {
                 if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null) {
                     FPluginInstance.LogError($"Cui::AddPanel > One of the required parameters is null");
                     return string.Empty;
                 }
 
-                CuiPanel panel = new CuiPanel() {
-                    RectTransform = {
+                CuiPanel panel = new CuiPanel
+                {
+                    RectTransform =
+                    {
                         AnchorMin = aLeftBottomAnchor.ToString(),
                         AnchorMax = aRightTopAnchor.ToString(),
                         OffsetMin = aLeftBottomOffset.ToString(),
@@ -255,11 +257,11 @@ namespace Oxide.Plugins
                 };
 
                 if (!string.IsNullOrEmpty(aPng))
-                    panel.Image = new CuiImageComponent() { Png = aPng };
+                    panel.Image = new CuiImageComponent { Png = aPng };
 
                 if (aColor != null) {
                     if (panel.Image == null) {
-                        panel.Image = new CuiImageComponent() { Color = aColor.ToString() };
+                        panel.Image = new CuiImageComponent { Color = aColor.ToString() };
                     } else {
                         panel.Image.Color = aColor.ToString();
                     }
@@ -281,9 +283,10 @@ namespace Oxide.Plugins
             /// <param name="aFontSize">Font size</param>
             /// <param name="aAlign">Text alignment</param>
             /// <returns>New object name</returns>
-            public string AddLabel(string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiColor aColor, string aText, string aName = "",
-                                   int aFontSize = 14, TextAnchor aAlign = TextAnchor.UpperLeft
-            ) => AddLabel(aParent, aLeftBottomAnchor, aRightTopAnchor, new CuiPoint(), new CuiPoint(), aColor, aText, aName, aFontSize, aAlign);
+            public string AddLabel(
+                string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiColor aColor, string aText, string aName = "", int aFontSize = 14,
+                TextAnchor aAlign = TextAnchor.UpperLeft
+            ) => AddLabel(aParent, aLeftBottomAnchor, aRightTopAnchor, CuiPoint.Zero, CuiPoint.Zero, aColor, aText, aName, aFontSize, aAlign);
 
             /// <summary>
             /// Add a new label
@@ -299,8 +302,9 @@ namespace Oxide.Plugins
             /// <param name="aFontSize">Font size</param>
             /// <param name="aAlign">Text alignment</param>
             /// <returns>New object name</returns>
-            public string AddLabel(string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset,
-                                   CuiColor aColor, string aText, string aName = "", int aFontSize = 14, TextAnchor aAlign = TextAnchor.UpperLeft
+            public string AddLabel(
+                string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset, CuiColor aColor,
+                string aText, string aName = "", int aFontSize = 14, TextAnchor aAlign = TextAnchor.UpperLeft
             ) {
                 if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null || aColor == null) {
                     FPluginInstance.LogError($"Cui::AddLabel > One of the required parameters is null");
@@ -309,14 +313,17 @@ namespace Oxide.Plugins
 
                 FPluginInstance.LogDebug("Added label to container");
                 return FContainer.Add(
-                    new CuiLabel() {
-                        Text = {
+                    new CuiLabel
+                    {
+                        Text =
+                        {
                             Text = aText ?? string.Empty,
                             FontSize = aFontSize,
                             Align = aAlign,
                             Color = aColor.ToString()
                         },
-                        RectTransform = {
+                        RectTransform =
+                        {
                             AnchorMin = aLeftBottomAnchor.ToString(),
                             AnchorMax = aRightTopAnchor.ToString(),
                             OffsetMin = aLeftBottomOffset.ToString(),
@@ -343,9 +350,11 @@ namespace Oxide.Plugins
             /// <param name="aFontSize">Font size</param>
             /// <param name="aAlign">Text alignment</param>
             /// <returns>New object name</returns>
-            public string AddButton(string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiColor aButtonColor, CuiColor aTextColor, string aText,
-                                    string aCommand = "", string aClose = "", string aName = "", int aFontSize = 14, TextAnchor aAlign = TextAnchor.MiddleCenter
-            ) => AddButton(aParent, aLeftBottomAnchor, aRightTopAnchor, new CuiPoint(), new CuiPoint(), aButtonColor, aTextColor, aText, aCommand, aClose, aName,
+            public string AddButton(
+                string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiColor aButtonColor, CuiColor aTextColor, string aText,
+                string aCommand = "", string aClose = "", string aName = "", int aFontSize = 14, TextAnchor aAlign = TextAnchor.MiddleCenter
+            ) => AddButton(
+                    aParent, aLeftBottomAnchor, aRightTopAnchor, CuiPoint.Zero, CuiPoint.Zero, aButtonColor, aTextColor, aText, aCommand, aClose, aName,
                     aFontSize, aAlign
                 );
 
@@ -366,31 +375,38 @@ namespace Oxide.Plugins
             /// <param name="aFontSize">Font size</param>
             /// <param name="aAlign">Text alignment</param>
             /// <returns>New object name</returns>
-            public string AddButton(string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset,
-                                    CuiColor aButtonColor, CuiColor aTextColor, string aText, string aCommand = "", string aClose = "", string aName = "",
-                                    int aFontSize = 14, TextAnchor aAlign = TextAnchor.MiddleCenter
+            public string AddButton(
+                string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset,
+                CuiColor aButtonColor, CuiColor aTextColor, string aText, string aCommand = "", string aClose = "", string aName = "", int aFontSize = 14,
+                TextAnchor aAlign = TextAnchor.MiddleCenter
             ) {
-                if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null ||
-                    aButtonColor == null || aTextColor == null) {
+                if (
+                    aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null || aButtonColor == null ||
+                    aTextColor == null
+                ) {
                     FPluginInstance.LogError($"Cui::AddButton > One of the required parameters is null");
                     return string.Empty;
                 }
 
                 FPluginInstance.LogDebug("Added button to container");
                 return FContainer.Add(
-                    new CuiButton() {
-                        Button = {
+                    new CuiButton
+                    {
+                        Button =
+                        {
                             Command = aCommand ?? string.Empty,
                             Close = aClose ?? string.Empty,
                             Color = aButtonColor.ToString()
                         },
-                        RectTransform = {
+                        RectTransform =
+                        {
                             AnchorMin = aLeftBottomAnchor.ToString(),
                             AnchorMax = aRightTopAnchor.ToString(),
                             OffsetMin = aLeftBottomOffset.ToString(),
                             OffsetMax = aRightTopOffset.ToString()
                         },
-                        Text = {
+                        Text =
+                        {
                             Text = aText ?? string.Empty,
                             FontSize = aFontSize,
                             Align = aAlign,
@@ -417,11 +433,12 @@ namespace Oxide.Plugins
             /// <param name="aFontSize">Font size</param>
             /// <param name="aAlign">Text alignment</param>
             /// <returns>New object name</returns>
-            public string AddInputField(string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiColor aColor, string aText = "",
-                                        int aCharsLimit = 100, string aCommand = "", bool aIndPassword = false, string aName = "", int aFontSize = 14,
-                                        TextAnchor aAlign = TextAnchor.MiddleLeft
-            ) => AddInputField(aParent, aLeftBottomAnchor, aRightTopAnchor, new CuiPoint(), new CuiPoint(), aColor, aText, aCharsLimit, aCommand, aIndPassword,
-                    aName, aFontSize, aAlign
+            public string AddInputField(
+                string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiColor aColor, string aText = "", int aCharsLimit = 100,
+                string aCommand = "", bool aIndPassword = false, string aName = "", int aFontSize = 14, TextAnchor aAlign = TextAnchor.MiddleLeft
+            ) => AddInputField(
+                    aParent, aLeftBottomAnchor, aRightTopAnchor, CuiPoint.Zero, CuiPoint.Zero, aColor, aText, aCharsLimit, aCommand, aIndPassword, aName,
+                    aFontSize, aAlign
                 );
 
             /// <summary>
@@ -441,9 +458,10 @@ namespace Oxide.Plugins
             /// <param name="aName">The object's name</param>
             /// <param name="aFontSize">Font size</param>
             /// <returns>New object name</returns>
-            public string AddInputField(string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset,
-                                        CuiColor aColor, string aText = "", int aCharsLimit = 100, string aCommand = "", bool aIndPassword = false,
-                                        string aName = "", int aFontSize = 14, TextAnchor aAlign = TextAnchor.MiddleLeft
+            public string AddInputField(
+                string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset, CuiColor aColor,
+                string aText = "", int aCharsLimit = 100, string aCommand = "", bool aIndPassword = false, string aName = "", int aFontSize = 14,
+                TextAnchor aAlign = TextAnchor.MiddleLeft
             ) {
                 if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null || aColor == null) {
                     FPluginInstance.LogError($"Cui::AddInputField > One of the required parameters is null");
@@ -452,8 +470,10 @@ namespace Oxide.Plugins
 
                 FPluginInstance.LogDebug("Added input field to container");
                 return FContainer.Add(
-                    new CuiInputField() {
-                        InputField = {
+                    new CuiInputField
+                    {
+                        InputField =
+                        {
                             Text = aText ?? string.Empty,
                             FontSize = aFontSize,
                             Align = aAlign,
@@ -462,7 +482,8 @@ namespace Oxide.Plugins
                             Command = aCommand ?? string.Empty,
                             IsPassword = aIndPassword
                         },
-                        RectTransform = {
+                        RectTransform =
+                        {
                             AnchorMin = aLeftBottomAnchor.ToString(),
                             AnchorMax = aRightTopAnchor.ToString(),
                             OffsetMin = aLeftBottomOffset.ToString(),
@@ -481,11 +502,8 @@ namespace Oxide.Plugins
             /// <param name="aElement">The object itself</param>
             /// <param name="aName">The object's name</param>
             /// <returns>New object name</returns>
-            public string AddElement(string aParent, CuiPanel aElement, string aName = "")
-            {
-                FPluginInstance.LogDebug("Added CuiPanel element to container");
-                return FContainer.Add(aElement, aParent, string.IsNullOrEmpty(aName) ? null : aName);
-            }
+            public string AddElement(string aParent, CuiPanel aElement, string aName = "") =>
+                FContainer.Add(aElement, aParent, string.IsNullOrEmpty(aName) ? null : aName);
 
             /// <summary>
             /// Add a new element
@@ -494,11 +512,8 @@ namespace Oxide.Plugins
             /// <param name="aElement">The object itself</param>
             /// <param name="aName">The object's name</param>
             /// <returns>New object name</returns>
-            public string AddElement(string aParent, CuiLabel aElement, string aName = "")
-            {
-                FPluginInstance.LogDebug("Added CuiLabel element to container");
-                return FContainer.Add(aElement, aParent, string.IsNullOrEmpty(aName) ? null : aName);
-            }
+            public string AddElement(string aParent, CuiLabel aElement, string aName = "") =>
+                FContainer.Add(aElement, aParent, string.IsNullOrEmpty(aName) ? null : aName);
 
             /// <summary>
             /// Add a new element
@@ -507,11 +522,8 @@ namespace Oxide.Plugins
             /// <param name="aElement">The object itself</param>
             /// <param name="aName">The object's name</param>
             /// <returns>New object name</returns>
-            public string AddElement(string aParent, CuiButton aElement, string aName = "")
-            {
-                FPluginInstance.LogDebug("Added CuiButton element to container");
-                return FContainer.Add(aElement, aParent, string.IsNullOrEmpty(aName) ? null : aName);
-            }
+            public string AddElement(string aParent, CuiButton aElement, string aName = "") =>
+                FContainer.Add(aElement, aParent, string.IsNullOrEmpty(aName) ? null : aName);
 
             /// <summary>
             /// Add a new element
@@ -520,18 +532,14 @@ namespace Oxide.Plugins
             /// <param name="aElement">The object itself</param>
             /// <param name="aName">The object's name</param>
             /// <returns>New object name</returns>
-            public string AddElement(string aParent, CuiInputField aElement, string aName = "")
-            {
-                FPluginInstance.LogDebug("Added CuiInputField element to container");
-                return FContainer.Add(aElement, aParent, string.IsNullOrEmpty(aName) ? null : aName);
-            }
+            public string AddElement(string aParent, CuiInputField aElement, string aName = "") =>
+                FContainer.Add(aElement, aParent, string.IsNullOrEmpty(aName) ? null : aName);
 
             /// <summary>
             /// Draw the UI to the player's client
             /// </summary>
             /// <returns></returns>
-            public bool Draw() =>
-                CuiHelper.AddUi(FPlayer, CuiHelper.ToJson(FContainer, false));
+            public bool Draw() => CuiHelper.AddUi(FPlayer, CuiHelper.ToJson(FContainer, false));
         }
         #endregion GUI
 
@@ -543,8 +551,7 @@ namespace Oxide.Plugins
         /// <param name="aPage">Page number (Starting from 0)</param>
         /// <param name="aPageSize">Page size</param>
         /// <returns>List of entities</returns>
-        private List<T> GetPage<T>(IList<T> aList, int aPage, int aPageSize) =>
-            aList.Skip(aPage * aPageSize).Take(aPageSize).ToList();
+        private List<T> GetPage<T>(IList<T> aList, int aPage, int aPageSize) => aList.Skip(aPage * aPageSize).Take(aPageSize).ToList();
 
         /// <summary>
         /// Add a button to the tab menu
@@ -559,10 +566,10 @@ namespace Oxide.Plugins
         {
             Vector2 dimensions = new Vector2(0.096f, 0.75f);
             Vector2 offset = new Vector2(0.005f, 0.1f);
-            CuiColor btnColor = (aIndActive ? CuiDefaultColors.ButtonInactive : CuiDefaultColors.Button);
+            CuiColor btnColor = (aIndActive ? CuiColor.ButtonInactive : CuiColor.Button);
             CuiPoint lbAnchor = new CuiPoint(((dimensions.x + offset.x) * aPos) + offset.x, offset.y);
             CuiPoint rtAnchor = new CuiPoint(lbAnchor.X + dimensions.x, offset.y + dimensions.y);
-            aUIObj.AddButton(aParent, lbAnchor, rtAnchor, btnColor, CuiDefaultColors.TextAlt, aCaption, (aIndActive ? string.Empty : aCommand));
+            aUIObj.AddButton(aParent, lbAnchor, rtAnchor, btnColor, CuiColor.TextAlt, aCaption, (aIndActive ? string.Empty : aCommand));
         }
 
         /// <summary>
@@ -598,17 +605,15 @@ namespace Oxide.Plugins
                 int suffix = 0;
 
                 if (typeof(T) == typeof(BasePlayer)) {
-                    BasePlayer player = (user as BasePlayer);
+                    BasePlayer player = user as BasePlayer;
                     btnText = player.displayName;
                     btnCommand = string.Format(aCommandFmt, player.UserIDString);
 
                     while (addedNames.FindIndex(item => string.Equals(btnText, item, StringComparison.OrdinalIgnoreCase)) >= 0) {
                         btnText = $"{player.displayName} {++suffix}";
                     }
-
-                    aUIObj.AddButton(aParent, lbAnchor, rtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt, btnText, btnCommand, string.Empty, string.Empty, 16);
                 } else {
-                    ServerUsers.User player = (user as ServerUsers.User);
+                    ServerUsers.User player = user as ServerUsers.User;
                     string btnTextTemp = player.username;
                     btnCommand = string.Format(aCommandFmt, player.steamid);
 
@@ -620,10 +625,9 @@ namespace Oxide.Plugins
                     while (addedNames.FindIndex(item => string.Equals(btnText, item, StringComparison.OrdinalIgnoreCase)) >= 0) {
                         btnText = $"{btnTextTemp} {++suffix}";
                     }
-
-                    aUIObj.AddButton(aParent, lbAnchor, rtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt, btnText, btnCommand, string.Empty, string.Empty, 16);
                 }
 
+                aUIObj.AddButton(aParent, lbAnchor, rtAnchor, CuiColor.Button, CuiColor.TextAlt, btnText, btnCommand, string.Empty, string.Empty, 16);
                 addedNames.Add(btnText);
             }
 
@@ -637,22 +641,19 @@ namespace Oxide.Plugins
         /// <param name="aPlayerId">Player ID</param>
         /// <param name="aArgs">Optional args</param>
         /// <returns></returns>
-        private string GetMessage(string aKey, string aPlayerId, params object[] aArgs) =>
-            string.Format(lang.GetMessage(aKey, this, aPlayerId), aArgs);
+        private string GetMessage(string aKey, string aPlayerId, params object[] aArgs) => string.Format(lang.GetMessage(aKey, this, aPlayerId), aArgs);
 
         /// <summary>
         /// Log an error message to the logfile
         /// </summary>
         /// <param name="aMessage"></param>
-        private void LogError(string aMessage) =>
-            LogToFile(string.Empty, $"[{DateTime.Now.ToString("hh:mm:ss")}] ERROR > {aMessage}", this);
+        private void LogError(string aMessage) =>  LogToFile(string.Empty, $"[{DateTime.Now.ToString("hh:mm:ss")}] ERROR > {aMessage}", this);
 
         /// <summary>
         /// Log an informational message to the logfile
         /// </summary>
         /// <param name="aMessage"></param>
-        private void LogInfo(string aMessage) =>
-            LogToFile(string.Empty, $"[{DateTime.Now.ToString("hh:mm:ss")}] INFO > {aMessage}", this);
+        private void LogInfo(string aMessage) => LogToFile(string.Empty, $"[{DateTime.Now.ToString("hh:mm:ss")}] INFO > {aMessage}", this);
 
         /// <summary>
         /// Log a debugging message to the logfile
@@ -669,8 +670,7 @@ namespace Oxide.Plugins
         /// </summary>
         /// <param name="aPlayer">The player to send the message to</param>
         /// <param name="aMessage">The message to send</param>
-        private void SendMessage(ref BasePlayer aPlayer, string aMessage) =>
-            rust.SendChatMessage(aPlayer, string.Empty, aMessage);
+        private void SendMessage(ref BasePlayer aPlayer, string aMessage) => rust.SendChatMessage(aPlayer, string.Empty, aMessage);
 
         /// <summary>
         /// Verify if a user has the specified permission
@@ -736,8 +736,10 @@ namespace Oxide.Plugins
             }
 
             if (aIndFiltered && FUserBtnPageSearchInputText.ContainsKey(userId))
-                result = result.Where(x => x.displayName.IndexOf(FUserBtnPageSearchInputText[userId], StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                           x.UserIDString.IndexOf(FUserBtnPageSearchInputText[userId], StringComparison.OrdinalIgnoreCase) >= 0).ToList();
+                result = result.Where(x =>
+                        x.displayName.IndexOf(FUserBtnPageSearchInputText[userId], StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        x.UserIDString.IndexOf(FUserBtnPageSearchInputText[userId], StringComparison.OrdinalIgnoreCase) >= 0
+                    ).ToList();
 
             LogDebug("Retrieved the server user list");
             result.Sort((a, b) => {
@@ -763,8 +765,10 @@ namespace Oxide.Plugins
             ulong userId = ulong.Parse(aUserId);
 
             if (aIndFiltered && FUserBtnPageSearchInputText.ContainsKey(userId))
-                result = result.Where(x => x.username.IndexOf(FUserBtnPageSearchInputText[userId], StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                           x.steamid.ToString().IndexOf(FUserBtnPageSearchInputText[userId], StringComparison.OrdinalIgnoreCase) >= 0).ToList();
+                result = result.Where(x =>
+                        x.username.IndexOf(FUserBtnPageSearchInputText[userId], StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        x.steamid.ToString().IndexOf(FUserBtnPageSearchInputText[userId], StringComparison.OrdinalIgnoreCase) >= 0
+                    ).ToList();
 
             LogDebug("Retrieved the banned user list");
             result.Sort((a, b) => {
@@ -809,8 +813,7 @@ namespace Oxide.Plugins
         /// </summary>
         /// <param name="aPlayer">The player</param>
         /// <returns></returns>
-        private bool GetIsVoiceMuted(ref BasePlayer aPlayer) =>
-            aPlayer.HasPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted);
+        private bool GetIsVoiceMuted(ref BasePlayer aPlayer) => aPlayer.HasPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted);
 
         /// <summary>
         /// Check if the player has the ChatMute flag set
@@ -833,8 +836,7 @@ namespace Oxide.Plugins
         /// </summary>
         /// <param name="aPlayerId">The player's ID</param>
         /// <returns></returns>
-        private bool GetIsFrozen(ulong aPlayerId) =>
-            permission.UserHasPermission(aPlayerId.ToString(), CPermFreezeFrozen);
+        private bool GetIsFrozen(ulong aPlayerId) => permission.UserHasPermission(aPlayerId.ToString(), CPermFreezeFrozen);
 
         /// <summary>
         /// Send either a kick or a ban message to Discord via the DiscordMessages plugin
@@ -851,7 +853,8 @@ namespace Oxide.Plugins
                 if (CUnknownNameList.Contains(aTargetName.ToLower()))
                     aTargetName = aTargetId;
 
-                object fields = new[] {
+                object fields = new[]
+                {
                     new {
                         name = "Player",
                         value = $"[{aTargetName}](https://steamcommunity.com/profiles/{aTargetId})",
@@ -885,8 +888,7 @@ namespace Oxide.Plugins
         /// <param name="aTrueMsg"></param>
         /// <param name="aFalseMsg"></param>
         /// <returns></returns>
-        private string InternalAssert(bool aEval, string aTrueMsg = "True", string aFalseMsg = "False") =>
-            aEval ? aTrueMsg : aFalseMsg;
+        private string InternalAssert(bool aEval, string aTrueMsg = "True", string aFalseMsg = "False") => aEval ? aTrueMsg : aFalseMsg;
         #endregion Utility methods
 
         #region Upgrade methods
@@ -905,11 +907,13 @@ namespace Oxide.Plugins
             }
 
             // Remove legacy config items
-            if (Config["Enable kick action"] != null || Config["Enable ban action"] != null || Config["Enable unban action"] != null ||
+            if (
+                Config["Enable kick action"] != null || Config["Enable ban action"] != null || Config["Enable unban action"] != null ||
                 Config["Enable kill action"] != null || Config["Enable inventory clear action"] != null || Config["Enable blueprint reset action"] != null ||
                 Config["Enable metabolism reset action"] != null || Config["Enable hurt action"] != null || Config["Enable heal action"] != null ||
                 Config["Enable voice mute action"] != null || Config["Enable chat mute action"] != null || Config["Enable perms action"] != null ||
-                Config["Enable freeze action"] != null)
+                Config["Enable freeze action"] != null
+            )
                 result = true;
 
             Config.Clear();
@@ -962,16 +966,20 @@ namespace Oxide.Plugins
             aUIObj.AddElement(headerPanel, CTabMenuHeaderLbl);
             aUIObj.AddElement(headerPanel, CTabMenuCloseBtn);
             // Add the tab menu buttons
-            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Main Tab Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgMain}", 0,
+            AddTabMenuBtn(
+                ref aUIObj, tabBtnPanel, GetMessage("Main Tab Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgMain}", 0,
                 aPageType == UiPage.Main ? true : false
             );
-            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Online Player Tab Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOnline} 0", 1,
+            AddTabMenuBtn(
+                ref aUIObj, tabBtnPanel, GetMessage("Online Player Tab Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOnline} 0", 1,
                 aPageType == UiPage.PlayersOnline ? true : false
             );
-            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Offline Player Tab Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOffline} 0", 2,
+            AddTabMenuBtn(
+                ref aUIObj, tabBtnPanel, GetMessage("Offline Player Tab Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOffline} 0", 2,
                 aPageType == UiPage.PlayersOffline ? true : false
             );
-            AddTabMenuBtn(ref aUIObj, tabBtnPanel, GetMessage("Banned Player Tab Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersBanned} 0", 3,
+            AddTabMenuBtn(
+                ref aUIObj, tabBtnPanel, GetMessage("Banned Player Tab Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersBanned} 0", 3,
                 aPageType == UiPage.PlayersBanned ? true : false
             );
             LogDebug("Built the tab menu");
@@ -987,10 +995,12 @@ namespace Oxide.Plugins
             string panel = aUIObj.AddElement(CMainPanelName, CMainPagePanel);
             aUIObj.AddElement(panel, CMainPageTitleLbl);
             // Add the ban by ID group
-            aUIObj.AddLabel(panel, CMainPageLblBanByIdTitleLbAnchor, CMainPageLblBanByIdTitleRtAnchor, CuiDefaultColors.TextTitle,
+            aUIObj.AddLabel(
+                panel, CMainPageLblBanByIdTitleLbAnchor, CMainPageLblBanByIdTitleRtAnchor, CuiColor.TextTitle,
                 GetMessage("Ban By ID Title Text", aUIObj.PlayerIdString), string.Empty, 16, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(panel, CMainPageLblBanByIdLbAnchor, CMainPageLblBanByIdRtAnchor, CuiDefaultColors.TextAlt,
+            aUIObj.AddLabel(
+                panel, CMainPageLblBanByIdLbAnchor, CMainPageLblBanByIdRtAnchor, CuiColor.TextAlt,
                 GetMessage("Ban By ID Label Text", aUIObj.PlayerIdString), string.Empty, 14, TextAnchor.MiddleLeft
             );
             string panelBanByIdGroup = aUIObj.AddElement(panel, CBanByIdGroupPanel);
@@ -1018,36 +1028,42 @@ namespace Oxide.Plugins
             int userCount;
 
             string panel = aUIObj.AddElement(CMainPanelName, CMainPagePanel);
-            aUIObj.AddLabel(panel, CUserBtnPageLblTitleLbAnchor, CUserBtnPageLblTitleRtAnchor, CuiDefaultColors.TextAlt,
+            aUIObj.AddLabel(
+                panel, CUserBtnPageLblTitleLbAnchor, CUserBtnPageLblTitleRtAnchor, CuiColor.TextAlt,
                 GetMessage("User Button Page Title Text", aUIObj.PlayerIdString), string.Empty, 18, TextAnchor.MiddleLeft
             );
             // Add search elements
-            aUIObj.AddLabel(panel, CUserBtnPageLblSearchLbAnchor, CUserBtnPageLblSearchRtAnchor, CuiDefaultColors.TextAlt,
-                GetMessage("Search Label Text", aUIObj.PlayerIdString), string.Empty, 16, TextAnchor.MiddleLeft
+            aUIObj.AddLabel(
+                panel, CUserBtnPageLblSearchLbAnchor, CUserBtnPageLblSearchRtAnchor, CuiColor.TextAlt, GetMessage("Search Label Text", aUIObj.PlayerIdString),
+                string.Empty, 16, TextAnchor.MiddleLeft
             );
             string panelSearchGroup = aUIObj.AddElement(panel, CUserBtnPageSearchInputPanel);
-            aUIObj.AddInputField(panelSearchGroup, CUserBtnPageEdtSearchInputLbAnchor, CUserBtnPageEdtSearchInputRtAnchor, CuiDefaultColors.TextAlt,
+            aUIObj.AddInputField(
+                panelSearchGroup, CUserBtnPageEdtSearchInputLbAnchor, CUserBtnPageEdtSearchInputRtAnchor, CuiColor.TextAlt,
                 (FUserBtnPageSearchInputText.ContainsKey(aUIObj.PlayerId) ? FUserBtnPageSearchInputText[aUIObj.PlayerId] : string.Empty), 100,
                 CUserBtnPageSearchInputTextCmd, false, string.Empty, 16
             );
 
             switch (aPageType) {
                 case UiPage.PlayersOnline: {
-                    aUIObj.AddButton(panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(
+                        panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiColor.Button, CuiColor.TextAlt,
                         GetMessage("Go Button Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOnlineSearch} 0", string.Empty, string.Empty, 16
                     );
                     BuildUserButtons(ref aUIObj, panel, aPageType, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
                     break;
                 }
                 case UiPage.PlayersOffline: {
-                    aUIObj.AddButton(panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(
+                        panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiColor.Button, CuiColor.TextAlt,
                         GetMessage("Go Button Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOfflineSearch} 0", string.Empty, string.Empty, 16
                     );
                     BuildUserButtons(ref aUIObj, panel, aPageType, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
                     break;
                 }
                 default: {
-                    aUIObj.AddButton(panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(
+                        panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiColor.Button, CuiColor.TextAlt,
                         GetMessage("Go Button Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersBannedSearch} 0", string.Empty, string.Empty, 16
                     );
                     BuildBannedUserButtons(ref aUIObj, panel, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
@@ -1065,14 +1081,16 @@ namespace Oxide.Plugins
             if (aPage == 0) {
                 aUIObj.AddElement(panel, CUserBtnPagePreviousInactiveBtn);
             } else {
-                aUIObj.AddButton(panel, CUserBtnPageBtnPreviousLbAnchor, CUserBtnPageBtnPreviousRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
-                    "<<", string.Format(npBtnCommandFmt, aPage - 1), string.Empty, string.Empty, 18
+                aUIObj.AddButton(
+                    panel, CUserBtnPageBtnPreviousLbAnchor, CUserBtnPageBtnPreviousRtAnchor, CuiColor.Button, CuiColor.TextAlt, "<<",
+                    string.Format(npBtnCommandFmt, aPage - 1), string.Empty, string.Empty, 18
                 );
             }
 
             // Decide whether or not to activate the "next" button
             if (userCount > CMaxPlayerButtons * (aPage + 1)) {
-                aUIObj.AddButton(panel, CUserBtnPageBtnNextLbAnchor, CUserBtnPageBtnNextRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt, ">>",
+                aUIObj.AddButton(
+                    panel, CUserBtnPageBtnNextLbAnchor, CUserBtnPageBtnNextRtAnchor, CuiColor.Button, CuiColor.TextAlt, ">>",
                     string.Format(npBtnCommandFmt, aPage + 1), string.Empty, string.Empty, 18
                 );
             } else {
@@ -1092,8 +1110,9 @@ namespace Oxide.Plugins
         /// <param name="aBtnCommandFmt">Command format for the buttons</param>
         /// <param name="aUserCount">Total user count</param>
         /// <param name="aIndFiltered">Indicates if the output should be filtered</param>
-        private void BuildUserButtons(ref Cui aUIObj, string aParent, UiPage aPageType, ref int aPage, out string aBtnCommandFmt, out int aUserCount, bool aIndFiltered)
-        {
+        private void BuildUserButtons(
+            ref Cui aUIObj, string aParent, UiPage aPageType, ref int aPage, out string aBtnCommandFmt, out int aUserCount, bool aIndFiltered
+        ) {
             string commandFmt = $"{CSwitchUiCmd} {CCmdArgPlayerPage} {{0}}";
             List<BasePlayer> userList;
 
@@ -1157,86 +1176,110 @@ namespace Oxide.Plugins
             }
 
             LogDebug("AddUserPageInfoLabels > Time since last admin cheat has been determined.");
-            aUIObj.AddLabel(aParent, CUserPageLblIdLbAnchor, CUserPageLblIdRtAnchor, CuiDefaultColors.TextAlt, GetMessage("Id Label Format", aUiUserId, aPlayerId,
-                (aPlayer.IsDeveloper ? GetMessage("Dev Label Text", aUiUserId) : string.Empty)), string.Empty, 14, TextAnchor.MiddleLeft
+            /*
+            aUIObj.AddLabel(
+                aParent, CUserPageLblIdLbAnchor, CUserPageLblIdRtAnchor, CuiColor.TextAlt,
+                GetMessage("Id Label Format", aUiUserId, aPlayerId, (aPlayer.IsDeveloper ? GetMessage("Dev Label Text", aUiUserId) : string.Empty)),
+                string.Empty, 14, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(aParent, CUserPageLblAuthLbAnchor, CUserPageLblAuthRtAnchor, CuiDefaultColors.TextAlt,
+            */
+            aUIObj.AddInputField(
+                aParent, CUserPageLblIdLbAnchor, CUserPageLblIdRtAnchor, CuiColor.TextAlt,
+                GetMessage("Id Label Format", aUiUserId, aPlayerId, (aPlayer.IsDeveloper ? GetMessage("Dev Label Text", aUiUserId) : string.Empty))
+            );
+            aUIObj.AddLabel(
+                aParent, CUserPageLblAuthLbAnchor, CUserPageLblAuthRtAnchor, CuiColor.TextAlt,
                 GetMessage("Auth Level Label Format", aUiUserId, authLevel), string.Empty, 14, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(aParent, CUserPageLblConnectLbAnchor, CUserPageLblConnectRtAnchor, CuiDefaultColors.TextAlt,
-                GetMessage("Connection Label Format", aUiUserId, (
-                    aPlayer.IsConnected ? GetMessage("Connected Label Text", aUiUserId)
-                                        : GetMessage("Disconnected Label Text", aUiUserId))
+            aUIObj.AddLabel(
+                aParent, CUserPageLblConnectLbAnchor, CUserPageLblConnectRtAnchor, CuiColor.TextAlt, GetMessage(
+                    "Connection Label Format", aUiUserId,
+                    (aPlayer.IsConnected ? GetMessage("Connected Label Text", aUiUserId) : GetMessage("Disconnected Label Text", aUiUserId))
                 ), string.Empty, 14, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(aParent, CUserPageLblSleepLbAnchor, CUserPageLblSleepRtAnchor, CuiDefaultColors.TextAlt, GetMessage("Status Label Format", aUiUserId, (
-                    aPlayer.IsSleeping() ? GetMessage("Sleeping Label Text", aUiUserId)
-                                        : GetMessage("Awake Label Text", aUiUserId)
-                ), (
-                    aPlayer.IsAlive() ? GetMessage("Alive Label Text", aUiUserId)
-                                        : GetMessage("Dead Label Text", aUiUserId))
+            aUIObj.AddLabel(
+                aParent, CUserPageLblSleepLbAnchor, CUserPageLblSleepRtAnchor, CuiColor.TextAlt, GetMessage(
+                    "Status Label Format", aUiUserId,
+                    (aPlayer.IsSleeping() ? GetMessage("Sleeping Label Text", aUiUserId) : GetMessage("Awake Label Text", aUiUserId)),
+                    (aPlayer.IsAlive() ? GetMessage("Alive Label Text", aUiUserId) : GetMessage("Dead Label Text", aUiUserId))
                 ), string.Empty, 14, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(aParent, CUserPageLblFlagLbAnchor, CUserPageLblFlagRtAnchor, CuiDefaultColors.TextAlt, GetMessage("Flags Label Format", aUiUserId,
-                    (aPlayer.IsFlying ? GetMessage("Flying Label Text", aUiUserId) : string.Empty),
+            aUIObj.AddLabel(
+                aParent, CUserPageLblFlagLbAnchor, CUserPageLblFlagRtAnchor, CuiColor.TextAlt, GetMessage(
+                    "Flags Label Format", aUiUserId, (aPlayer.IsFlying ? GetMessage("Flying Label Text", aUiUserId) : string.Empty),
                     (aPlayer.isMounted ? GetMessage("Mounted Label Text", aUiUserId) : string.Empty)
                 ), string.Empty, 14, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(aParent, CUserPageLblPosLbAnchor, CUserPageLblPosRtAnchor, CuiDefaultColors.TextAlt,
+            aUIObj.AddLabel(
+                aParent, CUserPageLblPosLbAnchor, CUserPageLblPosRtAnchor, CuiColor.TextAlt,
                 GetMessage("Position Label Format", aUiUserId, aPlayer.ServerPosition), string.Empty, 14, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(aParent, CUserPageLblRotLbAnchor, CUserPageLblRotRtAnchor, CuiDefaultColors.TextAlt,
+            aUIObj.AddLabel(
+                aParent, CUserPageLblRotLbAnchor, CUserPageLblRotRtAnchor, CuiColor.TextAlt,
                 GetMessage("Rotation Label Format", aUiUserId, aPlayer.GetNetworkRotation()), string.Empty, 14, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(aParent, CUserPageLblAdminCheatLbAnchor, CUserPageLblAdminCheatRtAnchor, CuiDefaultColors.TextAlt,
+            aUIObj.AddLabel(
+                aParent, CUserPageLblAdminCheatLbAnchor, CUserPageLblAdminCheatRtAnchor, CuiColor.TextAlt,
                 GetMessage("Last Admin Cheat Label Format", aUiUserId, lastCheatStr), string.Empty, 14, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(aParent, CUserPageLblIdleLbAnchor, CUserPageLblIdleRtAnchor, CuiDefaultColors.TextAlt,
+            aUIObj.AddLabel(
+                aParent, CUserPageLblIdleLbAnchor, CUserPageLblIdleRtAnchor, CuiColor.TextAlt,
                 GetMessage("Idle Time Label Format", aUiUserId, Math.Round(aPlayer.IdleTime, 2)), string.Empty, 14, TextAnchor.MiddleLeft
             );
             LogDebug("AddUserPageInfoLabels > Generic info has been added.");
 
             if (Economics != null) {
-                double balance = (double)Economics.Call("Balance", aPlayerId);
-                aUIObj.AddLabel(aParent, CUserPageLblBalanceLbAnchor, CUserPageLblBalanceRtAnchor, CuiDefaultColors.TextAlt,
-                    GetMessage("Economics Balance Label Format", aUiUserId, Math.Round(balance, 2)), string.Empty, 14, TextAnchor.MiddleLeft
+                aUIObj.AddLabel(
+                    aParent, CUserPageLblBalanceLbAnchor, CUserPageLblBalanceRtAnchor, CuiColor.TextAlt,
+                    GetMessage("Economics Balance Label Format", aUiUserId, Math.Round((double)Economics.Call("Balance", aPlayerId), 2)), string.Empty, 14,
+                    TextAnchor.MiddleLeft
                 );
                 LogDebug("AddUserPageInfoLabels > Economics info has been added.");
             }
 
             if (ServerRewards != null) {
-                int points = (int)(ServerRewards.Call("CheckPoints", aPlayerId) ?? 0);
-                aUIObj.AddLabel(aParent, CUserPageLblRewardPointsLbAnchor, CUserPageLblRewardPointsRtAnchor, CuiDefaultColors.TextAlt,
-                    GetMessage("ServerRewards Points Label Format", aUiUserId, points), string.Empty, 14, TextAnchor.MiddleLeft
+                aUIObj.AddLabel(
+                    aParent, CUserPageLblRewardPointsLbAnchor, CUserPageLblRewardPointsRtAnchor, CuiColor.TextAlt,
+                    GetMessage("ServerRewards Points Label Format", aUiUserId, (int)(ServerRewards.Call("CheckPoints", aPlayerId) ?? 0)), string.Empty, 14,
+                    TextAnchor.MiddleLeft
                 );
                 LogDebug("AddUserPageInfoLabels > ServerRewards info has been added.");
             }
 
-            aUIObj.AddLabel(aParent, CUserPageLblHealthLbAnchor, CUserPageLblHealthRtAnchor, CuiDefaultColors.TextAlt,
-                GetMessage("Health Label Format", aUiUserId, aPlayer.health), string.Empty, 14, TextAnchor.MiddleLeft
+            aUIObj.AddLabel(
+                aParent, CUserPageLblHealthLbAnchor, CUserPageLblHealthRtAnchor, CuiColor.TextAlt, GetMessage("Health Label Format", aUiUserId, aPlayer.health),
+                string.Empty, 14, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(aParent, CUserPageLblCalLbAnchor, CUserPageLblCalRtAnchor, CuiDefaultColors.TextAlt,
+            aUIObj.AddLabel(
+                aParent, CUserPageLblCalLbAnchor, CUserPageLblCalRtAnchor, CuiColor.TextAlt,
                 GetMessage("Calories Label Format", aUiUserId, aPlayer.metabolism?.calories?.value), string.Empty, 14, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(aParent, CUserPageLblHydraLbAnchor, CUserPageLblHydraRtAnchor, CuiDefaultColors.TextAlt,
+            aUIObj.AddLabel(
+                aParent, CUserPageLblHydraLbAnchor, CUserPageLblHydraRtAnchor, CuiColor.TextAlt,
                 GetMessage("Hydration Label Format", aUiUserId, aPlayer.metabolism?.hydration?.value), string.Empty, 14, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(aParent, CUserPageLblTempLbAnchor, CUserPageLblTempRtAnchor, CuiDefaultColors.TextAlt,
+            aUIObj.AddLabel(
+                aParent, CUserPageLblTempLbAnchor, CUserPageLblTempRtAnchor, CuiColor.TextAlt,
                 GetMessage("Temp Label Format", aUiUserId, aPlayer.metabolism?.temperature?.value), string.Empty, 14, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(aParent, CUserPageLblWetLbAnchor, CUserPageLblWetRtAnchor, CuiDefaultColors.TextAlt,
+            aUIObj.AddLabel(
+                aParent, CUserPageLblWetLbAnchor, CUserPageLblWetRtAnchor, CuiColor.TextAlt,
                 GetMessage("Wetness Label Format", aUiUserId, aPlayer.metabolism?.wetness?.value), string.Empty, 14, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(aParent, CUserPageLblComfortLbAnchor, CUserPageLblComfortRtAnchor, CuiDefaultColors.TextAlt,
+            aUIObj.AddLabel(
+                aParent, CUserPageLblComfortLbAnchor, CUserPageLblComfortRtAnchor, CuiColor.TextAlt,
                 GetMessage("Comfort Label Format", aUiUserId, aPlayer.metabolism?.comfort?.value), string.Empty, 14, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(aParent, CUserPageLblBleedLbAnchor, CUserPageLblBleedRtAnchor, CuiDefaultColors.TextAlt,
+            aUIObj.AddLabel(
+                aParent, CUserPageLblBleedLbAnchor, CUserPageLblBleedRtAnchor, CuiColor.TextAlt,
                 GetMessage("Bleeding Label Format", aUiUserId, aPlayer.metabolism?.bleeding?.value), string.Empty, 14, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(aParent, CUserPageLblRads1LbAnchor, CUserPageLblRads1RtAnchor, CuiDefaultColors.TextAlt,
+            aUIObj.AddLabel(
+                aParent, CUserPageLblRads1LbAnchor, CUserPageLblRads1RtAnchor, CuiColor.TextAlt,
                 GetMessage("Radiation Label Format", aUiUserId, aPlayer.metabolism?.radiation_poison?.value), string.Empty, 14, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(aParent, CUserPageLblRads2LbAnchor, CUserPageLblRads2RtAnchor, CuiDefaultColors.TextAlt,
+            aUIObj.AddLabel(
+                aParent, CUserPageLblRads2LbAnchor, CUserPageLblRads2RtAnchor, CuiColor.TextAlt,
                 GetMessage("Radiation Protection Label Format", aUiUserId, aPlayer.RadiationProtection()), string.Empty, 14, TextAnchor.MiddleLeft
             );
             LogDebug("AddUserPageInfoLabels > Player statistics info has been added.");
@@ -1253,33 +1296,35 @@ namespace Oxide.Plugins
         private void AddUserPageFirstActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId, ref BasePlayer aPlayer)
         {
             if (VerifyPermission(aUiUserId, CPermBan)) {
-                aUIObj.AddButton(aParent, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
                     GetMessage("Ban Button Text", aUiUserId), $"{CBanUserCmd} {aPlayerId}"
                 );
             } else {
-                aUIObj.AddButton(aParent, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
-                    GetMessage("Ban Button Text", aUiUserId)
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiColor.ButtonInactive, CuiColor.Text, GetMessage("Ban Button Text", aUiUserId)
                 );
             }
 
             if (VerifyPermission(aUiUserId, CPermKick) && aPlayer.IsConnected) {
-                aUIObj.AddButton(aParent, CUserPageBtnKickLbAnchor, CUserPageBtnKickRtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnKickLbAnchor, CUserPageBtnKickRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
                     GetMessage("Kick Button Text", aUiUserId), $"{CKickUserCmd} {aPlayerId}"
                 );
             } else {
-                aUIObj.AddButton(aParent, CUserPageBtnKickLbAnchor, CUserPageBtnKickRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnKickLbAnchor, CUserPageBtnKickRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Kick Button Text", aUiUserId)
                 );
             }
 
-            aUIObj.AddLabel(aParent, CUserPageLblReasonLbAnchor, CUserPageLblReasonRtAnchor, CuiDefaultColors.TextAlt,
-                GetMessage("Reason Input Label Text", aUiUserId), string.Empty, 14, TextAnchor.MiddleLeft
+            aUIObj.AddLabel(
+                aParent, CUserPageLblReasonLbAnchor, CUserPageLblReasonRtAnchor, CuiColor.TextAlt, GetMessage("Reason Input Label Text", aUiUserId),
+                string.Empty, 14, TextAnchor.MiddleLeft
             );
-            string panelReasonGroup = aUIObj.AddPanel(aParent, CUserPagePanelReasonLbAnchor, CUserPagePanelReasonRtAnchor, false,
-                CuiDefaultColors.BackgroundDark
-            );
-            aUIObj.AddInputField(panelReasonGroup, CUserPageEdtReasonLbAnchor, CUserPageEdtReasonRtAnchor, CuiDefaultColors.TextAlt, string.Empty, 24,
-                CUserPageReasonInputTextCmd
+            string panelReasonGroup = aUIObj.AddPanel(aParent, CUserPagePanelReasonLbAnchor, CUserPagePanelReasonRtAnchor, false, CuiColor.BackgroundDark);
+            aUIObj.AddInputField(
+                panelReasonGroup, CUserPageEdtReasonLbAnchor, CUserPageEdtReasonRtAnchor, CuiColor.TextAlt, string.Empty, 24, CUserPageReasonInputTextCmd
             );
         }
 
@@ -1297,25 +1342,31 @@ namespace Oxide.Plugins
 
             if (VerifyPermission(aUiUserId, CPermVoiceMute) && playerConnected) {
                 if (GetIsVoiceMuted(ref aPlayer)) {
-                    aUIObj.AddButton(aParent, CUserPageBtnVUnmuteLbAnchor, CUserPageBtnVUnmuteRtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(
+                        aParent, CUserPageBtnVUnmuteLbAnchor, CUserPageBtnVUnmuteRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
                         GetMessage("Voice Unmute Button Text", aUiUserId), $"{CVoiceUnmuteUserCmd} {aPlayerId}"
                     );
-                    aUIObj.AddButton(aParent, CUserPageBtnVMuteLbAnchor, CUserPageBtnVMuteRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                    aUIObj.AddButton(
+                        aParent, CUserPageBtnVMuteLbAnchor, CUserPageBtnVMuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         GetMessage("Voice Mute Button Text", aUiUserId)
                     );
                 } else {
-                    aUIObj.AddButton(aParent, CUserPageBtnVUnmuteLbAnchor, CUserPageBtnVUnmuteRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                    aUIObj.AddButton(
+                        aParent, CUserPageBtnVUnmuteLbAnchor, CUserPageBtnVUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         GetMessage("Voice Unmute Button Text", aUiUserId)
                     );
-                    aUIObj.AddButton(aParent, CUserPageBtnVMuteLbAnchor, CUserPageBtnVMuteRtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(
+                        aParent, CUserPageBtnVMuteLbAnchor, CUserPageBtnVMuteRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
                         GetMessage("Voice Mute Button Text", aUiUserId), $"{CVoiceMuteUserCmd} {aPlayerId}"
                     );
                 }
             } else {
-                aUIObj.AddButton(aParent, CUserPageBtnVUnmuteLbAnchor, CUserPageBtnVUnmuteRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnVUnmuteLbAnchor, CUserPageBtnVUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Voice Unmute Button Text", aUiUserId)
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnVMuteLbAnchor, CUserPageBtnVMuteRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnVMuteLbAnchor, CUserPageBtnVMuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Voice Mute Button Text", aUiUserId)
                 );
             }
@@ -1335,49 +1386,61 @@ namespace Oxide.Plugins
 
             if (VerifyPermission(aUiUserId, CPermChatMute) && playerConnected) {
                 if (GetIsChatMuted(ref aPlayer)) {
-                    aUIObj.AddButton(aParent, CUserPageBtnCUnmuteLbAnchor, CUserPageBtnCUnmuteRtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(
+                        aParent, CUserPageBtnCUnmuteLbAnchor, CUserPageBtnCUnmuteRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
                         GetMessage("Chat Unmute Button Text", aUiUserId), $"{CChatUnmuteUserCmd} {aPlayerId}"
                     );
-                    aUIObj.AddButton(aParent, CUserPageBtnCMuteLbAnchor, CUserPageBtnCMuteRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                    aUIObj.AddButton(
+                        aParent, CUserPageBtnCMuteLbAnchor, CUserPageBtnCMuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         GetMessage("Chat Mute Button Text", aUiUserId)
                     );
 
                     if (BetterChatMute != null) {
-                        aUIObj.AddButton(aParent, CUserPageBtnCMuteFifteenLbAnchor, CUserPageBtnCMuteFifteenRtAnchor, CuiDefaultColors.ButtonInactive,
-                            CuiDefaultColors.Text, GetMessage("Chat Mute Button Text 15", aUiUserId)
+                        aUIObj.AddButton(
+                            aParent, CUserPageBtnCMuteFifteenLbAnchor, CUserPageBtnCMuteFifteenRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                            GetMessage("Chat Mute Button Text 15", aUiUserId)
                         );
-                        aUIObj.AddButton(aParent, CUserPageBtnCMuteThirtyLbAnchor, CUserPageBtnCMuteThirtyRtAnchor, CuiDefaultColors.ButtonInactive,
-                            CuiDefaultColors.Text, GetMessage("Chat Mute Button Text 30", aUiUserId)
+                        aUIObj.AddButton(
+                            aParent, CUserPageBtnCMuteThirtyLbAnchor, CUserPageBtnCMuteThirtyRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                            GetMessage("Chat Mute Button Text 30", aUiUserId)
                         );
-                        aUIObj.AddButton(aParent, CUserPageBtnCMuteSixtyLbAnchor, CUserPageBtnCMuteSixtyRtAnchor, CuiDefaultColors.ButtonInactive,
-                            CuiDefaultColors.Text, GetMessage("Chat Mute Button Text 60", aUiUserId)
+                        aUIObj.AddButton(
+                            aParent, CUserPageBtnCMuteSixtyLbAnchor, CUserPageBtnCMuteSixtyRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                            GetMessage("Chat Mute Button Text 60", aUiUserId)
                         );
                     }
                 } else {
-                    aUIObj.AddButton(aParent, CUserPageBtnCUnmuteLbAnchor, CUserPageBtnCUnmuteRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                    aUIObj.AddButton(
+                        aParent, CUserPageBtnCUnmuteLbAnchor, CUserPageBtnCUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         GetMessage("Chat Unmute Button Text", aUiUserId)
                     );
-                    aUIObj.AddButton(aParent, CUserPageBtnCMuteLbAnchor, CUserPageBtnCMuteRtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(
+                        aParent, CUserPageBtnCMuteLbAnchor, CUserPageBtnCMuteRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
                         GetMessage("Chat Mute Button Text", aUiUserId), $"{CChatMuteUserCmd} {aPlayerId} 0"
                     );
 
                     if (BetterChatMute != null) {
-                        aUIObj.AddButton(aParent, CUserPageBtnCMuteFifteenLbAnchor, CUserPageBtnCMuteFifteenRtAnchor, CuiDefaultColors.ButtonDanger,
-                            CuiDefaultColors.TextAlt, GetMessage("Chat Mute Button Text 15", aUiUserId), $"{CChatMuteUserCmd} {aPlayerId} 15"
+                        aUIObj.AddButton(
+                            aParent, CUserPageBtnCMuteFifteenLbAnchor, CUserPageBtnCMuteFifteenRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                            GetMessage("Chat Mute Button Text 15", aUiUserId), $"{CChatMuteUserCmd} {aPlayerId} 15"
                         );
-                        aUIObj.AddButton(aParent, CUserPageBtnCMuteThirtyLbAnchor, CUserPageBtnCMuteThirtyRtAnchor, CuiDefaultColors.ButtonDanger,
-                            CuiDefaultColors.TextAlt, GetMessage("Chat Mute Button Text 30", aUiUserId), $"{CChatMuteUserCmd} {aPlayerId} 30"
+                        aUIObj.AddButton(
+                            aParent, CUserPageBtnCMuteThirtyLbAnchor, CUserPageBtnCMuteThirtyRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                            GetMessage("Chat Mute Button Text 30", aUiUserId), $"{CChatMuteUserCmd} {aPlayerId} 30"
                         );
-                        aUIObj.AddButton(aParent, CUserPageBtnCMuteSixtyLbAnchor, CUserPageBtnCMuteSixtyRtAnchor, CuiDefaultColors.ButtonDanger,
-                            CuiDefaultColors.TextAlt, GetMessage("Chat Mute Button Text 60", aUiUserId), $"{CChatMuteUserCmd} {aPlayerId} 60"
+                        aUIObj.AddButton(
+                            aParent, CUserPageBtnCMuteSixtyLbAnchor, CUserPageBtnCMuteSixtyRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                            GetMessage("Chat Mute Button Text 60", aUiUserId), $"{CChatMuteUserCmd} {aPlayerId} 60"
                         );
                     }
                 }
             } else {
-                aUIObj.AddButton(aParent, CUserPageBtnCUnmuteLbAnchor, CUserPageBtnCUnmuteRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnCUnmuteLbAnchor, CUserPageBtnCUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Chat Unmute Button Text", aUiUserId)
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnCMuteLbAnchor, CUserPageBtnCMuteRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnCMuteLbAnchor, CUserPageBtnCMuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Chat Mute Button Text", aUiUserId)
                 );
             }
@@ -1394,30 +1457,37 @@ namespace Oxide.Plugins
         private void AddUserPageFourthActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId, ref BasePlayer aPlayer)
         {
             if (Freeze == null) {
-                aUIObj.AddButton(aParent, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Freeze Not Installed Button Text", aUiUserId)
                 );
             } else if (VerifyPermission(aUiUserId, CPermFreeze) && aPlayer.IsConnected) {
                 if (GetIsFrozen(aPlayerId)) {
-                    aUIObj.AddButton(aParent, CUserPageBtnUnFreezeLbAnchor, CUserPageBtnUnFreezeRtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(
+                        aParent, CUserPageBtnUnFreezeLbAnchor, CUserPageBtnUnFreezeRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
                         GetMessage("UnFreeze Button Text", aUiUserId), $"{CUnreezeCmd} {aPlayerId}"
                     );
-                    aUIObj.AddButton(aParent, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                    aUIObj.AddButton(
+                        aParent, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         GetMessage("Freeze Button Text", aUiUserId)
                     );
                 } else {
-                    aUIObj.AddButton(aParent, CUserPageBtnUnFreezeLbAnchor, CUserPageBtnUnFreezeRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                    aUIObj.AddButton(
+                        aParent, CUserPageBtnUnFreezeLbAnchor, CUserPageBtnUnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         GetMessage("UnFreeze Button Text", aUiUserId)
                     );
-                    aUIObj.AddButton(aParent, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(
+                        aParent, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
                         GetMessage("Freeze Button Text", aUiUserId), $"{CFreezeCmd} {aPlayerId}"
                     );
                 }
             } else {
-                aUIObj.AddButton(aParent, CUserPageBtnUnFreezeLbAnchor, CUserPageBtnUnFreezeRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnUnFreezeLbAnchor, CUserPageBtnUnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("UnFreeze Button Text", aUiUserId)
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Freeze Button Text", aUiUserId)
                 );
             }
@@ -1433,42 +1503,50 @@ namespace Oxide.Plugins
         private void AddUserPageFifthActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId)
         {
             if (VerifyPermission(aUiUserId, CPermClearInventory)) {
-                aUIObj.AddButton(aParent, CUserPageBtnClearInventoryLbAnchor, CUserPageBtnClearInventoryRtAnchor, CuiDefaultColors.ButtonWarning,
-                    CuiDefaultColors.TextAlt, GetMessage("Clear Inventory Button Text", aUiUserId), $"{CClearUserInventoryCmd} {aPlayerId}"
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnClearInventoryLbAnchor, CUserPageBtnClearInventoryRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
+                    GetMessage("Clear Inventory Button Text", aUiUserId), $"{CClearUserInventoryCmd} {aPlayerId}"
                 );
             } else {
-                aUIObj.AddButton(aParent, CUserPageBtnClearInventoryLbAnchor, CUserPageBtnClearInventoryRtAnchor, CuiDefaultColors.ButtonInactive,
-                    CuiDefaultColors.Text, GetMessage("Clear Inventory Button Text", aUiUserId)
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnClearInventoryLbAnchor, CUserPageBtnClearInventoryRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                    GetMessage("Clear Inventory Button Text", aUiUserId)
                 );
             }
 
             if (VerifyPermission(aUiUserId, CPermResetBP)) {
-                aUIObj.AddButton(aParent, CUserPageBtnResetBPLbAnchor, CUserPageBtnResetBPRtAnchor, CuiDefaultColors.ButtonWarning,
-                    CuiDefaultColors.TextAlt, GetMessage("Reset Blueprints Button Text", aUiUserId), $"{CResetUserBPCmd} {aPlayerId}"
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnResetBPLbAnchor, CUserPageBtnResetBPRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
+                    GetMessage("Reset Blueprints Button Text", aUiUserId), $"{CResetUserBPCmd} {aPlayerId}"
                 );
             } else {
-                aUIObj.AddButton(aParent, CUserPageBtnResetBPLbAnchor, CUserPageBtnResetBPRtAnchor, CuiDefaultColors.ButtonInactive,
-                    CuiDefaultColors.Text, GetMessage("Reset Blueprints Button Text", aUiUserId)
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnResetBPLbAnchor, CUserPageBtnResetBPRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                    GetMessage("Reset Blueprints Button Text", aUiUserId)
                 );
             }
 
             if (VerifyPermission(aUiUserId, CPermResetMetabolism)) {
-                aUIObj.AddButton(aParent, CUserPageBtnResetMetabolismLbAnchor, CUserPageBtnResetMetabolismRtAnchor, CuiDefaultColors.ButtonWarning,
-                    CuiDefaultColors.TextAlt, GetMessage("Reset Metabolism Button Text", aUiUserId), $"{CResetUserMetabolismCmd} {aPlayerId}"
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnResetMetabolismLbAnchor, CUserPageBtnResetMetabolismRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
+                    GetMessage("Reset Metabolism Button Text", aUiUserId), $"{CResetUserMetabolismCmd} {aPlayerId}"
                 );
             } else {
-                aUIObj.AddButton(aParent, CUserPageBtnResetMetabolismLbAnchor, CUserPageBtnResetMetabolismRtAnchor, CuiDefaultColors.ButtonInactive,
-                    CuiDefaultColors.Text, GetMessage("Reset Metabolism Button Text", aUiUserId)
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnResetMetabolismLbAnchor, CUserPageBtnResetMetabolismRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                    GetMessage("Reset Metabolism Button Text", aUiUserId)
                 );
             }
 
             if (VerifyPermission(aUiUserId, CPermRecoverMetabolism)) {
-                aUIObj.AddButton(aParent, CUserPageBtnRecoverMetabolismLbAnchor, CUserPageBtnRecoverMetabolismRtAnchor, CuiDefaultColors.ButtonWarning,
-                    CuiDefaultColors.TextAlt, GetMessage("Recover Metabolism Button Text", aUiUserId), $"{CRecoverUserMetabolismCmd} {aPlayerId}"
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnRecoverMetabolismLbAnchor, CUserPageBtnRecoverMetabolismRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
+                    GetMessage("Recover Metabolism Button Text", aUiUserId), $"{CRecoverUserMetabolismCmd} {aPlayerId}"
                 );
             } else {
-                aUIObj.AddButton(aParent, CUserPageBtnRecoverMetabolismLbAnchor, CUserPageBtnRecoverMetabolismRtAnchor, CuiDefaultColors.ButtonInactive,
-                    CuiDefaultColors.Text, GetMessage("Recover Metabolism Button Text", aUiUserId)
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnRecoverMetabolismLbAnchor, CUserPageBtnRecoverMetabolismRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                    GetMessage("Recover Metabolism Button Text", aUiUserId)
                 );
             }
         }
@@ -1483,28 +1561,34 @@ namespace Oxide.Plugins
         private void AddUserPageSixthActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId)
         {
             if (VerifyPermission(aUiUserId, CPermTeleport)) {
-                aUIObj.AddButton(aParent, CUserPageBtnTeleportToLbAnchor, CUserPageBtnTeleportToRtAnchor, CuiDefaultColors.ButtonSuccess,
-                    CuiDefaultColors.TextAlt, GetMessage("Teleport To Player Button Text", aUiUserId), $"{CTeleportToUserCmd} {aPlayerId}"
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnTeleportToLbAnchor, CUserPageBtnTeleportToRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
+                    GetMessage("Teleport To Player Button Text", aUiUserId), $"{CTeleportToUserCmd} {aPlayerId}"
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnTeleportLbAnchor, CUserPageBtnTeleportRtAnchor, CuiDefaultColors.ButtonSuccess,
-                    CuiDefaultColors.TextAlt, GetMessage("Teleport Player Button Text", aUiUserId), $"{CTeleportUserCmd} {aPlayerId}"
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnTeleportLbAnchor, CUserPageBtnTeleportRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
+                    GetMessage("Teleport Player Button Text", aUiUserId), $"{CTeleportUserCmd} {aPlayerId}"
                 );
             } else {
-                aUIObj.AddButton(aParent, CUserPageBtnTeleportToLbAnchor, CUserPageBtnTeleportToRtAnchor, CuiDefaultColors.ButtonInactive,
-                    CuiDefaultColors.Text, GetMessage("Teleport To Player Button Text", aUiUserId)
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnTeleportToLbAnchor, CUserPageBtnTeleportToRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                    GetMessage("Teleport To Player Button Text", aUiUserId)
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnTeleportLbAnchor, CUserPageBtnTeleportRtAnchor, CuiDefaultColors.ButtonInactive,
-                    CuiDefaultColors.Text, GetMessage("Teleport Player Button Text", aUiUserId)
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnTeleportLbAnchor, CUserPageBtnTeleportRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                    GetMessage("Teleport Player Button Text", aUiUserId)
                 );
             }
 
             if (VerifyPermission(aUiUserId, CPermSpectate)) {
-                aUIObj.AddButton(aParent, CUserPageBtnSpectateLbAnchor, CUserPageBtnSpectateRtAnchor, CuiDefaultColors.ButtonSuccess,
-                    CuiDefaultColors.TextAlt, GetMessage("Spectate Player Button Text", aUiUserId), $"{CSpectateUserCmd} {aPlayerId}"
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnSpectateLbAnchor, CUserPageBtnSpectateRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
+                    GetMessage("Spectate Player Button Text", aUiUserId), $"{CSpectateUserCmd} {aPlayerId}"
                 );
             } else {
-                aUIObj.AddButton(aParent, CUserPageBtnSpectateLbAnchor, CUserPageBtnSpectateRtAnchor, CuiDefaultColors.ButtonInactive,
-                    CuiDefaultColors.Text, GetMessage("Spectate Player Button Text", aUiUserId)
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnSpectateLbAnchor, CUserPageBtnSpectateRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                    GetMessage("Spectate Player Button Text", aUiUserId)
                 );
             }
         }
@@ -1519,15 +1603,18 @@ namespace Oxide.Plugins
         private void AddUserPageSeventhActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId)
         {
             if (PermissionsManager == null) {
-                aUIObj.AddButton(aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Perms Not Installed Button Text", aUiUserId)
                 );
             } else if (VerifyPermission(aUiUserId, CPermPerms)) {
-                aUIObj.AddButton(aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
                     GetMessage("Perms Button Text", aUiUserId), $"{CPermsCmd} {aPlayerId}"
                 );
             } else {
-                aUIObj.AddButton(aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Perms Button Text", aUiUserId)
                 );
             }
@@ -1543,39 +1630,49 @@ namespace Oxide.Plugins
         private void AddUserPageEleventhActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId)
         {
             if (VerifyPermission(aUiUserId, CPermHurt)) {
-                aUIObj.AddButton(aParent, CUserPageBtnHurt25LbAnchor, CUserPageBtnHurt25RtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnHurt25LbAnchor, CUserPageBtnHurt25RtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
                     GetMessage("Hurt 25 Button Text", aUiUserId), $"{CHurtUserCmd} {aPlayerId} 25"
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnHurt50LbAnchor, CUserPageBtnHurt50RtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnHurt50LbAnchor, CUserPageBtnHurt50RtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
                     GetMessage("Hurt 50 Button Text", aUiUserId), $"{CHurtUserCmd} {aPlayerId} 50"
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnHurt75LbAnchor, CUserPageBtnHurt75RtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnHurt75LbAnchor, CUserPageBtnHurt75RtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
                     GetMessage("Hurt 75 Button Text", aUiUserId), $"{CHurtUserCmd} {aPlayerId} 75"
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnHurt100LbAnchor, CUserPageBtnHurt100RtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnHurt100LbAnchor, CUserPageBtnHurt100RtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
                     GetMessage("Hurt 100 Button Text", aUiUserId), $"{CHurtUserCmd} {aPlayerId} 100"
                 );
             } else {
-                aUIObj.AddButton(aParent, CUserPageBtnHurt25LbAnchor, CUserPageBtnHurt25RtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnHurt25LbAnchor, CUserPageBtnHurt25RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Hurt 25 Button Text", aUiUserId)
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnHurt50LbAnchor, CUserPageBtnHurt50RtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnHurt50LbAnchor, CUserPageBtnHurt50RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Hurt 50 Button Text", aUiUserId)
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnHurt75LbAnchor, CUserPageBtnHurt75RtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnHurt75LbAnchor, CUserPageBtnHurt75RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Hurt 75 Button Text", aUiUserId)
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnHurt100LbAnchor, CUserPageBtnHurt100RtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnHurt100LbAnchor, CUserPageBtnHurt100RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Hurt 100 Button Text", aUiUserId)
                 );
             }
 
             if (VerifyPermission(aUiUserId, CPermKill)) {
-                aUIObj.AddButton(aParent, CUserPageBtnKillLbAnchor, CUserPageBtnKillRtAnchor, CuiDefaultColors.ButtonDanger, CuiDefaultColors.TextAlt,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnKillLbAnchor, CUserPageBtnKillRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
                     GetMessage("Kill Button Text", aUiUserId), $"{CKillUserCmd} {aPlayerId}"
                 );
             } else {
-                aUIObj.AddButton(aParent, CUserPageBtnKillLbAnchor, CUserPageBtnKillRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnKillLbAnchor, CUserPageBtnKillRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Kill Button Text", aUiUserId)
                 );
             }
@@ -1591,35 +1688,45 @@ namespace Oxide.Plugins
         private void AddUserPageTwelfthActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId)
         {
             if (VerifyPermission(aUiUserId, CPermHeal)) {
-                aUIObj.AddButton(aParent, CUserPageBtnHeal25LbAnchor, CUserPageBtnHeal25RtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnHeal25LbAnchor, CUserPageBtnHeal25RtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
                     GetMessage("Heal 25 Button Text", aUiUserId), $"{CHealUserCmd} {aPlayerId} 25"
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnHeal50LbAnchor, CUserPageBtnHeal50RtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnHeal50LbAnchor, CUserPageBtnHeal50RtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
                     GetMessage("Heal 50 Button Text", aUiUserId), $"{CHealUserCmd} {aPlayerId} 50"
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnHeal75LbAnchor, CUserPageBtnHeal75RtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnHeal75LbAnchor, CUserPageBtnHeal75RtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
                     GetMessage("Heal 75 Button Text", aUiUserId), $"{CHealUserCmd} {aPlayerId} 75"
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnHeal100LbAnchor, CUserPageBtnHeal100RtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnHeal100LbAnchor, CUserPageBtnHeal100RtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
                     GetMessage("Heal 100 Button Text", aUiUserId), $"{CHealUserCmd} {aPlayerId} 100"
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnHealWoundsLbAnchor, CUserPageBtnHealWoundsRtAnchor, CuiDefaultColors.ButtonSuccess, CuiDefaultColors.TextAlt,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnHealWoundsLbAnchor, CUserPageBtnHealWoundsRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
                     GetMessage("Heal Wounds Button Text", aUiUserId), $"{CHealUserCmd} {aPlayerId} 0"
                 );
             } else {
-                aUIObj.AddButton(aParent, CUserPageBtnHeal25LbAnchor, CUserPageBtnHeal25RtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnHeal25LbAnchor, CUserPageBtnHeal25RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Heal 25 Button Text", aUiUserId)
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnHeal50LbAnchor, CUserPageBtnHeal50RtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnHeal50LbAnchor, CUserPageBtnHeal50RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Heal 50 Button Text", aUiUserId)
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnHeal75LbAnchor, CUserPageBtnHeal75RtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnHeal75LbAnchor, CUserPageBtnHeal75RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Heal 75 Button Text", aUiUserId)
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnHeal100LbAnchor, CUserPageBtnHeal100RtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnHeal100LbAnchor, CUserPageBtnHeal100RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Heal 100 Button Text", aUiUserId)
                 );
-                aUIObj.AddButton(aParent, CUserPageBtnHealWoundsLbAnchor, CUserPageBtnHealWoundsRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                aUIObj.AddButton(
+                    aParent, CUserPageBtnHealWoundsLbAnchor, CUserPageBtnHealWoundsRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                     GetMessage("Heal Wounds Button Text", aUiUserId)
                 );
             }
@@ -1635,16 +1742,18 @@ namespace Oxide.Plugins
         private void BuildUserPage(ref Cui aUIObj, UiPage aPageType, ulong aPlayerId)
         {
             // Add panels
-            string panel = aUIObj.AddPanel(CMainPanelName, CMainPanelLbAnchor, CMainPanelRtAnchor, false, CuiDefaultColors.Background);
-            string infoPanel = aUIObj.AddPanel(panel, CUserPageInfoPanelLbAnchor, CUserPageInfoPanelRtAnchor, false, CuiDefaultColors.BackgroundMedium);
-            string actionPanel = aUIObj.AddPanel(panel, CUserPageActionPanelLbAnchor, CUserPageActionPanelRtAnchor, false, CuiDefaultColors.BackgroundMedium);
+            string panel = aUIObj.AddPanel(CMainPanelName, CMainPanelLbAnchor, CMainPanelRtAnchor, false, CuiColor.Background);
+            string infoPanel = aUIObj.AddPanel(panel, CUserPageInfoPanelLbAnchor, CUserPageInfoPanelRtAnchor, false, CuiColor.BackgroundMedium);
+            string actionPanel = aUIObj.AddPanel(panel, CUserPageActionPanelLbAnchor, CUserPageActionPanelRtAnchor, false, CuiColor.BackgroundMedium);
             LogDebug("BuildUserPage > Panels have been added.");
 
             // Add title labels
-            aUIObj.AddLabel(infoPanel, CUserPageLblinfoTitleLbAnchor, CUserPageLblinfoTitleRtAnchor, CuiDefaultColors.TextTitle,
+            aUIObj.AddLabel(
+                infoPanel, CUserPageLblinfoTitleLbAnchor, CUserPageLblinfoTitleRtAnchor, CuiColor.TextTitle,
                 GetMessage("Player Info Label Text", aUIObj.PlayerIdString), string.Empty, 14, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(actionPanel, CUserPageLblActionTitleLbAnchor, CUserPageLblActionTitleRtAnchor, CuiDefaultColors.TextTitle,
+            aUIObj.AddLabel(
+                actionPanel, CUserPageLblActionTitleLbAnchor, CUserPageLblActionTitleRtAnchor, CuiColor.TextTitle,
                 GetMessage("Player Actions Label Text", aUIObj.PlayerIdString), string.Empty, 14, TextAnchor.MiddleLeft
             );
             LogDebug("BuildUserPage > Title lables have been added.");
@@ -1653,7 +1762,8 @@ namespace Oxide.Plugins
                 BasePlayer player = BasePlayer.FindByID(aPlayerId) ?? BasePlayer.FindSleeping(aPlayerId);
                 LogDebug("BuildUserPage > player = null? " + InternalAssert(player == null));
 
-                aUIObj.AddLabel(panel, CMainLblTitleLbAnchor, CMainLblTitleRtAnchor, CuiDefaultColors.TextAlt,
+                aUIObj.AddLabel(
+                    panel, CMainLblTitleLbAnchor, CMainLblTitleRtAnchor, CuiColor.TextAlt,
                     GetMessage("User Page Title Format", aUIObj.PlayerIdString, player.displayName, string.Empty), string.Empty, 18, TextAnchor.MiddleLeft
                 );
                 // Add user info labels
@@ -1680,22 +1790,26 @@ namespace Oxide.Plugins
                 AddUserPageTwelfthActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId);
             } else {
                 ServerUsers.User serverUser = ServerUsers.Get(aPlayerId);
-                aUIObj.AddLabel(panel, CMainLblTitleLbAnchor, CMainLblTitleRtAnchor, CuiDefaultColors.TextAlt,
+                aUIObj.AddLabel(
+                    panel, CMainLblTitleLbAnchor, CMainLblTitleRtAnchor, CuiColor.TextAlt,
                     GetMessage("User Page Title Format", aUIObj.PlayerIdString, serverUser.username, GetMessage("Banned Label Text", aUIObj.PlayerIdString)),
                     string.Empty, 18, TextAnchor.MiddleLeft
                 );
                 // Add user info labels
-                aUIObj.AddLabel(infoPanel, CUserPageLblIdLbAnchor, CUserPageLblIdRtAnchor, CuiDefaultColors.TextAlt,
+                aUIObj.AddLabel(
+                    infoPanel, CUserPageLblIdLbAnchor, CUserPageLblIdRtAnchor, CuiColor.TextAlt,
                     GetMessage("Id Label Format", aUIObj.PlayerIdString, aPlayerId, string.Empty), string.Empty, 14, TextAnchor.MiddleLeft
                 );
 
                 // --- Build player action panel
                 if (VerifyPermission(aUIObj.PlayerIdString, CPermBan)) {
-                    aUIObj.AddButton(actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiDefaultColors.Button, CuiDefaultColors.TextAlt,
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiColor.Button, CuiColor.TextAlt,
                         GetMessage("Unban Button Text", aUIObj.PlayerIdString), $"{CUnbanUserCmd} {aPlayerId}"
                     );
                 } else {
-                    aUIObj.AddButton(actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiDefaultColors.ButtonInactive, CuiDefaultColors.Text,
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         GetMessage("Unban Button Text", aUIObj.PlayerIdString)
                     );
                 }
@@ -2036,91 +2150,108 @@ namespace Oxide.Plugins
         #endregion User page panel bounds
 
         #region Predefined UI elements
-        private static readonly CuiPanel CBasePanel = new CuiPanel() {
-            RectTransform = {
+        private static readonly CuiPanel CBasePanel = new CuiPanel
+        {
+            RectTransform =
+            {
                 AnchorMin = "0 0",
                 AnchorMax = "1 1",
                 OffsetMin = "0 0",
                 OffsetMax = "0 0"
             },
             CursorEnabled = true,
-            Image = new CuiImageComponent() { Color = CuiDefaultColors.None.ToString() }
+            Image = new CuiImageComponent { Color = CuiColor.None.ToString() }
         };
 
-        private static readonly CuiPanel CMainPanel = new CuiPanel() {
-            RectTransform = {
+        private static readonly CuiPanel CMainPanel = new CuiPanel
+        {
+            RectTransform =
+            {
                 AnchorMin = CMainLbAnchor.ToString(),
                 AnchorMax = CMainRtAnchor.ToString(),
                 OffsetMin = "0 0",
                 OffsetMax = "0 0"
             },
             CursorEnabled = true,
-            Image = new CuiImageComponent() { Color = CuiDefaultColors.BackgroundDark.ToString() }
+            Image = new CuiImageComponent { Color = CuiColor.BackgroundDark.ToString() }
         };
 
-        private static readonly CuiPanel CTabHeaderPanel = new CuiPanel() {
-            RectTransform = {
+        private static readonly CuiPanel CTabHeaderPanel = new CuiPanel
+        {
+            RectTransform =
+            {
                 AnchorMin = CMainMenuHeaderContainerLbAnchor.ToString(),
                 AnchorMax = CMainMenuHeaderContainerRtAnchor.ToString(),
                 OffsetMin = "0 0",
                 OffsetMax = "0 0"
             },
             CursorEnabled = true,
-            Image = new CuiImageComponent() { Color = CuiDefaultColors.None.ToString() }
+            Image = new CuiImageComponent { Color = CuiColor.None.ToString() }
         };
 
-        private static readonly CuiPanel CTabTabBtnPanel = new CuiPanel() {
-            RectTransform = {
+        private static readonly CuiPanel CTabTabBtnPanel = new CuiPanel
+        {
+            RectTransform =
+            {
                 AnchorMin = CMainMenuTabBtnContainerLbAnchor.ToString(),
                 AnchorMax = CMainMenuTabBtnContainerRtAnchor.ToString(),
                 OffsetMin = "0 0",
                 OffsetMax = "0 0"
             },
             CursorEnabled = true,
-            Image = new CuiImageComponent() { Color = CuiDefaultColors.Background.ToString() }
+            Image = new CuiImageComponent { Color = CuiColor.Background.ToString() }
         };
 
-        private static readonly CuiPanel CMainPagePanel = new CuiPanel() {
-            RectTransform = {
+        private static readonly CuiPanel CMainPagePanel = new CuiPanel
+        {
+            RectTransform =
+            {
                 AnchorMin = CMainPanelLbAnchor.ToString(),
                 AnchorMax = CMainPanelRtAnchor.ToString(),
                 OffsetMin = "0 0",
                 OffsetMax = "0 0"
             },
             CursorEnabled = true,
-            Image = new CuiImageComponent() { Color = CuiDefaultColors.Background.ToString() }
+            Image = new CuiImageComponent { Color = CuiColor.Background.ToString() }
         };
 
-        private static readonly CuiPanel CBanByIdGroupPanel = new CuiPanel() {
-            RectTransform = {
+        private static readonly CuiPanel CBanByIdGroupPanel = new CuiPanel
+        {
+            RectTransform =
+            {
                 AnchorMin = CMainPagePanelBanByIdLbAnchor.ToString(),
                 AnchorMax = CMainPagePanelBanByIdRtAnchor.ToString(),
                 OffsetMin = "0 0",
                 OffsetMax = "0 0"
             },
             CursorEnabled = true,
-            Image = new CuiImageComponent() { Color = CuiDefaultColors.BackgroundDark.ToString() }
+            Image = new CuiImageComponent { Color = CuiColor.BackgroundDark.ToString() }
         };
 
-        private static readonly CuiPanel CUserBtnPageSearchInputPanel = new CuiPanel() {
-            RectTransform = {
+        private static readonly CuiPanel CUserBtnPageSearchInputPanel = new CuiPanel
+        {
+            RectTransform =
+            {
                 AnchorMin = CUserBtnPagePanelSearchInputLbAnchor.ToString(),
                 AnchorMax = CUserBtnPagePanelSearchInputRtAnchor.ToString(),
                 OffsetMin = "0 0",
                 OffsetMax = "0 0"
             },
             CursorEnabled = true,
-            Image = new CuiImageComponent() { Color = CuiDefaultColors.BackgroundDark.ToString() }
+            Image = new CuiImageComponent { Color = CuiColor.BackgroundDark.ToString() }
         };
 
-        private static readonly CuiLabel CTabMenuHeaderLbl = new CuiLabel() {
-            Text = {
+        private static readonly CuiLabel CTabMenuHeaderLbl = new CuiLabel
+        {
+            Text =
+            {
                 Text = "Player Administration by ThibmoRozier",
                 FontSize = 22,
                 Align = TextAnchor.MiddleCenter,
-                Color = CuiDefaultColors.TextTitle.ToString()
+                Color = CuiColor.TextTitle.ToString()
             },
-            RectTransform = {
+            RectTransform =
+            {
                 AnchorMin = CMainMenuHeaderLblLbAnchor.ToString(),
                 AnchorMax = CMainMenuHeaderLblRtAnchor.ToString(),
                 OffsetMin = "0 0",
@@ -2128,14 +2259,17 @@ namespace Oxide.Plugins
             }
         };
 
-        private static readonly CuiLabel CMainPageTitleLbl = new CuiLabel() {
-            Text = {
+        private static readonly CuiLabel CMainPageTitleLbl = new CuiLabel
+        {
+            Text =
+            {
                 Text = "Main",
                 FontSize = 18,
                 Align = TextAnchor.MiddleLeft,
-                Color = CuiDefaultColors.TextAlt.ToString()
+                Color = CuiColor.TextAlt.ToString()
             },
-            RectTransform = {
+            RectTransform =
+            {
                 AnchorMin = CMainLblTitleLbAnchor.ToString(),
                 AnchorMax = CMainLblTitleRtAnchor.ToString(),
                 OffsetMin = "0 0",
@@ -2143,118 +2277,140 @@ namespace Oxide.Plugins
             }
         };
 
-        private static readonly CuiButton CTabMenuCloseBtn = new CuiButton() {
-            Button = {
+        private static readonly CuiButton CTabMenuCloseBtn = new CuiButton
+        {
+            Button =
+            {
                 Command = CCloseUiCmd,
                 Close = string.Empty,
-                Color = CuiDefaultColors.ButtonDecline.ToString()
+                Color = CuiColor.ButtonDecline.ToString()
             },
-            RectTransform = {
+            RectTransform =
+            {
                 AnchorMin = CMainMenuCloseBtnLbAnchor.ToString(),
                 AnchorMax = CMainMenuCloseBtnRtAnchor.ToString(),
                 OffsetMin = "0 0",
                 OffsetMax = "0 0"
             },
-            Text = {
+            Text =
+            {
                 Text = "X",
                 FontSize = 22,
                 Align = TextAnchor.MiddleCenter,
-                Color = CuiDefaultColors.TextAlt.ToString()
+                Color = CuiColor.TextAlt.ToString()
             }
         };
 
-        private static readonly CuiButton CBanByIdActiveBtn = new CuiButton() {
-            Button = {
+        private static readonly CuiButton CBanByIdActiveBtn = new CuiButton
+        {
+            Button =
+            {
                 Command = CMainPageBanByIdCmd,
                 Close = string.Empty,
-                Color = CuiDefaultColors.ButtonDanger.ToString()
+                Color = CuiColor.ButtonDanger.ToString()
             },
-            RectTransform = {
+            RectTransform =
+            {
                 AnchorMin = CMainPageBtnBanByIdLbAnchor.ToString(),
                 AnchorMax = CMainPageBtnBanByIdRtAnchor.ToString(),
                 OffsetMin = "0 0",
                 OffsetMax = "0 0"
             },
-            Text = {
+            Text =
+            {
                 Text = "Ban",
                 FontSize = 14,
                 Align = TextAnchor.MiddleCenter,
-                Color = CuiDefaultColors.TextAlt.ToString()
+                Color = CuiColor.TextAlt.ToString()
             }
         };
 
-        private static readonly CuiButton CBanByIdInactiveBtn = new CuiButton() {
-            Button = {
+        private static readonly CuiButton CBanByIdInactiveBtn = new CuiButton
+        {
+            Button =
+            {
                 Command = string.Empty,
                 Close = string.Empty,
-                Color = CuiDefaultColors.ButtonInactive.ToString()
+                Color = CuiColor.ButtonInactive.ToString()
             },
-            RectTransform = {
+            RectTransform =
+            {
                 AnchorMin = CMainPageBtnBanByIdLbAnchor.ToString(),
                 AnchorMax = CMainPageBtnBanByIdRtAnchor.ToString(),
                 OffsetMin = "0 0",
                 OffsetMax = "0 0"
             },
-            Text = {
+            Text =
+            {
                 Text = "Ban",
                 FontSize = 14,
                 Align = TextAnchor.MiddleCenter,
-                Color = CuiDefaultColors.TextAlt.ToString()
+                Color = CuiColor.TextAlt.ToString()
             }
         };
 
-        private static readonly CuiButton CUserBtnPagePreviousInactiveBtn = new CuiButton() {
-            Button = {
+        private static readonly CuiButton CUserBtnPagePreviousInactiveBtn = new CuiButton
+        {
+            Button =
+            {
                 Command = string.Empty,
                 Close = string.Empty,
-                Color = CuiDefaultColors.ButtonInactive.ToString()
+                Color = CuiColor.ButtonInactive.ToString()
             },
-            RectTransform = {
+            RectTransform =
+            {
                 AnchorMin = CUserBtnPageBtnPreviousLbAnchor.ToString(),
                 AnchorMax = CUserBtnPageBtnPreviousRtAnchor.ToString(),
                 OffsetMin = "0 0",
                 OffsetMax = "0 0"
             },
-            Text = {
+            Text =
+            {
                 Text = "<<",
                 FontSize = 18,
                 Align = TextAnchor.MiddleCenter,
-                Color = CuiDefaultColors.TextAlt.ToString()
+                Color = CuiColor.TextAlt.ToString()
             }
         };
 
-        private static readonly CuiButton CUserBtnPageNextInactiveBtn = new CuiButton() {
-            Button = {
+        private static readonly CuiButton CUserBtnPageNextInactiveBtn = new CuiButton
+        {
+            Button =
+            {
                 Command = string.Empty,
                 Close = string.Empty,
-                Color = CuiDefaultColors.ButtonInactive.ToString()
+                Color = CuiColor.ButtonInactive.ToString()
             },
-            RectTransform = {
+            RectTransform =
+            {
                 AnchorMin = CUserBtnPageBtnNextLbAnchor.ToString(),
                 AnchorMax = CUserBtnPageBtnNextRtAnchor.ToString(),
                 OffsetMin = "0 0",
                 OffsetMax = "0 0"
             },
-            Text = {
+            Text =
+            {
                 Text = ">>",
                 FontSize = 18,
                 Align = TextAnchor.MiddleCenter,
-                Color = CuiDefaultColors.TextAlt.ToString()
+                Color = CuiColor.TextAlt.ToString()
             }
         };
 
-        private static readonly CuiInputField CBanByIdEdt = new CuiInputField()
+        private static readonly CuiInputField CBanByIdEdt = new CuiInputField
         {
-            InputField = {
+            InputField =
+            {
                 Text = string.Empty,
                 FontSize = 14,
                 Align = TextAnchor.MiddleLeft,
-                Color = CuiDefaultColors.TextAlt.ToString(),
+                Color = CuiColor.TextAlt.ToString(),
                 CharsLimit = 24,
                 Command = CMainPageBanIdInputTextCmd,
                 IsPassword = false
             },
-            RectTransform = {
+            RectTransform =
+            {
                 AnchorMin = CMainPageEdtBanByIdLbAnchor.ToString(),
                 AnchorMax = CMainPageEdtBanByIdRtAnchor.ToString(),
                 OffsetMin = "0 0",
@@ -2354,114 +2510,118 @@ namespace Oxide.Plugins
 
         protected override void LoadDefaultConfig()
         {
-            FConfigData = new ConfigData {
+            FConfigData = new ConfigData
+            {
                 UsePermSystem = true,
-                BanMsgWebhookUrl = "",
-                KickMsgWebhookUrl = ""
+                BanMsgWebhookUrl = string.Empty,
+                KickMsgWebhookUrl = string.Empty
             };
             LogDebug("Default config loaded");
         }
 
         protected override void LoadDefaultMessages()
         {
-            lang.RegisterMessages(new Dictionary<string, string> {
-                { "Permission Error Text", "You do not have the required permissions to use this command." },
-                { "Permission Error Log Text", "{0}: Tried to execute a command requiring the '{1}' permission" },
-                { "Kick Reason Message Text", "Administrative decision" },
-                { "Ban Reason Message Text", "Administrative decision" },
-                { "Protection Active Text", "Unable to perform this action, protection is enabled for this user" },
+            lang.RegisterMessages(
+                new Dictionary<string, string>
+                {
+                    { "Permission Error Text", "You do not have the required permissions to use this command." },
+                    { "Permission Error Log Text", "{0}: Tried to execute a command requiring the '{1}' permission" },
+                    { "Kick Reason Message Text", "Administrative decision" },
+                    { "Ban Reason Message Text", "Administrative decision" },
+                    { "Protection Active Text", "Unable to perform this action, protection is enabled for this user" },
 
-                { "Never Label Text", "Never" },
-                { "Banned Label Text", " (Banned)" },
-                { "Dev Label Text", " (Developer)" },
-                { "Connected Label Text", "Connected" },
-                { "Disconnected Label Text", "Disconnected" },
-                { "Sleeping Label Text", "Sleeping" },
-                { "Awake Label Text", "Awake" },
-                { "Alive Label Text", "Alive" },
-                { "Dead Label Text", "Dead" },
-                { "Flying Label Text", " Flying" },
-                { "Mounted Label Text", " Mounted" },
+                    { "Never Label Text", "Never" },
+                    { "Banned Label Text", " (Banned)" },
+                    { "Dev Label Text", " (Developer)" },
+                    { "Connected Label Text", "Connected" },
+                    { "Disconnected Label Text", "Disconnected" },
+                    { "Sleeping Label Text", "Sleeping" },
+                    { "Awake Label Text", "Awake" },
+                    { "Alive Label Text", "Alive" },
+                    { "Dead Label Text", "Dead" },
+                    { "Flying Label Text", " Flying" },
+                    { "Mounted Label Text", " Mounted" },
 
-                { "User Button Page Title Text", "Click a username to go to the player's control page" },
-                { "User Page Title Format", "Control page for player '{0}'{1}" },
+                    { "User Button Page Title Text", "Click a username to go to the player's control page" },
+                    { "User Page Title Format", "Control page for player '{0}'{1}" },
 
-                { "Ban By ID Title Text", "Ban a user by ID" },
-                { "Ban By ID Label Text", "User ID:" },
-                { "Search Label Text", "Search:" },
-                { "Player Info Label Text", "Player information:" },
-                { "Player Actions Label Text", "Player actions:" },
+                    { "Ban By ID Title Text", "Ban a user by ID" },
+                    { "Ban By ID Label Text", "User ID:" },
+                    { "Search Label Text", "Search:" },
+                    { "Player Info Label Text", "Player information:" },
+                    { "Player Actions Label Text", "Player actions:" },
 
-                { "Id Label Format", "ID: {0}{1}" },
-                { "Auth Level Label Format", "Auth level: {0}" },
-                { "Connection Label Format", "Connection: {0}" },
-                { "Status Label Format", "Status: {0} and {1}" },
-                { "Flags Label Format", "Flags:{0}{1}" },
-                { "Position Label Format", "Position: {0}" },
-                { "Rotation Label Format", "Rotation: {0}" },
-                { "Last Admin Cheat Label Format", "Last admin cheat: {0}" },
-                { "Idle Time Label Format", "Idle time: {0} seconds" },
-                { "Economics Balance Label Format", "Balance: {0} coins" },
-                { "ServerRewards Points Label Format", "Reward points: {0}" },
-                { "Health Label Format", "Health: {0}" },
-                { "Calories Label Format", "Calories: {0}" },
-                { "Hydration Label Format", "Hydration: {0}" },
-                { "Temp Label Format", "Temperature: {0}" },
-                { "Wetness Label Format", "Wetness: {0}" },
-                { "Comfort Label Format", "Comfort: {0}" },
-                { "Bleeding Label Format", "Bleeding: {0}" },
-                { "Radiation Label Format", "Radiation: {0}" },
-                { "Radiation Protection Label Format", "Protection: {0}" },
+                    { "Id Label Format", "ID: {0}{1}" },
+                    { "Auth Level Label Format", "Auth level: {0}" },
+                    { "Connection Label Format", "Connection: {0}" },
+                    { "Status Label Format", "Status: {0} and {1}" },
+                    { "Flags Label Format", "Flags:{0}{1}" },
+                    { "Position Label Format", "Position: {0}" },
+                    { "Rotation Label Format", "Rotation: {0}" },
+                    { "Last Admin Cheat Label Format", "Last admin cheat: {0}" },
+                    { "Idle Time Label Format", "Idle time: {0} seconds" },
+                    { "Economics Balance Label Format", "Balance: {0} coins" },
+                    { "ServerRewards Points Label Format", "Reward points: {0}" },
+                    { "Health Label Format", "Health: {0}" },
+                    { "Calories Label Format", "Calories: {0}" },
+                    { "Hydration Label Format", "Hydration: {0}" },
+                    { "Temp Label Format", "Temperature: {0}" },
+                    { "Wetness Label Format", "Wetness: {0}" },
+                    { "Comfort Label Format", "Comfort: {0}" },
+                    { "Bleeding Label Format", "Bleeding: {0}" },
+                    { "Radiation Label Format", "Radiation: {0}" },
+                    { "Radiation Protection Label Format", "Protection: {0}" },
 
-                { "Main Tab Text", "Main" },
-                { "Online Player Tab Text", "Online Players" },
-                { "Offline Player Tab Text", "Offline Players" },
-                { "Banned Player Tab Text", "Banned Players" },
+                    { "Main Tab Text", "Main" },
+                    { "Online Player Tab Text", "Online Players" },
+                    { "Offline Player Tab Text", "Offline Players" },
+                    { "Banned Player Tab Text", "Banned Players" },
 
-                { "Go Button Text", "Go" },
+                    { "Go Button Text", "Go" },
 
-                { "Unban Button Text", "Unban" },
-                { "Ban Button Text", "Ban" },
-                { "Kick Button Text", "Kick" },
-                { "Reason Input Label Text", "Reason:" },
+                    { "Unban Button Text", "Unban" },
+                    { "Ban Button Text", "Ban" },
+                    { "Kick Button Text", "Kick" },
+                    { "Reason Input Label Text", "Reason:" },
 
-                { "Voice Unmute Button Text", "Unmute Voice" },
-                { "Voice Mute Button Text", "Mute Voice" },
+                    { "Voice Unmute Button Text", "Unmute Voice" },
+                    { "Voice Mute Button Text", "Mute Voice" },
 
-                { "Chat Unmute Button Text", "Unmute Chat" },
-                { "Chat Mute Button Text", "Mute Chat" },
-                { "Chat Mute Button Text 15", "Mute Chat 15 Min" },
-                { "Chat Mute Button Text 30", "Mute Chat 30 Min" },
-                { "Chat Mute Button Text 60", "Mute Chat 60 Min" },
+                    { "Chat Unmute Button Text", "Unmute Chat" },
+                    { "Chat Mute Button Text", "Mute Chat" },
+                    { "Chat Mute Button Text 15", "Mute Chat 15 Min" },
+                    { "Chat Mute Button Text 30", "Mute Chat 30 Min" },
+                    { "Chat Mute Button Text 60", "Mute Chat 60 Min" },
 
-                { "UnFreeze Button Text", "UnFreeze" },
-                { "Freeze Button Text", "Freeze" },
-                { "Freeze Not Installed Button Text", "Freeze Not Installed" },
+                    { "UnFreeze Button Text", "UnFreeze" },
+                    { "Freeze Button Text", "Freeze" },
+                    { "Freeze Not Installed Button Text", "Freeze Not Installed" },
 
-                { "Clear Inventory Button Text", "Clear Inventory" },
-                { "Reset Blueprints Button Text", "Reset Blueprints" },
-                { "Reset Metabolism Button Text", "Reset Metabolism" },
-                { "Recover Metabolism Button Text", "Recover Metabolism" },
+                    { "Clear Inventory Button Text", "Clear Inventory" },
+                    { "Reset Blueprints Button Text", "Reset Blueprints" },
+                    { "Reset Metabolism Button Text", "Reset Metabolism" },
+                    { "Recover Metabolism Button Text", "Recover Metabolism" },
 
-                { "Teleport To Player Button Text", "Teleport To Player" },
-                { "Teleport Player Button Text", "Teleport Player" },
-                { "Spectate Player Button Text", "Spectate Player" },
+                    { "Teleport To Player Button Text", "Teleport To Player" },
+                    { "Teleport Player Button Text", "Teleport Player" },
+                    { "Spectate Player Button Text", "Spectate Player" },
 
-                { "Perms Button Text", "Permissions" },
-                { "Perms Not Installed Button Text", "Perms Not Installed" },
+                    { "Perms Button Text", "Permissions" },
+                    { "Perms Not Installed Button Text", "Perms Not Installed" },
 
-                { "Hurt 25 Button Text", "Hurt 25" },
-                { "Hurt 50 Button Text", "Hurt 50" },
-                { "Hurt 75 Button Text", "Hurt 75" },
-                { "Hurt 100 Button Text", "Hurt 100" },
-                { "Kill Button Text", "Kill" },
+                    { "Hurt 25 Button Text", "Hurt 25" },
+                    { "Hurt 50 Button Text", "Hurt 50" },
+                    { "Hurt 75 Button Text", "Hurt 75" },
+                    { "Hurt 100 Button Text", "Hurt 100" },
+                    { "Kill Button Text", "Kill" },
 
-                { "Heal 25 Button Text", "Heal 25" },
-                { "Heal 50 Button Text", "Heal 50" },
-                { "Heal 75 Button Text", "Heal 75" },
-                { "Heal 100 Button Text", "Heal 100" },
-                { "Heal Wounds Button Text", "Heal Wounds" }
-            }, this, "en");
+                    { "Heal 25 Button Text", "Heal 25" },
+                    { "Heal 50 Button Text", "Heal 50" },
+                    { "Heal 75 Button Text", "Heal 75" },
+                    { "Heal 100 Button Text", "Heal 100" },
+                    { "Heal Wounds Button Text", "Heal Wounds" }
+                }, this, "en"
+            );
             LogDebug("Default messages loaded");
         }
 
@@ -2479,12 +2639,7 @@ namespace Oxide.Plugins
                 return;
 
             LogInfo($"{aPlayer.displayName}: Opened the menu");
-            CuiHelper.AddUi(aPlayer, CuiHelper.ToJson(
-                new CuiElementContainer {
-                    { CBasePanel, Cui.ParentOverlay, CBasePanelName }
-                },
-                false
-            ));
+            CuiHelper.AddUi(aPlayer, CuiHelper.ToJson(new CuiElementContainer {{ CBasePanel, Cui.ParentOverlay, CBasePanelName }}, false));
             BuildUI(aPlayer, UiPage.Main);
         }
 
@@ -2595,9 +2750,7 @@ namespace Oxide.Plugins
             Player.Ban(targetId, banReasonMsg);
             ServerUsers.User targetPlayer = ServerUsers.Get(targetId);
             LogInfo($"{player.displayName}: Banned user ID {targetId}");
-            SendDiscordKickBanMessage(
-                player.displayName, player.UserIDString, targetPlayer.username, targetId.ToString(), banReasonMsg, true
-            );
+            SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.username, targetId.ToString(), banReasonMsg, true);
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
@@ -2623,9 +2776,7 @@ namespace Oxide.Plugins
             Player.Ban(targetId, banReasonMsg);
             ServerUsers.User targetPlayer = ServerUsers.Get(targetId);
             LogInfo($"{player.displayName}: Banned user ID {targetId}");
-            SendDiscordKickBanMessage(
-                player.displayName, player.UserIDString, targetPlayer.username, targetId.ToString(), banReasonMsg, true
-            );
+            SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.username, targetId.ToString(), banReasonMsg, true);
             timer.Once(0.01f, () => BuildUI(player, UiPage.Main));
         }
 
@@ -2644,14 +2795,11 @@ namespace Oxide.Plugins
                 return;
             }
 
-            BasePlayer targetPlayer = BasePlayer.FindByID(targetId);
             string kickReasonMsg = GetMessage("Kick Reason Message Text", targetId.ToString());
+            BasePlayer targetPlayer = BasePlayer.FindByID(targetId);
             targetPlayer?.Kick(kickReasonMsg);
             LogInfo($"{player.displayName}: Kicked user ID {targetId}");
-            SendDiscordKickBanMessage(
-                player.displayName, player.UserIDString, targetPlayer.displayName, targetPlayer.UserIDString,
-                kickReasonMsg, false
-            );
+            SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.displayName, targetPlayer.UserIDString, kickReasonMsg, false);
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
@@ -2665,9 +2813,7 @@ namespace Oxide.Plugins
             if (!VerifyPermission(ref player, CPermVoiceMute, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
-            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(
-                BasePlayer.PlayerFlags.VoiceMuted, false
-            );
+            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, false);
             LogInfo($"{player.displayName}: Voice unmuted user ID {targetId}");
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
@@ -2682,9 +2828,7 @@ namespace Oxide.Plugins
             if (!VerifyPermission(ref player, CPermVoiceMute, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
-            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(
-                BasePlayer.PlayerFlags.VoiceMuted, true
-            );
+            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, true);
             LogInfo($"{player.displayName}: Voice muted user ID {targetId}");
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
@@ -2838,14 +2982,10 @@ namespace Oxide.Plugins
             BasePlayer player = aArg.Player();
             ulong targetId;
 
-            if (
-                !VerifyPermission(ref player, CPermRecoverMetabolism, true) ||
-                !GetTargetFromArg(ref aArg, out targetId)
-            )
+            if (!VerifyPermission(ref player, CPermRecoverMetabolism, true) || !GetTargetFromArg(ref aArg, out targetId))
                 return;
 
-            PlayerMetabolism playerState =
-                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.metabolism;
+            PlayerMetabolism playerState = (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.metabolism;
             playerState.bleeding.value = playerState.bleeding.min;
             playerState.calories.value = playerState.calories.max;
             playerState.comfort.value = 0;
@@ -2922,9 +3062,7 @@ namespace Oxide.Plugins
                 return;
 
             player.SendConsoleCommand($"chat.say \"/{CPermsPermsCmd} {targetId}\"");
-            timer.Once(
-                0.01f, () => LogInfo($"{player.displayName}: Opened the permissions manager for user ID {targetId}")
-            );
+            timer.Once(0.01f, () => LogInfo($"{player.displayName}: Opened the permissions manager for user ID {targetId}"));
         }
 
         [ConsoleCommand(CHurtUserCmd)]
@@ -2935,10 +3073,7 @@ namespace Oxide.Plugins
             ulong targetId;
             float amount;
 
-            if (
-                !VerifyPermission(ref player, CPermHurt, true) ||
-                !GetTargetAmountFromArg(ref aArg, out targetId, out amount)
-            )
+            if (!VerifyPermission(ref player, CPermHurt, true) || !GetTargetAmountFromArg(ref aArg, out targetId, out amount))
                 return;
 
             if (permission.UserHasPermission(targetId.ToString(), CPermProtectHurt)) {
@@ -2979,10 +3114,7 @@ namespace Oxide.Plugins
             ulong targetId;
             float amount;
 
-            if (
-                !VerifyPermission(ref player, CPermHeal, true) ||
-                !GetTargetAmountFromArg(ref aArg, out targetId, out amount)
-            )
+            if (!VerifyPermission(ref player, CPermHeal, true) || !GetTargetAmountFromArg(ref aArg, out targetId, out amount))
                 return;
 
             BasePlayer targetPlayer = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
