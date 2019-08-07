@@ -30,16 +30,16 @@ using Oxide.Core.Libraries.Covalence;
 using Oxide.Core.Plugins;
 using Oxide.Game.Rust.Cui;
 using Oxide.Game.Rust.Libraries;
-using RustLib = Oxide.Game.Rust.Libraries.Rust;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using UnityEngine;
+using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.5.3")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.4")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -61,8 +61,8 @@ namespace Oxide.Plugins
         #endregion Plugin References
 
         #region Library Imports
-        private RustLib rust = Interface.Oxide.GetLibrary<RustLib>();
-        private Player Player = Interface.Oxide.GetLibrary<Player>();
+        private readonly RustLib rust = Interface.Oxide.GetLibrary<RustLib>();
+        private readonly Player Player = Interface.Oxide.GetLibrary<Player>();
         #endregion Library Imports
 
         #region GUI
@@ -2638,7 +2638,7 @@ namespace Oxide.Plugins
             LogDebug("PlayerAdministrationUICallback was called");
             CuiHelper.DestroyUi(player, CBasePanelName);
 
-            if (!VerifyPermission(ref player, string.Empty, true))
+            if (aPlayer.IsServer || !VerifyPermission(ref player, string.Empty, true))
                 return;
 
             LogInfo($"{player.displayName}: Opened the menu");
@@ -2650,6 +2650,10 @@ namespace Oxide.Plugins
         private void PlayerAdministrationCloseUICallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationCloseUICallback was called");
+
+            if (aPlayer.IsServer)
+                return;
+
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
             CuiHelper.DestroyUi(player, CBasePanelName);
 
@@ -2666,7 +2670,7 @@ namespace Oxide.Plugins
             LogDebug("PlayerAdministrationSwitchUICallback was called");
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
-            if (!VerifyPermission(ref player, string.Empty, true) || aArgs.Count() <= 0)
+            if (aPlayer.IsServer || !VerifyPermission(ref player, string.Empty, true) || aArgs.Count() <= 0)
                 return;
 
             bool twoOrMore = aArgs.Count() >= 2;
@@ -2715,48 +2719,72 @@ namespace Oxide.Plugins
         private void PlayerAdministrationUnbanUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationUnbanUserCallback was called");
-            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermBan, true) || !GetTargetFromArg(aArgs, out targetId))
+            if (!GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            Player.Unban(targetId);
-            LogInfo($"{player.displayName}: Unbanned user ID {targetId}");
-            timer.Once(0.01f, () => BuildUI(player, UiPage.Main));
+            if (aPlayer.IsServer) {
+                Player.Unban(targetId);
+                LogInfo($"{aPlayer.Name}: Unbanned user ID {targetId}");
+            } else {
+                BasePlayer player = BasePlayer.Find(aPlayer.Id);
+
+                if (!VerifyPermission(ref player, CPermBan, true))
+                    return;
+
+                Player.Unban(targetId);
+                LogInfo($"{player.displayName}: Unbanned user ID {targetId}");
+                timer.Once(0.01f, () => BuildUI(player, UiPage.Main));
+            }
         }
 
         [Command(CBanUserCmd)]
         private void PlayerAdministrationBanUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationBanUserCallback was called");
-            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermBan, true) || !GetTargetFromArg(aArgs, out targetId))
+            if (!GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            if (permission.UserHasPermission(targetId.ToString(), CPermProtectBan)) {
-                SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
-                return;
-            }
+            if (aPlayer.IsServer) {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectBan)) {
+                    aPlayer.Reply(GetMessage("Protection Active Text", null));
+                    return;
+                }
 
-            string banReasonMsg;
-
-            if (FUserPageReasonInputText.ContainsKey(player.userID)) {
-                banReasonMsg = FUserPageReasonInputText[player.userID].Trim();
-
-                if (string.IsNullOrEmpty(banReasonMsg))
-                    banReasonMsg = GetMessage("Ban Reason Message Text", targetId.ToString());
+                string banReasonMsg = GetMessage("Ban Reason Message Text", targetId.ToString());
+                Player.Ban(targetId, banReasonMsg);
+                LogInfo($"{aPlayer.Name}: Banned user ID {targetId}");
+                SendDiscordKickBanMessage(aPlayer.Name, string.Empty, ServerUsers.Get(targetId).username, targetId.ToString(), banReasonMsg, true);
             } else {
-                banReasonMsg = GetMessage("Ban Reason Message Text", targetId.ToString());
-            }
+                BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
-            Player.Ban(targetId, banReasonMsg);
-            ServerUsers.User targetPlayer = ServerUsers.Get(targetId);
-            LogInfo($"{player.displayName}: Banned user ID {targetId}");
-            SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.username, targetId.ToString(), banReasonMsg, true);
-            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
+                if (!VerifyPermission(ref player, CPermBan, true))
+                    return;
+
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectBan)) {
+                    SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                    return;
+                }
+
+                string banReasonMsg;
+
+                if (FUserPageReasonInputText.ContainsKey(player.userID)) {
+                    banReasonMsg = FUserPageReasonInputText[player.userID].Trim();
+
+                    if (string.IsNullOrEmpty(banReasonMsg))
+                        banReasonMsg = GetMessage("Ban Reason Message Text", targetId.ToString());
+                } else {
+                    banReasonMsg = GetMessage("Ban Reason Message Text", targetId.ToString());
+                }
+
+                Player.Ban(targetId, banReasonMsg);
+                LogInfo($"{player.displayName}: Banned user ID {targetId}");
+                SendDiscordKickBanMessage(player.displayName, player.UserIDString, ServerUsers.Get(targetId).username, targetId.ToString(), banReasonMsg, true);
+                timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
+            }
         }
 
         [Command(CMainPageBanByIdCmd)]
@@ -2767,6 +2795,7 @@ namespace Oxide.Plugins
             ulong targetId;
 
             if (
+                aPlayer.IsServer ||
                 !VerifyPermission(ref player, CPermBan, true) || !FMainPageBanIdInputText.ContainsKey(player.userID) ||
                 !ulong.TryParse(FMainPageBanIdInputText[player.userID], out targetId)
             )
@@ -2789,103 +2818,172 @@ namespace Oxide.Plugins
         private void PlayerAdministrationKickUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationKickUserCallback was called");
-            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermKick, true) || !GetTargetFromArg(aArgs, out targetId))
+            if (!GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            if (permission.UserHasPermission(targetId.ToString(), CPermProtectKick)) {
-                SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
-                return;
-            }
-
-            string kickReasonMsg = GetMessage("Kick Reason Message Text", targetId.ToString());
             BasePlayer targetPlayer = BasePlayer.FindByID(targetId);
-            targetPlayer?.Kick(kickReasonMsg);
-            LogInfo($"{player.displayName}: Kicked user ID {targetId}");
-            SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.displayName, targetPlayer.UserIDString, kickReasonMsg, false);
-            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
+            string kickReasonMsg = GetMessage("Kick Reason Message Text", targetId.ToString());
+
+            if (aPlayer.IsServer) {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectKick)) {
+                    aPlayer.Reply(GetMessage("Protection Active Text", null));
+                    return;
+                }
+
+                targetPlayer?.Kick(kickReasonMsg);
+                LogInfo($"{aPlayer.Name}: Kicked user ID {targetId}");
+                SendDiscordKickBanMessage(aPlayer.Name, string.Empty, targetPlayer.displayName, targetPlayer.UserIDString, kickReasonMsg, false);
+            } else {
+                BasePlayer player = BasePlayer.Find(aPlayer.Id);
+
+                if (!VerifyPermission(ref player, CPermKick, true))
+                    return;
+
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectKick)) {
+                    SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                    return;
+                }
+                
+                targetPlayer?.Kick(kickReasonMsg);
+                LogInfo($"{player.displayName}: Kicked user ID {targetId}");
+                SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.displayName, targetPlayer.UserIDString, kickReasonMsg, false);
+                timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
+            }
         }
 
         [Command(CVoiceUnmuteUserCmd)]
         private void PlayerAdministrationVoiceUnmuteUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationVoiceUnmuteUserCallback was called");
-            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermVoiceMute, true) || !GetTargetFromArg(aArgs, out targetId))
+            if (!GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, false);
-            LogInfo($"{player.displayName}: Voice unmuted user ID {targetId}");
-            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
+            if (aPlayer.IsServer) {
+                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, false);
+                LogInfo($"{aPlayer.Name}: Voice unmuted user ID {targetId}");
+            } else {
+                BasePlayer player = BasePlayer.Find(aPlayer.Id);
+
+                if (!VerifyPermission(ref player, CPermVoiceMute, true))
+                    return;
+
+                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, false);
+                LogInfo($"{player.displayName}: Voice unmuted user ID {targetId}");
+                timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
+            }
         }
 
         [Command(CVoiceMuteUserCmd)]
         private void PlayerAdministrationVoiceMuteUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationVoiceMuteUserCallback was called");
-            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermVoiceMute, true) || !GetTargetFromArg(aArgs, out targetId))
+            if (!GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, true);
-            LogInfo($"{player.displayName}: Voice muted user ID {targetId}");
-            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
+            if (aPlayer.IsServer) {
+                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, true);
+                LogInfo($"{aPlayer.Name}: Voice muted user ID {targetId}");
+            } else {
+                BasePlayer player = BasePlayer.Find(aPlayer.Id);
+
+                if (!VerifyPermission(ref player, CPermVoiceMute, true))
+                    return;
+
+                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, true);
+                LogInfo($"{player.displayName}: Voice muted user ID {targetId}");
+                timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
+            }
         }
 
         [Command(CChatUnmuteUserCmd)]
         private void PlayerAdministrationChatUnmuteUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationChatUnmuteUserCallback was called");
-            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermChatMute, true) || !GetTargetFromArg(aArgs, out targetId))
+            if (!GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            BasePlayer target = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
+            if (aPlayer.IsServer) {
+                BasePlayer target = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
 
-            if (BetterChatMute != null && target != null)
-                BetterChatMute.Call("API_Unmute", target.IPlayer, player.IPlayer);
+                if (BetterChatMute != null && target != null) {
+                    BetterChatMute.Call("API_Unmute", target.IPlayer, aPlayer);
+                } else {
+                    target?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, false);
+                }
 
-            target?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, false);
-            LogInfo($"{player.displayName}: Chat unmuted user ID {targetId}");
-            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
+                LogInfo($"{aPlayer.Name}: Chat unmuted user ID {targetId}");
+            } else {
+                BasePlayer player = BasePlayer.Find(aPlayer.Id);
+
+                if (!VerifyPermission(ref player, CPermChatMute, true))
+                    return;
+
+                BasePlayer target = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
+
+                if (BetterChatMute != null && target != null) {
+                    BetterChatMute.Call("API_Unmute", target.IPlayer, aPlayer);
+                } else {
+                    target?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, false);
+                }
+
+                LogInfo($"{player.displayName}: Chat unmuted user ID {targetId}");
+                timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
+            }
         }
 
         [Command(CChatMuteUserCmd)]
         private void PlayerAdministrationChatMuteUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationChatMuteUserCallback was called");
-            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
             float time;
 
-            if (
-                !VerifyPermission(ref player, CPermChatMute, true) ||
-                !GetTargetAmountFromArg(aArgs, out targetId, out time)
-            )
+            if (!GetTargetAmountFromArg(aArgs, out targetId, out time))
                 return;
 
-            BasePlayer target = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
+            if (aPlayer.IsServer) {
+                BasePlayer target = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
 
-            if (BetterChatMute != null && target != null) {
-                if (time == 0f) {
-                    BetterChatMute.Call("API_Mute", target.IPlayer, player.IPlayer);
+                if (BetterChatMute != null && target != null) {
+                    if (time == 0f) {
+                        BetterChatMute.Call("API_Mute", target.IPlayer, aPlayer);
+                    } else {
+                        BetterChatMute.Call("API_TimeMute", target.IPlayer, aPlayer, TimeSpan.FromMinutes(time));
+                    }
                 } else {
-                    BetterChatMute.Call("API_TimeMute", target.IPlayer, player.IPlayer, TimeSpan.FromMinutes(time));
+                    target?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, true);
                 }
-            } else {
-                target?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, true);
-            }
 
-            LogInfo($"{player.displayName}: Chat muted user ID {targetId}");
-            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
+                LogInfo($"{aPlayer.Name}: Chat muted user ID {targetId}");
+            } else {
+                BasePlayer player = BasePlayer.Find(aPlayer.Id);
+
+                if (!VerifyPermission(ref player, CPermChatMute, true))
+                    return;
+
+                BasePlayer target = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
+
+                if (BetterChatMute != null && target != null) {
+                    if (time == 0f) {
+                        BetterChatMute.Call("API_Mute", target.IPlayer, aPlayer);
+                    } else {
+                        BetterChatMute.Call("API_TimeMute", target.IPlayer, player.IPlayer, TimeSpan.FromMinutes(time));
+                    }
+                } else {
+                    target?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, true);
+                }
+
+                LogInfo($"{player.displayName}: Chat muted user ID {targetId}");
+                timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
+            }
         }
 
         [Command(CUnreezeCmd)]
@@ -2895,7 +2993,7 @@ namespace Oxide.Plugins
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermFreeze, true) || !GetTargetFromArg(aArgs, out targetId))
+            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermFreeze, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             player.SendConsoleCommand($"{CFreezeUnfreezeCmd} {targetId}");
@@ -2911,7 +3009,7 @@ namespace Oxide.Plugins
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermFreeze, true) || !GetTargetFromArg(aArgs, out targetId))
+            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermFreeze, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             player.SendConsoleCommand($"{CFreezeFreezeCmd} {targetId}");
@@ -2924,71 +3022,120 @@ namespace Oxide.Plugins
         private void PlayerAdministrationClearUserInventoryCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationClearUserInventoryCallback was called");
-            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermClearInventory, true) || !GetTargetFromArg(aArgs, out targetId))
+            if (!GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
-                SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
-                return;
+            if (aPlayer.IsServer) {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
+                    aPlayer.Reply(GetMessage("Protection Active Text", null));
+                    return;
+                }
+
+                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.inventory.Strip();
+                LogInfo($"{aPlayer.Name}: Cleared the inventory of user ID {targetId}");
+            } else {
+                BasePlayer player = BasePlayer.Find(aPlayer.Id);
+
+                if (!VerifyPermission(ref player, CPermClearInventory, true))
+                    return;
+
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
+                    SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                    return;
+                }
+
+                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.inventory.Strip();
+                LogInfo($"{player.displayName}: Cleared the inventory of user ID {targetId}");
+                timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
             }
-
-            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.inventory.Strip();
-            LogInfo($"{player.displayName}: Cleared the inventory of user ID {targetId}");
-            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [Command(CResetUserBPCmd)]
         private void PlayerAdministrationResetUserBlueprintsCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationResetUserBlueprintsCallback was called");
-            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermResetBP, true) || !GetTargetFromArg(aArgs, out targetId))
+            if (!GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
-                SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
-                return;
+            if (aPlayer.IsServer) {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
+                    aPlayer.Reply(GetMessage("Protection Active Text", null));
+                    return;
+                }
+
+                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.blueprints.Reset();
+                LogInfo($"{aPlayer.Name}: Reset the blueprints of user ID {targetId}");
+            } else {
+                BasePlayer player = BasePlayer.Find(aPlayer.Id);
+
+                if (!VerifyPermission(ref player, CPermResetBP, true))
+                    return;
+
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
+                    SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                    return;
+                }
+
+                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.blueprints.Reset();
+                LogInfo($"{player.displayName}: Reset the blueprints of user ID {targetId}");
+                timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
             }
-
-            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.blueprints.Reset();
-            LogInfo($"{player.displayName}: Reset the blueprints of user ID {targetId}");
-            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [Command(CResetUserMetabolismCmd)]
         private void PlayerAdministrationResetUserMetabolismCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationResetUserMetabolismCallback was called");
-            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermResetMetabolism, true) || !GetTargetFromArg(aArgs, out targetId))
+            if (!GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
-                SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
-                return;
+            if (aPlayer.IsServer) {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
+                    aPlayer.Reply(GetMessage("Protection Active Text", null));
+                    return;
+                }
+
+                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.metabolism.Reset();
+                LogInfo($"{aPlayer.Name}: Reset the metabolism of user ID {targetId}");
+            } else {
+                BasePlayer player = BasePlayer.Find(aPlayer.Id);
+
+                if (!VerifyPermission(ref player, CPermResetMetabolism, true))
+                    return;
+
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
+                    SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                    return;
+                }
+
+                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.metabolism.Reset();
+                LogInfo($"{player.displayName}: Reset the metabolism of user ID {targetId}");
+                timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
             }
-
-            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.metabolism.Reset();
-            LogInfo($"{player.displayName}: Reset the metabolism of user ID {targetId}");
-            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [Command(CRecoverUserMetabolismCmd)]
         private void PlayerAdministrationRecoverUserMetabolismCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationRecoverUserMetabolismCallback was called");
-            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
+            BasePlayer player = null;
 
-            if (!VerifyPermission(ref player, CPermRecoverMetabolism, true) || !GetTargetFromArg(aArgs, out targetId))
+            if (!GetTargetFromArg(aArgs, out targetId))
                 return;
+
+            if (!aPlayer.IsServer) {
+                player = BasePlayer.Find(aPlayer.Id);
+
+                if (!VerifyPermission(ref player, CPermRecoverMetabolism, true))
+                    return;
+            }
 
             PlayerMetabolism playerState = (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.metabolism;
             playerState.bleeding.value = playerState.bleeding.min;
@@ -3002,8 +3149,12 @@ namespace Oxide.Plugins
             playerState.temperature.value = (PlayerMetabolism.HotThreshold + PlayerMetabolism.ColdThreshold) / 2;
             playerState.wetness.value = playerState.wetness.min;
 
-            LogInfo($"{player.displayName}: Recovered the metabolism of user ID {targetId}");
-            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
+            if (aPlayer.IsServer) {
+                LogInfo($"{aPlayer.Name}: Recovered the metabolism of user ID {targetId}");
+            } else {
+                LogInfo($"{player.displayName}: Recovered the metabolism of user ID {targetId}");
+                timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
+            }
         }
 
         [Command(CTeleportToUserCmd)]
@@ -3013,7 +3164,7 @@ namespace Oxide.Plugins
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermTeleport, true) || !GetTargetFromArg(aArgs, out targetId))
+            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermTeleport, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             player.Teleport(BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId));
@@ -3028,7 +3179,7 @@ namespace Oxide.Plugins
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermTeleport, true) || !GetTargetFromArg(aArgs, out targetId))
+            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermTeleport, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             BasePlayer targetPlayer = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
@@ -3044,7 +3195,7 @@ namespace Oxide.Plugins
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermSpectate, true) || !GetTargetFromArg(aArgs, out targetId))
+            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermSpectate, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             if (!player.IsDead())
@@ -3063,7 +3214,7 @@ namespace Oxide.Plugins
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermPerms, true) || !GetTargetFromArg(aArgs, out targetId))
+            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermPerms, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             player.SendConsoleCommand($"chat.say \"/{CPermsPermsCmd} {targetId}\"");
@@ -3074,62 +3225,102 @@ namespace Oxide.Plugins
         private void PlayerAdministrationHurtUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationHurtUserCallback was called");
-            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
             float amount;
 
-            if (!VerifyPermission(ref player, CPermHurt, true) || !GetTargetAmountFromArg(aArgs, out targetId, out amount))
+            if (!GetTargetAmountFromArg(aArgs, out targetId, out amount))
                 return;
 
-            if (permission.UserHasPermission(targetId.ToString(), CPermProtectHurt)) {
-                SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
-                return;
+            if (aPlayer.IsServer) {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectHurt)) {
+                    aPlayer.Reply(GetMessage("Protection Active Text", null));
+                    return;
+                }
+
+                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Hurt(amount);
+                LogInfo($"{aPlayer.Name}: Hurt user ID {targetId} for {amount} points");
+            } else {
+                BasePlayer player = BasePlayer.Find(aPlayer.Id);
+
+                if (!VerifyPermission(ref player, CPermHurt, true))
+                    return;
+
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectHurt)) {
+                    SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                    return;
+                }
+
+                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Hurt(amount);
+                LogInfo($"{player.displayName}: Hurt user ID {targetId} for {amount} points");
+                timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
             }
-
-            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Hurt(amount);
-            LogInfo($"{player.displayName}: Hurt user ID {targetId} for {amount} points");
-            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [Command(CKillUserCmd)]
         private void PlayerAdministrationKillUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationKillUserCallback was called");
-            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (!VerifyPermission(ref player, CPermKill, true) || !GetTargetFromArg(aArgs, out targetId))
+            if (!GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            if (permission.UserHasPermission(targetId.ToString(), CPermProtectKill)) {
-                SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
-                return;
+            if (aPlayer.IsServer) {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectKill)) {
+                    aPlayer.Reply(GetMessage("Protection Active Text", null));
+                    return;
+                }
+
+                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Die();
+                LogInfo($"{aPlayer.Name}: Killed user ID {targetId}");
+            } else {
+                BasePlayer player = BasePlayer.Find(aPlayer.Id);
+
+                if (!VerifyPermission(ref player, CPermKill, true))
+                    return;
+
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectKill)) {
+                    SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                    return;
+                }
+
+                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Die();
+                LogInfo($"{player.displayName}: Killed user ID {targetId}");
+                timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
             }
-
-            (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Die();
-            LogInfo($"{player.displayName}: Killed user ID {targetId}");
-            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [Command(CHealUserCmd)]
         private void PlayerAdministrationHealUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             LogDebug("PlayerAdministrationHealUserCallback was called");
-            BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
             float amount;
 
-            if (!VerifyPermission(ref player, CPermHeal, true) || !GetTargetAmountFromArg(aArgs, out targetId, out amount))
+            if (!GetTargetAmountFromArg(aArgs, out targetId, out amount))
                 return;
 
             BasePlayer targetPlayer = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
 
-            if (targetPlayer.IsWounded())
-                targetPlayer.StopWounded();
+            if (aPlayer.IsServer) {
+                if (targetPlayer.IsWounded())
+                    targetPlayer.StopWounded();
 
-            targetPlayer.Heal(amount);
-            LogInfo($"{player.displayName}: Healed user ID {targetId} for {amount} points");
-            timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
+                targetPlayer.Heal(amount);
+                LogInfo($"{aPlayer.Name}: Healed user ID {targetId} for {amount} points");
+            } else {
+                BasePlayer player = BasePlayer.Find(aPlayer.Id);
+
+                if (!VerifyPermission(ref player, CPermHeal, true))
+                    return;
+
+                if (targetPlayer.IsWounded())
+                    targetPlayer.StopWounded();
+
+                targetPlayer.Heal(amount);
+                LogInfo($"{player.displayName}: Healed user ID {targetId} for {amount} points");
+                timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
+            }
         }
         #endregion Command Callbacks
 
@@ -3139,7 +3330,7 @@ namespace Oxide.Plugins
         {
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
-            if (!VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0) {
+            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0) {
                 if (FMainPageBanIdInputText.ContainsKey(player.userID))
                     FMainPageBanIdInputText.Remove(player.userID);
 
@@ -3158,7 +3349,7 @@ namespace Oxide.Plugins
         {
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
-            if (!VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0) {
+            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0) {
                 if (FUserBtnPageSearchInputText.ContainsKey(player.userID))
                     FUserBtnPageSearchInputText.Remove(player.userID);
 
@@ -3177,7 +3368,7 @@ namespace Oxide.Plugins
         {
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
-            if (!VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0) {
+            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0) {
                 if (FUserPageReasonInputText.ContainsKey(player.userID))
                     FUserPageReasonInputText.Remove(player.userID);
 
