@@ -29,22 +29,22 @@
 
 Hint: To easily add all protections use the RCON command: `oxide.grant {user <username> | group <group name>} playeradministration.protect.*`
 
-- **playeradministration.show** -- Required to be able to use the `/padmin` command and plugin
-- **playeradministration.kick** -- Allows the user to kick any player
-- **playeradministration.ban** -- Allows the user to ban and unban any player
-- **playeradministration.kill** -- Allows the user to kill any player
-- **playeradministration.clearinventory** -- Allows the user to clear any player's inventory
-- **playeradministration.resetblueprint** -- Allows the user to reset any player's blueprints
-- **playeradministration.resetmetabolism** -- Allows the user to reset any player's metabolism
-- **playeradministration.recovermetabolism** -- Allows the user to give any player a healthy metabolic state
-- **playeradministration.hurt** -- Allows the user to hurt any player
-- **playeradministration.heal** -- Allows the user to heal any player
-- **playeradministration.voicemute** -- Allows the user to mute the voice chat of any player
-- **playeradministration.chatmute** -- Allows the user to mute the text chat of any player
-- **playeradministration.perms** -- Allows the user to use the "Permissions" button for any player
-- **playeradministration.freeze** -- Allows the user to freeze and unfreeze any player
-- **playeradministration.teleport** -- Allows the user to teleport to any player
-- **playeradministration.spectate** -- Allows the user to spectate any player
+- **playeradministration.access.show** -- Required to be able to use the `/padmin` command and plugin
+- **playeradministration.access.kick** -- Allows the user to kick any player
+- **playeradministration.access.ban** -- Allows the user to ban and unban any player
+- **playeradministration.access.kill** -- Allows the user to kill any player
+- **playeradministration.access.clearinventory** -- Allows the user to clear any player's inventory
+- **playeradministration.access.resetblueprint** -- Allows the user to reset any player's blueprints
+- **playeradministration.access.resetmetabolism** -- Allows the user to reset any player's metabolism
+- **playeradministration.access.recovermetabolism** -- Allows the user to give any player a healthy metabolic state
+- **playeradministration.access.hurt** -- Allows the user to hurt any player
+- **playeradministration.access.heal** -- Allows the user to heal any player
+- **playeradministration.access.voicemute** -- Allows the user to mute the voice chat of any player
+- **playeradministration.access.chatmute** -- Allows the user to mute the text chat of any player
+- **playeradministration.access.perms** -- Allows the user to use the "Permissions" button for any player
+- **playeradministration.access.allowfreeze** -- Allows the user to freeze and unfreeze any player
+- **playeradministration.access.teleport** -- Allows the user to teleport to any player
+- **playeradministration.access.spectate** -- Allows the user to spectate any player
 - **playeradministration.protect.ban** -- Protect the user against banning through the panel
 - **playeradministration.protect.hurt** -- Protect the user against hurting through the panel
 - **playeradministration.protect.kick** -- Protect the user against kicking through the panel

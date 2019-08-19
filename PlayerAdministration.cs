@@ -34,12 +34,13 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Text;
 using UnityEngine;
 using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.5.4")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.6")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -607,15 +608,15 @@ namespace Oxide.Plugins
 
                 if (typeof(T) == typeof(BasePlayer)) {
                     BasePlayer player = user as BasePlayer;
-                    btnText = player.displayName;
+                    btnText = EscapeString(player.displayName);
                     btnCommand = string.Format(aCommandFmt, player.UserIDString);
 
-                    while (addedNames.FindIndex(item => string.Equals(btnText, item, StringComparison.OrdinalIgnoreCase)) >= 0) {
-                        btnText = $"{player.displayName} {++suffix}";
+                    while (addedNames.FindIndex(item => btnText.Equals(item, StringComparison.OrdinalIgnoreCase)) >= 0) {
+                        btnText = $"{EscapeString(player.displayName)} {++suffix}";
                     }
                 } else {
                     ServerUsers.User player = user as ServerUsers.User;
-                    string btnTextTemp = player.username;
+                    string btnTextTemp = EscapeString(player.username);
                     btnCommand = string.Format(aCommandFmt, player.steamid);
 
                     if (string.IsNullOrEmpty(btnTextTemp) || CUnknownNameList.Contains(btnTextTemp.ToLower()))
@@ -623,7 +624,7 @@ namespace Oxide.Plugins
 
                     btnText = btnTextTemp;
 
-                    while (addedNames.FindIndex(item => string.Equals(btnText, item, StringComparison.OrdinalIgnoreCase)) >= 0) {
+                    while (addedNames.FindIndex(item => btnText.Equals(item, StringComparison.OrdinalIgnoreCase)) >= 0) {
                         btnText = $"{btnTextTemp} {++suffix}";
                     }
                 }
@@ -890,6 +891,47 @@ namespace Oxide.Plugins
         /// <param name="aFalseMsg"></param>
         /// <returns></returns>
         private string InternalAssert(bool aEval, string aTrueMsg = "True", string aFalseMsg = "False") => aEval ? aTrueMsg : aFalseMsg;
+
+        /// <summary>
+        /// Transform a string array into a printable string.
+        /// </summary>
+        /// <param name="aObj"></param>
+        /// <returns></returns>
+        private string StringArrToString(ref string[] aObj) => $"[ {string.Join(", ", aObj)} ]";
+
+        /// <summary>
+        /// Transform a dictionary of strings into a printable string.
+        /// </summary>
+        /// <param name="aObj"></param>
+        /// <returns></returns>
+        private string StringDictToString(ref Dictionary<string, string> aObj)
+        {
+            StringBuilder result = new StringBuilder("{\n");
+
+            foreach (KeyValuePair<string, string> item in aObj) {
+                result.Append($"'{item.Key}': '{item.Value}'\n");
+            }
+
+            result.Append("}");
+            return result.ToString();
+        }
+
+        /// <summary>
+        /// Escape strings to make them usable in the UI.
+        /// </summary>
+        /// <param name="aStr"></param>
+        /// <returns></returns>
+        private string EscapeString(string aStr) => aStr.Replace("\0", "")
+            .Replace("\a", "")
+            .Replace("\b", "")
+            .Replace("\f", "")
+            .Replace("\r", "")
+            .Replace("\n", " ")
+            .Replace("\t", " ")
+            .Replace("\v", "")
+            .Replace("\"", "\\\"")
+            .Replace("/", "\\/")
+            .Replace("\\", "\\\\");
         #endregion Utility methods
 
         #region Upgrade methods
@@ -949,6 +991,64 @@ namespace Oxide.Plugins
             if (result)
                 Config.WriteObject(FConfigData);
 
+            return result;
+        }
+
+        /// <summary>
+        /// Upgrade the config to 1.5.6 if needed
+        /// </summary>
+        /// <returns></returns>
+        private bool UpgradeTo156()
+        {
+            bool result = false;
+            Dictionary<string, string> oldPerms = new Dictionary<string, string>() {
+                { "playeradministration.show", CPermUiShow },
+                { "playeradministration.kick", CPermKick },
+                { "playeradministration.ban", CPermBan },
+                { "playeradministration.kill", CPermKill },
+                { "playeradministration.perms", CPermPerms },
+                { "playeradministration.voicemute", CPermVoiceMute },
+                { "playeradministration.chatmute", CPermChatMute },
+                { "playeradministration.freeze", CPermFreeze },
+                { "playeradministration.clearinventory", CPermClearInventory },
+                { "playeradministration.resetblueprint", CPermResetBP },
+                { "playeradministration.resetmetabolism", CPermResetMetabolism },
+                { "playeradministration.recovermetabolism", CPermRecoverMetabolism },
+                { "playeradministration.hurt", CPermHurt },
+                { "playeradministration.heal", CPermHeal },
+                { "playeradministration.teleport", CPermTeleport },
+                { "playeradministration.spectate", CPermSpectate }
+            };
+            LogDebug($"Old Perms: {StringDictToString(ref oldPerms)}");
+
+            foreach (KeyValuePair<string, string> item in oldPerms) {
+                string[] groups = permission.GetPermissionGroups(item.Key);
+                LogDebug($"Groups: {StringArrToString(ref groups)}");
+                string[] users = permission.GetPermissionUsers(item.Key);
+                LogDebug($"Users: {StringArrToString(ref users)}");
+
+                if (groups.Count() <= 0 && users.Count() <= 0) {
+                    LogDebug("Counts are zero");
+                    continue;
+                }
+
+                result = true;
+
+                foreach (string group in groups) {
+                    permission.RevokeGroupPermission(group, item.Key);
+                    permission.GrantGroupPermission(group, item.Value, this);
+                    LogInfo($"Fixed group permission: {group} (OLD) {item.Key} -> (NEW) {item.Value}");
+                }
+
+                foreach (string user in users) {
+                    string uid = user.Substring(0, user.IndexOf('('));
+                    permission.RevokeUserPermission(uid, item.Key);
+                    permission.GrantUserPermission(uid, item.Value, this);
+                    LogInfo($"Fixed user permission: {user} (OLD) {item.Key} -> (NEW) {item.Value}");
+                }
+            }
+
+            permission.SaveData();
             return result;
         }
         #endregion
@@ -1766,7 +1866,8 @@ namespace Oxide.Plugins
 
                 aUIObj.AddLabel(
                     panel, CMainLblTitleLbAnchor, CMainLblTitleRtAnchor, CuiColor.TextAlt,
-                    GetMessage("User Page Title Format", aUIObj.PlayerIdString, player.displayName, string.Empty), string.Empty, 18, TextAnchor.MiddleLeft
+                    GetMessage("User Page Title Format", aUIObj.PlayerIdString, EscapeString(player.displayName), string.Empty), string.Empty, 18,
+                    TextAnchor.MiddleLeft
                 );
                 // Add user info labels
                 AddUserPageInfoLabels(ref aUIObj, infoPanel, aUIObj.PlayerIdString, aPlayerId, ref player);
@@ -1887,7 +1988,7 @@ namespace Oxide.Plugins
         #endregion
 
         #region Constants
-        private static readonly bool CDebugEnabled = false;
+        private static readonly bool CDebugEnabled = true;
         private const int CMaxPlayerCols = 5;
         private const int CMaxPlayerRows = 12;
         private const int CMaxPlayerButtons = CMaxPlayerCols * CMaxPlayerRows;
@@ -1944,22 +2045,22 @@ namespace Oxide.Plugins
         #endregion Local Command Static Arguments
 
         #region Local permissions
-        private const string CPermUiShow = "playeradministration.show";
-        private const string CPermKick = "playeradministration.kick";
-        private const string CPermBan = "playeradministration.ban";
-        private const string CPermKill = "playeradministration.kill";
-        private const string CPermPerms = "playeradministration.perms";
-        private const string CPermVoiceMute = "playeradministration.voicemute";
-        private const string CPermChatMute = "playeradministration.chatmute";
-        private const string CPermFreeze = "playeradministration.freeze";
-        private const string CPermClearInventory = "playeradministration.clearinventory";
-        private const string CPermResetBP = "playeradministration.resetblueprint";
-        private const string CPermResetMetabolism = "playeradministration.resetmetabolism";
-        private const string CPermRecoverMetabolism = "playeradministration.recovermetabolism";
-        private const string CPermHurt = "playeradministration.hurt";
-        private const string CPermHeal = "playeradministration.heal";
-        private const string CPermTeleport = "playeradministration.teleport";
-        private const string CPermSpectate = "playeradministration.spectate";
+        private const string CPermUiShow = "playeradministration.access.show";
+        private const string CPermKick = "playeradministration.access.kick";
+        private const string CPermBan = "playeradministration.access.ban";
+        private const string CPermKill = "playeradministration.access.kill";
+        private const string CPermPerms = "playeradministration.access.perms";
+        private const string CPermVoiceMute = "playeradministration.access.voicemute";
+        private const string CPermChatMute = "playeradministration.access.chatmute";
+        private const string CPermFreeze = "playeradministration.access.allowfreeze";
+        private const string CPermClearInventory = "playeradministration.access.clearinventory";
+        private const string CPermResetBP = "playeradministration.access.resetblueprint";
+        private const string CPermResetMetabolism = "playeradministration.access.resetmetabolism";
+        private const string CPermRecoverMetabolism = "playeradministration.access.recovermetabolism";
+        private const string CPermHurt = "playeradministration.access.hurt";
+        private const string CPermHeal = "playeradministration.access.heal";
+        private const string CPermTeleport = "playeradministration.access.teleport";
+        private const string CPermSpectate = "playeradministration.access.spectate";
         private const string CPermProtectBan = "playeradministration.protect.ban";
         private const string CPermProtectHurt = "playeradministration.protect.hurt";
         private const string CPermProtectKick = "playeradministration.protect.kick";
@@ -2456,6 +2557,9 @@ namespace Oxide.Plugins
             permission.RegisterPermission(CPermProtectKill, this);
             permission.RegisterPermission(CPermProtectReset, this);
             FPluginInstance = this;
+
+            if (UpgradeTo156())
+                LogDebug("Upgraded the config to version 1.5.6");
         }
 
         void Unload()
@@ -2725,6 +2829,7 @@ namespace Oxide.Plugins
                 return;
 
             if (aPlayer.IsServer) {
+                
                 Player.Unban(targetId);
                 LogInfo($"{aPlayer.Name}: Unbanned user ID {targetId}");
             } else {
