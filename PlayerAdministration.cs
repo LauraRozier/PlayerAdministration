@@ -40,7 +40,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.5.6")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.7")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -1306,85 +1306,89 @@ namespace Oxide.Plugins
                     (aPlayer.IsAlive() ? GetMessage("Alive Label Text", aUiUserId) : GetMessage("Dead Label Text", aUiUserId))
                 ), string.Empty, 14, TextAnchor.MiddleLeft
             );
-            aUIObj.AddLabel(
-                aParent, CUserPageLblFlagLbAnchor, CUserPageLblFlagRtAnchor, CuiColor.TextAlt, GetMessage(
-                    "Flags Label Format", aUiUserId, (aPlayer.IsFlying ? GetMessage("Flying Label Text", aUiUserId) : string.Empty),
-                    (aPlayer.isMounted ? GetMessage("Mounted Label Text", aUiUserId) : string.Empty)
-                ), string.Empty, 14, TextAnchor.MiddleLeft
-            );
-            aUIObj.AddLabel(
-                aParent, CUserPageLblPosLbAnchor, CUserPageLblPosRtAnchor, CuiColor.TextAlt,
-                GetMessage("Position Label Format", aUiUserId, aPlayer.ServerPosition), string.Empty, 14, TextAnchor.MiddleLeft
-            );
-            aUIObj.AddLabel(
-                aParent, CUserPageLblRotLbAnchor, CUserPageLblRotRtAnchor, CuiColor.TextAlt,
-                GetMessage("Rotation Label Format", aUiUserId, aPlayer.GetNetworkRotation()), string.Empty, 14, TextAnchor.MiddleLeft
-            );
-            aUIObj.AddLabel(
-                aParent, CUserPageLblAdminCheatLbAnchor, CUserPageLblAdminCheatRtAnchor, CuiColor.TextAlt,
-                GetMessage("Last Admin Cheat Label Format", aUiUserId, lastCheatStr), string.Empty, 14, TextAnchor.MiddleLeft
-            );
-            aUIObj.AddLabel(
-                aParent, CUserPageLblIdleLbAnchor, CUserPageLblIdleRtAnchor, CuiColor.TextAlt,
-                GetMessage("Idle Time Label Format", aUiUserId, Math.Round(aPlayer.IdleTime, 2)), string.Empty, 14, TextAnchor.MiddleLeft
-            );
+
             LogDebug("AddUserPageInfoLabels > Generic info has been added.");
 
-            if (Economics != null) {
+            if (VerifyPermission(aUiUserId, CPermDetailInfo)) {
                 aUIObj.AddLabel(
-                    aParent, CUserPageLblBalanceLbAnchor, CUserPageLblBalanceRtAnchor, CuiColor.TextAlt,
-                    GetMessage("Economics Balance Label Format", aUiUserId, Math.Round((double)Economics.Call("Balance", aPlayerId), 2)), string.Empty, 14,
-                    TextAnchor.MiddleLeft
+                    aParent, CUserPageLblFlagLbAnchor, CUserPageLblFlagRtAnchor, CuiColor.TextAlt, GetMessage(
+                        "Flags Label Format", aUiUserId, (aPlayer.IsFlying ? GetMessage("Flying Label Text", aUiUserId) : string.Empty),
+                        (aPlayer.isMounted ? GetMessage("Mounted Label Text", aUiUserId) : string.Empty)
+                    ), string.Empty, 14, TextAnchor.MiddleLeft
                 );
-                LogDebug("AddUserPageInfoLabels > Economics info has been added.");
-            }
-
-            if (ServerRewards != null) {
                 aUIObj.AddLabel(
-                    aParent, CUserPageLblRewardPointsLbAnchor, CUserPageLblRewardPointsRtAnchor, CuiColor.TextAlt,
-                    GetMessage("ServerRewards Points Label Format", aUiUserId, (int)(ServerRewards.Call("CheckPoints", aPlayerId) ?? 0)), string.Empty, 14,
-                    TextAnchor.MiddleLeft
+                    aParent, CUserPageLblPosLbAnchor, CUserPageLblPosRtAnchor, CuiColor.TextAlt,
+                    GetMessage("Position Label Format", aUiUserId, aPlayer.ServerPosition), string.Empty, 14, TextAnchor.MiddleLeft
                 );
-                LogDebug("AddUserPageInfoLabels > ServerRewards info has been added.");
-            }
+                aUIObj.AddLabel(
+                    aParent, CUserPageLblRotLbAnchor, CUserPageLblRotRtAnchor, CuiColor.TextAlt,
+                    GetMessage("Rotation Label Format", aUiUserId, aPlayer.GetNetworkRotation()), string.Empty, 14, TextAnchor.MiddleLeft
+                );
+                aUIObj.AddLabel(
+                    aParent, CUserPageLblAdminCheatLbAnchor, CUserPageLblAdminCheatRtAnchor, CuiColor.TextAlt,
+                    GetMessage("Last Admin Cheat Label Format", aUiUserId, lastCheatStr), string.Empty, 14, TextAnchor.MiddleLeft
+                );
+                aUIObj.AddLabel(
+                    aParent, CUserPageLblIdleLbAnchor, CUserPageLblIdleRtAnchor, CuiColor.TextAlt,
+                    GetMessage("Idle Time Label Format", aUiUserId, Math.Round(aPlayer.IdleTime, 2)), string.Empty, 14, TextAnchor.MiddleLeft
+                );
 
-            aUIObj.AddLabel(
-                aParent, CUserPageLblHealthLbAnchor, CUserPageLblHealthRtAnchor, CuiColor.TextAlt, GetMessage("Health Label Format", aUiUserId, aPlayer.health),
-                string.Empty, 14, TextAnchor.MiddleLeft
-            );
-            aUIObj.AddLabel(
-                aParent, CUserPageLblCalLbAnchor, CUserPageLblCalRtAnchor, CuiColor.TextAlt,
-                GetMessage("Calories Label Format", aUiUserId, aPlayer.metabolism?.calories?.value), string.Empty, 14, TextAnchor.MiddleLeft
-            );
-            aUIObj.AddLabel(
-                aParent, CUserPageLblHydraLbAnchor, CUserPageLblHydraRtAnchor, CuiColor.TextAlt,
-                GetMessage("Hydration Label Format", aUiUserId, aPlayer.metabolism?.hydration?.value), string.Empty, 14, TextAnchor.MiddleLeft
-            );
-            aUIObj.AddLabel(
-                aParent, CUserPageLblTempLbAnchor, CUserPageLblTempRtAnchor, CuiColor.TextAlt,
-                GetMessage("Temp Label Format", aUiUserId, aPlayer.metabolism?.temperature?.value), string.Empty, 14, TextAnchor.MiddleLeft
-            );
-            aUIObj.AddLabel(
-                aParent, CUserPageLblWetLbAnchor, CUserPageLblWetRtAnchor, CuiColor.TextAlt,
-                GetMessage("Wetness Label Format", aUiUserId, aPlayer.metabolism?.wetness?.value), string.Empty, 14, TextAnchor.MiddleLeft
-            );
-            aUIObj.AddLabel(
-                aParent, CUserPageLblComfortLbAnchor, CUserPageLblComfortRtAnchor, CuiColor.TextAlt,
-                GetMessage("Comfort Label Format", aUiUserId, aPlayer.metabolism?.comfort?.value), string.Empty, 14, TextAnchor.MiddleLeft
-            );
-            aUIObj.AddLabel(
-                aParent, CUserPageLblBleedLbAnchor, CUserPageLblBleedRtAnchor, CuiColor.TextAlt,
-                GetMessage("Bleeding Label Format", aUiUserId, aPlayer.metabolism?.bleeding?.value), string.Empty, 14, TextAnchor.MiddleLeft
-            );
-            aUIObj.AddLabel(
-                aParent, CUserPageLblRads1LbAnchor, CUserPageLblRads1RtAnchor, CuiColor.TextAlt,
-                GetMessage("Radiation Label Format", aUiUserId, aPlayer.metabolism?.radiation_poison?.value), string.Empty, 14, TextAnchor.MiddleLeft
-            );
-            aUIObj.AddLabel(
-                aParent, CUserPageLblRads2LbAnchor, CUserPageLblRads2RtAnchor, CuiColor.TextAlt,
-                GetMessage("Radiation Protection Label Format", aUiUserId, aPlayer.RadiationProtection()), string.Empty, 14, TextAnchor.MiddleLeft
-            );
-            LogDebug("AddUserPageInfoLabels > Player statistics info has been added.");
+                if (Economics != null) {
+                    aUIObj.AddLabel(
+                        aParent, CUserPageLblBalanceLbAnchor, CUserPageLblBalanceRtAnchor, CuiColor.TextAlt,
+                        GetMessage("Economics Balance Label Format", aUiUserId, Math.Round((double)Economics.Call("Balance", aPlayerId), 2)), string.Empty, 14,
+                        TextAnchor.MiddleLeft
+                    );
+                    LogDebug("AddUserPageInfoLabels > Economics info has been added.");
+                }
+
+                if (ServerRewards != null) {
+                    aUIObj.AddLabel(
+                        aParent, CUserPageLblRewardPointsLbAnchor, CUserPageLblRewardPointsRtAnchor, CuiColor.TextAlt,
+                        GetMessage("ServerRewards Points Label Format", aUiUserId, (int)(ServerRewards.Call("CheckPoints", aPlayerId) ?? 0)), string.Empty, 14,
+                        TextAnchor.MiddleLeft
+                    );
+                    LogDebug("AddUserPageInfoLabels > ServerRewards info has been added.");
+                }
+
+                aUIObj.AddLabel(
+                    aParent, CUserPageLblHealthLbAnchor, CUserPageLblHealthRtAnchor, CuiColor.TextAlt, GetMessage("Health Label Format", aUiUserId, aPlayer.health),
+                    string.Empty, 14, TextAnchor.MiddleLeft
+                );
+                aUIObj.AddLabel(
+                    aParent, CUserPageLblCalLbAnchor, CUserPageLblCalRtAnchor, CuiColor.TextAlt,
+                    GetMessage("Calories Label Format", aUiUserId, aPlayer.metabolism?.calories?.value), string.Empty, 14, TextAnchor.MiddleLeft
+                );
+                aUIObj.AddLabel(
+                    aParent, CUserPageLblHydraLbAnchor, CUserPageLblHydraRtAnchor, CuiColor.TextAlt,
+                    GetMessage("Hydration Label Format", aUiUserId, aPlayer.metabolism?.hydration?.value), string.Empty, 14, TextAnchor.MiddleLeft
+                );
+                aUIObj.AddLabel(
+                    aParent, CUserPageLblTempLbAnchor, CUserPageLblTempRtAnchor, CuiColor.TextAlt,
+                    GetMessage("Temp Label Format", aUiUserId, aPlayer.metabolism?.temperature?.value), string.Empty, 14, TextAnchor.MiddleLeft
+                );
+                aUIObj.AddLabel(
+                    aParent, CUserPageLblWetLbAnchor, CUserPageLblWetRtAnchor, CuiColor.TextAlt,
+                    GetMessage("Wetness Label Format", aUiUserId, aPlayer.metabolism?.wetness?.value), string.Empty, 14, TextAnchor.MiddleLeft
+                );
+                aUIObj.AddLabel(
+                    aParent, CUserPageLblComfortLbAnchor, CUserPageLblComfortRtAnchor, CuiColor.TextAlt,
+                    GetMessage("Comfort Label Format", aUiUserId, aPlayer.metabolism?.comfort?.value), string.Empty, 14, TextAnchor.MiddleLeft
+                );
+                aUIObj.AddLabel(
+                    aParent, CUserPageLblBleedLbAnchor, CUserPageLblBleedRtAnchor, CuiColor.TextAlt,
+                    GetMessage("Bleeding Label Format", aUiUserId, aPlayer.metabolism?.bleeding?.value), string.Empty, 14, TextAnchor.MiddleLeft
+                );
+                aUIObj.AddLabel(
+                    aParent, CUserPageLblRads1LbAnchor, CUserPageLblRads1RtAnchor, CuiColor.TextAlt,
+                    GetMessage("Radiation Label Format", aUiUserId, aPlayer.metabolism?.radiation_poison?.value), string.Empty, 14, TextAnchor.MiddleLeft
+                );
+                aUIObj.AddLabel(
+                    aParent, CUserPageLblRads2LbAnchor, CUserPageLblRads2RtAnchor, CuiColor.TextAlt,
+                    GetMessage("Radiation Protection Label Format", aUiUserId, aPlayer.RadiationProtection()), string.Empty, 14, TextAnchor.MiddleLeft
+                );
+                LogDebug("AddUserPageInfoLabels > Player statistics info has been added.");
+            }
         }
 
         /// <summary>
@@ -2061,6 +2065,7 @@ namespace Oxide.Plugins
         private const string CPermHeal = "playeradministration.access.heal";
         private const string CPermTeleport = "playeradministration.access.teleport";
         private const string CPermSpectate = "playeradministration.access.spectate";
+        private const string CPermDetailInfo = "playeradministration.access.detailedinfo";
         private const string CPermProtectBan = "playeradministration.protect.ban";
         private const string CPermProtectHurt = "playeradministration.protect.hurt";
         private const string CPermProtectKick = "playeradministration.protect.kick";
@@ -2551,6 +2556,7 @@ namespace Oxide.Plugins
             permission.RegisterPermission(CPermHeal, this);
             permission.RegisterPermission(CPermTeleport, this);
             permission.RegisterPermission(CPermSpectate, this);
+            permission.RegisterPermission(CPermDetailInfo, this);
             permission.RegisterPermission(CPermProtectBan, this);
             permission.RegisterPermission(CPermProtectHurt, this);
             permission.RegisterPermission(CPermProtectKick, this);

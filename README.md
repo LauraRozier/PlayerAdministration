@@ -45,6 +45,7 @@ Hint: To easily add all protections use the RCON command: `oxide.grant {user <us
 - **playeradministration.access.allowfreeze** -- Allows the user to freeze and unfreeze any player
 - **playeradministration.access.teleport** -- Allows the user to teleport to any player
 - **playeradministration.access.spectate** -- Allows the user to spectate any player
+- **playeradministration.access.detailedinfo** -- Allows the user to see more detailed player information
 - **playeradministration.protect.ban** -- Protect the user against banning through the panel
 - **playeradministration.protect.hurt** -- Protect the user against hurting through the panel
 - **playeradministration.protect.kick** -- Protect the user against kicking through the panel
