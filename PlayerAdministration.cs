@@ -40,7 +40,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.5.7")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.9")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -547,15 +547,6 @@ namespace Oxide.Plugins
 
         #region Utility methods
         /// <summary>
-        /// Get a "page" of entities from a specified list
-        /// </summary>
-        /// <param name="aList">List of entities</param>
-        /// <param name="aPage">Page number (Starting from 0)</param>
-        /// <param name="aPageSize">Page size</param>
-        /// <returns>List of entities</returns>
-        private List<T> GetPage<T>(IList<T> aList, int aPage, int aPageSize) => aList.Skip(aPage * aPageSize).Take(aPageSize).ToList();
-
-        /// <summary>
         /// Add a button to the tab menu
         /// </summary>
         /// <param name="aUIObj">Cui object</param>
@@ -582,9 +573,9 @@ namespace Oxide.Plugins
         /// <param name="aUserList">List of entities</param>
         /// <param name="aCommandFmt">Base format of the command to execute (Will be completed with the user ID</param>
         /// <param name="aPage">User list page</param>
-        private void AddPlayerButtons<T>(ref Cui aUIObj, string aParent, ref List<T> aUserList, string aCommandFmt, int aPage)
+        private void AddPlayerButtons(ref Cui aUIObj, string aParent, ref List<KeyValuePair<string, string>> aUserList, string aCommandFmt, int aPage)
         {
-            List<T> userRange = GetPage(aUserList, aPage, CMaxPlayerButtons);
+            List<KeyValuePair<string, string>> userRange = aUserList.Skip(aPage * CMaxPlayerButtons).Take(CMaxPlayerButtons).ToList();
             Vector2 dimensions = new Vector2(0.194f, 0.06f);
             Vector2 offset = new Vector2(0.005f, 0.01f);
             int col = -1;
@@ -592,7 +583,7 @@ namespace Oxide.Plugins
             float margin = 0.09f;
             List<string> addedNames = new List<string>();
 
-            foreach (T user in userRange) {
+            foreach (var user in userRange) {
                 if (++col >= CMaxPlayerCols) {
                     row++;
                     col = 0;
@@ -602,31 +593,18 @@ namespace Oxide.Plugins
                 float calcLeft = ((dimensions.x + offset.x) * col) + offset.x;
                 CuiPoint lbAnchor = new CuiPoint(calcLeft, calcTop - dimensions.y);
                 CuiPoint rtAnchor = new CuiPoint(calcLeft + dimensions.x, calcTop);
-                string btnText;
-                string btnCommand;
                 int suffix = 0;
 
-                if (typeof(T) == typeof(BasePlayer)) {
-                    BasePlayer player = user as BasePlayer;
-                    btnText = EscapeString(player.displayName);
-                    btnCommand = string.Format(aCommandFmt, player.UserIDString);
+                string btnTextTemp = EscapeString(user.Value);
+                string btnCommand = string.Format(aCommandFmt, user.Key);
 
-                    while (addedNames.FindIndex(item => btnText.Equals(item, StringComparison.OrdinalIgnoreCase)) >= 0) {
-                        btnText = $"{EscapeString(player.displayName)} {++suffix}";
-                    }
-                } else {
-                    ServerUsers.User player = user as ServerUsers.User;
-                    string btnTextTemp = EscapeString(player.username);
-                    btnCommand = string.Format(aCommandFmt, player.steamid);
+                if (string.IsNullOrEmpty(btnTextTemp) || CUnknownNameList.Contains(btnTextTemp.ToLower()))
+                    btnTextTemp = user.Key;
 
-                    if (string.IsNullOrEmpty(btnTextTemp) || CUnknownNameList.Contains(btnTextTemp.ToLower()))
-                        btnTextTemp = player.steamid.ToString();
+                string btnText = btnTextTemp;
 
-                    btnText = btnTextTemp;
-
-                    while (addedNames.FindIndex(item => btnText.Equals(item, StringComparison.OrdinalIgnoreCase)) >= 0) {
-                        btnText = $"{btnTextTemp} {++suffix}";
-                    }
+                while (addedNames.FindIndex(item => btnText.Equals(item, StringComparison.OrdinalIgnoreCase)) >= 0) {
+                    btnText = $"{btnTextTemp} {++suffix}";
                 }
 
                 aUIObj.AddButton(aParent, lbAnchor, rtAnchor, CuiColor.Button, CuiColor.TextAlt, btnText, btnCommand, string.Empty, string.Empty, 16);
@@ -635,15 +613,6 @@ namespace Oxide.Plugins
 
             LogDebug("Added the player buttons to the container");
         }
-
-        /// <summary>
-        /// Get translated message for the specified key
-        /// </summary>
-        /// <param name="aKey">Message key</param>
-        /// <param name="aPlayerId">Player ID</param>
-        /// <param name="aArgs">Optional args</param>
-        /// <returns></returns>
-        private string GetMessage(string aKey, string aPlayerId, params object[] aArgs) => string.Format(lang.GetMessage(aKey, this, aPlayerId), aArgs);
 
         /// <summary>
         /// Log an error message to the logfile
@@ -668,13 +637,6 @@ namespace Oxide.Plugins
         }
 
         /// <summary>
-        /// Send a message to a specific player
-        /// </summary>
-        /// <param name="aPlayer">The player to send the message to</param>
-        /// <param name="aMessage">The message to send</param>
-        private void SendMessage(ref BasePlayer aPlayer, string aMessage) => rust.SendChatMessage(aPlayer, string.Empty, aMessage);
-
-        /// <summary>
         /// Verify if a user has the specified permission
         /// </summary>
         /// <param name="aPlayer">The player</param>
@@ -690,8 +652,8 @@ namespace Oxide.Plugins
                 result = permission.UserHasPermission(aPlayer.UserIDString, aPermission);
 
             if (aIndReport && !result) {
-                SendMessage(ref aPlayer, GetMessage("Permission Error Text", aPlayer.UserIDString));
-                LogError(GetMessage("Permission Error Log Text", aPlayer.UserIDString, aPlayer.displayName, aPermission));
+                rust.SendChatMessage(aPlayer, string.Empty, lang.GetMessage("Permission Error Text", this, aPlayer.UserIDString));
+                LogError(string.Format(lang.GetMessage("Permission Error Log Text", this, aPlayer.UserIDString), aPlayer.displayName, aPermission));
             }
 
             return result;
@@ -716,39 +678,28 @@ namespace Oxide.Plugins
         /// <param name="aUserId">User ID for retrieving filter text</param>
         /// <param name="aIndOffline">Retrieve the list of sleepers (offline players)</param>
         /// <returns></returns>
-        private List<BasePlayer> GetServerUserList(bool aIndFiltered, string aUserId, bool aIndOffline = false)
+        private List<KeyValuePair<string, string>> GetServerUserList(bool aIndFiltered, string aUserId, bool aIndOffline = false)
         {
-            List<BasePlayer> result = new List<BasePlayer>();
-            ulong userId = ulong.Parse(aUserId);
+            List<KeyValuePair<string, string>> result;
 
             if (aIndOffline) {
-                Player.Sleepers.ForEach(user => {
-                    ServerUsers.User servUser = ServerUsers.Get(user.userID);
-
-                    if (servUser == null || servUser?.group != ServerUsers.UserGroup.Banned)
-                        result.Add(user);
-                });
+                result = FOfflineUserList.ToList();
             } else {
-                Player.Players.ForEach(user => {
-                    ServerUsers.User servUser = ServerUsers.Get(user.userID);
-
-                    if (servUser == null || servUser?.group != ServerUsers.UserGroup.Banned)
-                        result.Add(user);
-                });
+                result = FOnlineUserList.ToList();
             }
 
-            if (aIndFiltered && FUserBtnPageSearchInputText.ContainsKey(userId))
+            if (aIndFiltered && FUserBtnPageSearchInputText.ContainsKey(aUserId))
                 result = result.Where(x =>
-                        x.displayName.IndexOf(FUserBtnPageSearchInputText[userId], StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        x.UserIDString.IndexOf(FUserBtnPageSearchInputText[userId], StringComparison.OrdinalIgnoreCase) >= 0
+                        x.Value.IndexOf(FUserBtnPageSearchInputText[aUserId], StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        x.Key.IndexOf(FUserBtnPageSearchInputText[aUserId], StringComparison.OrdinalIgnoreCase) >= 0
                     ).ToList();
 
             LogDebug("Retrieved the server user list");
             result.Sort((a, b) => {
-                int diff = string.Compare(a.displayName, b.displayName);
+                int diff = string.Compare(a.Value, b.Value);
 
                 if (diff == 0)
-                    diff = a.userID.CompareTo(b.userID);
+                    diff = a.Key.CompareTo(b.Key);
 
                 return diff;
             });
@@ -761,23 +712,26 @@ namespace Oxide.Plugins
         /// <param name="aIndFiltered">Indicates if the output should be filtered</param>
         /// <param name="aUserId">User ID for retrieving filter text</param>
         /// <returns></returns>
-        private List<ServerUsers.User> GetBannedUserList(bool aIndFiltered, string aUserId)
+        private List<KeyValuePair<string, string>> GetBannedUserList(bool aIndFiltered, string aUserId)
         {
-            List<ServerUsers.User> result = ServerUsers.GetAll(ServerUsers.UserGroup.Banned).ToList();
-            ulong userId = ulong.Parse(aUserId);
+            List<KeyValuePair<string, string>> result = new List<KeyValuePair<string, string>>();
 
-            if (aIndFiltered && FUserBtnPageSearchInputText.ContainsKey(userId))
+            foreach (ServerUsers.User user in ServerUsers.GetAll(ServerUsers.UserGroup.Banned)) {
+                result.Add(new KeyValuePair<string, string>(user.steamid.ToString(), user.username));
+            }
+
+            if (aIndFiltered && FUserBtnPageSearchInputText.ContainsKey(aUserId))
                 result = result.Where(x =>
-                        x.username.IndexOf(FUserBtnPageSearchInputText[userId], StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        x.steamid.ToString().IndexOf(FUserBtnPageSearchInputText[userId], StringComparison.OrdinalIgnoreCase) >= 0
+                        x.Value.IndexOf(FUserBtnPageSearchInputText[aUserId], StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        x.Key.ToString().IndexOf(FUserBtnPageSearchInputText[aUserId], StringComparison.OrdinalIgnoreCase) >= 0
                     ).ToList();
 
             LogDebug("Retrieved the banned user list");
             result.Sort((a, b) => {
-                int diff = string.Compare(a.username, b.username);
+                int diff = string.Compare(a.Value, b.Value);
 
                 if (diff == 0)
-                    diff = a.steamid.CompareTo(b.steamid);
+                    diff = a.Key.CompareTo(b.Key);
 
                 return diff;
             });
@@ -1068,19 +1022,19 @@ namespace Oxide.Plugins
             aUIObj.AddElement(headerPanel, CTabMenuCloseBtn);
             // Add the tab menu buttons
             AddTabMenuBtn(
-                ref aUIObj, tabBtnPanel, GetMessage("Main Tab Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgMain}", 0,
+                ref aUIObj, tabBtnPanel, lang.GetMessage("Main Tab Text", this, aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgMain}", 0,
                 aPageType == UiPage.Main ? true : false
             );
             AddTabMenuBtn(
-                ref aUIObj, tabBtnPanel, GetMessage("Online Player Tab Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOnline} 0", 1,
+                ref aUIObj, tabBtnPanel, lang.GetMessage("Online Player Tab Text", this, aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOnline} 0", 1,
                 aPageType == UiPage.PlayersOnline ? true : false
             );
             AddTabMenuBtn(
-                ref aUIObj, tabBtnPanel, GetMessage("Offline Player Tab Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOffline} 0", 2,
-                aPageType == UiPage.PlayersOffline ? true : false
+                ref aUIObj, tabBtnPanel, lang.GetMessage("Offline Player Tab Text", this, aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOffline} 0",
+                2, aPageType == UiPage.PlayersOffline ? true : false
             );
             AddTabMenuBtn(
-                ref aUIObj, tabBtnPanel, GetMessage("Banned Player Tab Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersBanned} 0", 3,
+                ref aUIObj, tabBtnPanel, lang.GetMessage("Banned Player Tab Text", this, aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersBanned} 0", 3,
                 aPageType == UiPage.PlayersBanned ? true : false
             );
             LogDebug("Built the tab menu");
@@ -1098,11 +1052,11 @@ namespace Oxide.Plugins
             // Add the ban by ID group
             aUIObj.AddLabel(
                 panel, CMainPageLblBanByIdTitleLbAnchor, CMainPageLblBanByIdTitleRtAnchor, CuiColor.TextTitle,
-                GetMessage("Ban By ID Title Text", aUIObj.PlayerIdString), string.Empty, 16, TextAnchor.MiddleLeft
+                lang.GetMessage("Ban By ID Title Text", this, aUIObj.PlayerIdString), string.Empty, 16, TextAnchor.MiddleLeft
             );
             aUIObj.AddLabel(
                 panel, CMainPageLblBanByIdLbAnchor, CMainPageLblBanByIdRtAnchor, CuiColor.TextAlt,
-                GetMessage("Ban By ID Label Text", aUIObj.PlayerIdString), string.Empty, 14, TextAnchor.MiddleLeft
+                lang.GetMessage("Ban By ID Label Text", this, aUIObj.PlayerIdString), string.Empty, 14, TextAnchor.MiddleLeft
             );
             string panelBanByIdGroup = aUIObj.AddElement(panel, CBanByIdGroupPanel);
 
@@ -1114,6 +1068,38 @@ namespace Oxide.Plugins
             }
 
             LogDebug("Built the main page");
+        }
+
+        /// <summary>
+        /// Build the current user buttons
+        /// </summary>
+        /// <param name="aUIObj">Cui object</param>
+        /// <param name="aParent">The active page type</param>
+        /// <param name="aPageType">The active page type</param>
+        /// <param name="aPage">User list page</param>
+        /// <param name="aBtnCommandFmt">Command format for the buttons</param>
+        /// <param name="aUserCount">Total user count</param>
+        /// <param name="aIndFiltered">Indicates if the output should be filtered</param>
+        private void BuildUserButtons(
+            ref Cui aUIObj, string aParent, UiPage aPageType, ref int aPage, out string aBtnCommandFmt, out int aUserCount, bool aIndFiltered
+        )
+        {
+            string commandFmt = $"{CSwitchUiCmd} {CCmdArgPlayerPage} {{0}}";
+            List<KeyValuePair<string, string>> userList = GetServerUserList(aIndFiltered, aUIObj.PlayerIdString, aPageType == UiPage.PlayersOffline);
+
+            if (aPageType == UiPage.PlayersOnline) {
+                aBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersOnlineSearch : CCmdArgPlayersOnline)} {{0}}";
+            } else {
+                aBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersOfflineSearch : CCmdArgPlayersOffline)} {{0}}";
+            }
+
+            aUserCount = userList.Count;
+
+            if ((aPage != 0) && (userList.Count <= CMaxPlayerButtons))
+                aPage = 0; // Reset page to 0 if user count is lower or equal to max button count
+
+            AddPlayerButtons(ref aUIObj, aParent, ref userList, commandFmt, aPage);
+            LogDebug("Built the current page of user buttons");
         }
 
         /// <summary>
@@ -1131,17 +1117,17 @@ namespace Oxide.Plugins
             string panel = aUIObj.AddElement(CMainPanelName, CMainPagePanel);
             aUIObj.AddLabel(
                 panel, CUserBtnPageLblTitleLbAnchor, CUserBtnPageLblTitleRtAnchor, CuiColor.TextAlt,
-                GetMessage("User Button Page Title Text", aUIObj.PlayerIdString), string.Empty, 18, TextAnchor.MiddleLeft
+                lang.GetMessage("User Button Page Title Text", this, aUIObj.PlayerIdString), string.Empty, 18, TextAnchor.MiddleLeft
             );
             // Add search elements
             aUIObj.AddLabel(
-                panel, CUserBtnPageLblSearchLbAnchor, CUserBtnPageLblSearchRtAnchor, CuiColor.TextAlt, GetMessage("Search Label Text", aUIObj.PlayerIdString),
-                string.Empty, 16, TextAnchor.MiddleLeft
+                panel, CUserBtnPageLblSearchLbAnchor, CUserBtnPageLblSearchRtAnchor, CuiColor.TextAlt,
+                lang.GetMessage("Search Label Text", this, aUIObj.PlayerIdString), string.Empty, 16, TextAnchor.MiddleLeft
             );
             string panelSearchGroup = aUIObj.AddElement(panel, CUserBtnPageSearchInputPanel);
             aUIObj.AddInputField(
                 panelSearchGroup, CUserBtnPageEdtSearchInputLbAnchor, CUserBtnPageEdtSearchInputRtAnchor, CuiColor.TextAlt,
-                (FUserBtnPageSearchInputText.ContainsKey(aUIObj.PlayerId) ? FUserBtnPageSearchInputText[aUIObj.PlayerId] : string.Empty), 100,
+                (FUserBtnPageSearchInputText.ContainsKey(aUIObj.PlayerIdString) ? FUserBtnPageSearchInputText[aUIObj.PlayerIdString] : string.Empty), 100,
                 CUserBtnPageSearchInputTextCmd, false, string.Empty, 16
             );
 
@@ -1149,7 +1135,8 @@ namespace Oxide.Plugins
                 case UiPage.PlayersOnline: {
                     aUIObj.AddButton(
                         panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiColor.Button, CuiColor.TextAlt,
-                        GetMessage("Go Button Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOnlineSearch} 0", string.Empty, string.Empty, 16
+                        lang.GetMessage("Go Button Text", this, aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOnlineSearch} 0", string.Empty,
+                        string.Empty, 16
                     );
                     BuildUserButtons(ref aUIObj, panel, aPageType, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
                     break;
@@ -1157,7 +1144,8 @@ namespace Oxide.Plugins
                 case UiPage.PlayersOffline: {
                     aUIObj.AddButton(
                         panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiColor.Button, CuiColor.TextAlt,
-                        GetMessage("Go Button Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOfflineSearch} 0", string.Empty, string.Empty, 16
+                        lang.GetMessage("Go Button Text", this, aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOfflineSearch} 0", string.Empty,
+                        string.Empty, 16
                     );
                     BuildUserButtons(ref aUIObj, panel, aPageType, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
                     break;
@@ -1165,17 +1153,22 @@ namespace Oxide.Plugins
                 default: {
                     aUIObj.AddButton(
                         panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiColor.Button, CuiColor.TextAlt,
-                        GetMessage("Go Button Text", aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersBannedSearch} 0", string.Empty, string.Empty, 16
+                        lang.GetMessage("Go Button Text", this, aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersBannedSearch} 0", string.Empty,
+                        string.Empty, 16
                     );
-                    BuildBannedUserButtons(ref aUIObj, panel, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
+
+                    string commandFmt = $"{CSwitchUiCmd} {CCmdArgPlayerPageBanned} {{0}}";
+                    List<KeyValuePair<string, string>> userList = GetBannedUserList(aIndFiltered, aUIObj.PlayerIdString);
+                    npBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersBannedSearch : CCmdArgPlayersBanned)} {{0}}";
+                    userCount = userList.Count;
+
+                    if ((aPage != 0) && (userList.Count <= CMaxPlayerButtons))
+                        aPage = 0; // Reset page to 0 if user count is lower or equal to max button count
+
+                    AddPlayerButtons(ref aUIObj, panel, ref userList, commandFmt, aPage);
+                    LogDebug("Built the current page of banned user buttons");
                     break;
                 }
-            }
-
-            if (aPageType == UiPage.PlayersOnline || aPageType == UiPage.PlayersOffline) {
-                BuildUserButtons(ref aUIObj, panel, aPageType, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
-            } else {
-                BuildBannedUserButtons(ref aUIObj, panel, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
             }
 
             // Decide whether or not to activate the "previous" button
@@ -1202,62 +1195,6 @@ namespace Oxide.Plugins
         }
 
         /// <summary>
-        /// Build the current user buttons
-        /// </summary>
-        /// <param name="aUIObj">Cui object</param>
-        /// <param name="aParent">The active page type</param>
-        /// <param name="aPageType">The active page type</param>
-        /// <param name="aPage">User list page</param>
-        /// <param name="aBtnCommandFmt">Command format for the buttons</param>
-        /// <param name="aUserCount">Total user count</param>
-        /// <param name="aIndFiltered">Indicates if the output should be filtered</param>
-        private void BuildUserButtons(
-            ref Cui aUIObj, string aParent, UiPage aPageType, ref int aPage, out string aBtnCommandFmt, out int aUserCount, bool aIndFiltered
-        ) {
-            string commandFmt = $"{CSwitchUiCmd} {CCmdArgPlayerPage} {{0}}";
-            List<BasePlayer> userList;
-
-            if (aPageType == UiPage.PlayersOnline) {
-                userList = GetServerUserList(aIndFiltered, aUIObj.PlayerIdString);
-                aBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersOnlineSearch : CCmdArgPlayersOnline)} {{0}}";
-            } else {
-                userList = GetServerUserList(aIndFiltered, aUIObj.PlayerIdString, true);
-                aBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersOfflineSearch : CCmdArgPlayersOffline)} {{0}}";
-            }
-
-            aUserCount = userList.Count;
-
-            if ((aPage != 0) && (userList.Count <= CMaxPlayerButtons))
-                aPage = 0; // Reset page to 0 if user count is lower or equal to max button count
-
-            AddPlayerButtons(ref aUIObj, aParent, ref userList, commandFmt, aPage);
-            LogDebug("Built the current page of user buttons");
-        }
-
-        /// <summary>
-        /// Build the banned user buttons
-        /// </summary>
-        /// <param name="aUIObj">Cui object</param>
-        /// <param name="aParent">The active page type</param>
-        /// <param name="aPage">User list page</param>
-        /// <param name="aBtnCommandFmt">Command format for the buttons</param>
-        /// <param name="aUserCount">Total user count</param>
-        /// <param name="aIndFiltered">Indicates if the output should be filtered</param>
-        private void BuildBannedUserButtons(ref Cui aUIObj, string aParent, ref int aPage, out string aBtnCommandFmt, out int aUserCount, bool aIndFiltered)
-        {
-            string commandFmt = $"{CSwitchUiCmd} {CCmdArgPlayerPageBanned} {{0}}";
-            List<ServerUsers.User> userList = GetBannedUserList(aIndFiltered, aUIObj.PlayerIdString);
-            aBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersBannedSearch : CCmdArgPlayersBanned)} {{0}}";
-            aUserCount = userList.Count;
-
-            if ((aPage != 0) && (userList.Count <= CMaxPlayerButtons))
-                aPage = 0; // Reset page to 0 if user count is lower or equal to max button count
-
-            AddPlayerButtons(ref aUIObj, aParent, ref userList, commandFmt, aPage);
-            LogDebug("Built the current page of banned user buttons");
-        }
-
-        /// <summary>
         /// Add the user information labels to the parent element
         /// </summary>
         /// <param name="aUIObj">Cui object</param>
@@ -1267,7 +1204,7 @@ namespace Oxide.Plugins
         /// <param name="aPlayer">Player who's information we need to display</param>
         private void AddUserPageInfoLabels(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId, ref BasePlayer aPlayer)
         {
-            string lastCheatStr = GetMessage("Never Label Text", aUiUserId);
+            string lastCheatStr = lang.GetMessage("Never Label Text", this, aUiUserId);
             string authLevel = ServerUsers.Get(aPlayerId)?.group.ToString() ?? "None";
 
             // Pre-calc last admin cheat
@@ -1278,32 +1215,36 @@ namespace Oxide.Plugins
 
             LogDebug("AddUserPageInfoLabels > Time since last admin cheat has been determined.");
             aUIObj.AddLabel(
-                aParent, CUserPageLblIdLbAnchor, CUserPageLblIdRtAnchor, CuiColor.TextAlt,
-                GetMessage("Id Label Format", aUiUserId, aPlayerId, (aPlayer.IsDeveloper ? GetMessage("Dev Label Text", aUiUserId) : string.Empty)),
-                string.Empty, 14, TextAnchor.MiddleLeft
+                aParent, CUserPageLblIdLbAnchor, CUserPageLblIdRtAnchor, CuiColor.TextAlt, string.Format(
+                    lang.GetMessage("Id Label Format", this, aUiUserId), aPlayerId,
+                    (aPlayer.IsDeveloper ? lang.GetMessage("Dev Label Text", this, aUiUserId) : string.Empty)
+                ), string.Empty, 14, TextAnchor.MiddleLeft
             );
             /*
             aUIObj.AddInputField(
-                aParent, CUserPageLblIdLbAnchor, CUserPageLblIdRtAnchor, CuiColor.TextAlt,
-                GetMessage("Id Label Format", aUiUserId, aPlayerId, (aPlayer.IsDeveloper ? GetMessage("Dev Label Text", aUiUserId) : string.Empty)),
-                100, string.Empty, false, string.Empty, 14, TextAnchor.MiddleLeft
+                aParent, CUserPageLblIdLbAnchor, CUserPageLblIdRtAnchor, CuiColor.TextAlt, string.Format(
+                    lang.GetMessage("Id Label Format", this, aUiUserId), aPlayerId,
+                    (aPlayer.IsDeveloper ? lang.GetMessage("Dev Label Text", this, aUiUserId) : string.Empty)
+                ), 100, string.Empty, false, string.Empty, 14, TextAnchor.MiddleLeft
             );
             */
             aUIObj.AddLabel(
                 aParent, CUserPageLblAuthLbAnchor, CUserPageLblAuthRtAnchor, CuiColor.TextAlt,
-                GetMessage("Auth Level Label Format", aUiUserId, authLevel), string.Empty, 14, TextAnchor.MiddleLeft
+                string.Format(lang.GetMessage("Auth Level Label Format", this, aUiUserId), authLevel), string.Empty, 14, TextAnchor.MiddleLeft
             );
             aUIObj.AddLabel(
-                aParent, CUserPageLblConnectLbAnchor, CUserPageLblConnectRtAnchor, CuiColor.TextAlt, GetMessage(
-                    "Connection Label Format", aUiUserId,
-                    (aPlayer.IsConnected ? GetMessage("Connected Label Text", aUiUserId) : GetMessage("Disconnected Label Text", aUiUserId))
+                aParent, CUserPageLblConnectLbAnchor, CUserPageLblConnectRtAnchor, CuiColor.TextAlt, string.Format(lang.GetMessage(
+                    "Connection Label Format", this, aUiUserId), (aPlayer.IsConnected
+                        ? lang.GetMessage("Connected Label Text", this, aUiUserId)
+                        : lang.GetMessage("Disconnected Label Text", this, aUiUserId)
+                    )
                 ), string.Empty, 14, TextAnchor.MiddleLeft
             );
             aUIObj.AddLabel(
-                aParent, CUserPageLblSleepLbAnchor, CUserPageLblSleepRtAnchor, CuiColor.TextAlt, GetMessage(
-                    "Status Label Format", aUiUserId,
-                    (aPlayer.IsSleeping() ? GetMessage("Sleeping Label Text", aUiUserId) : GetMessage("Awake Label Text", aUiUserId)),
-                    (aPlayer.IsAlive() ? GetMessage("Alive Label Text", aUiUserId) : GetMessage("Dead Label Text", aUiUserId))
+                aParent, CUserPageLblSleepLbAnchor, CUserPageLblSleepRtAnchor, CuiColor.TextAlt, string.Format(lang.GetMessage(
+                    "Status Label Format", this, aUiUserId),
+                    (aPlayer.IsSleeping() ? lang.GetMessage("Sleeping Label Text", this, aUiUserId) : lang.GetMessage("Awake Label Text", this, aUiUserId)),
+                    (aPlayer.IsAlive() ? lang.GetMessage("Alive Label Text", this, aUiUserId) : lang.GetMessage("Dead Label Text", this, aUiUserId))
                 ), string.Empty, 14, TextAnchor.MiddleLeft
             );
 
@@ -1311,33 +1252,35 @@ namespace Oxide.Plugins
 
             if (VerifyPermission(aUiUserId, CPermDetailInfo)) {
                 aUIObj.AddLabel(
-                    aParent, CUserPageLblFlagLbAnchor, CUserPageLblFlagRtAnchor, CuiColor.TextAlt, GetMessage(
-                        "Flags Label Format", aUiUserId, (aPlayer.IsFlying ? GetMessage("Flying Label Text", aUiUserId) : string.Empty),
-                        (aPlayer.isMounted ? GetMessage("Mounted Label Text", aUiUserId) : string.Empty)
+                    aParent, CUserPageLblFlagLbAnchor, CUserPageLblFlagRtAnchor, CuiColor.TextAlt, string.Format(lang.GetMessage(
+                        "Flags Label Format", this, aUiUserId), (aPlayer.IsFlying ? lang.GetMessage("Flying Label Text", this, aUiUserId) : string.Empty),
+                        (aPlayer.isMounted ? lang.GetMessage("Mounted Label Text", this, aUiUserId) : string.Empty)
                     ), string.Empty, 14, TextAnchor.MiddleLeft
                 );
                 aUIObj.AddLabel(
                     aParent, CUserPageLblPosLbAnchor, CUserPageLblPosRtAnchor, CuiColor.TextAlt,
-                    GetMessage("Position Label Format", aUiUserId, aPlayer.ServerPosition), string.Empty, 14, TextAnchor.MiddleLeft
+                    string.Format(lang.GetMessage("Position Label Format", this, aUiUserId), aPlayer.ServerPosition), string.Empty, 14, TextAnchor.MiddleLeft
                 );
                 aUIObj.AddLabel(
                     aParent, CUserPageLblRotLbAnchor, CUserPageLblRotRtAnchor, CuiColor.TextAlt,
-                    GetMessage("Rotation Label Format", aUiUserId, aPlayer.GetNetworkRotation()), string.Empty, 14, TextAnchor.MiddleLeft
+                    string.Format(lang.GetMessage("Rotation Label Format", this, aUiUserId), aPlayer.GetNetworkRotation()), string.Empty, 14,
+                    TextAnchor.MiddleLeft
                 );
                 aUIObj.AddLabel(
                     aParent, CUserPageLblAdminCheatLbAnchor, CUserPageLblAdminCheatRtAnchor, CuiColor.TextAlt,
-                    GetMessage("Last Admin Cheat Label Format", aUiUserId, lastCheatStr), string.Empty, 14, TextAnchor.MiddleLeft
+                    string.Format(lang.GetMessage("Last Admin Cheat Label Format", this, aUiUserId), lastCheatStr), string.Empty, 14, TextAnchor.MiddleLeft
                 );
                 aUIObj.AddLabel(
                     aParent, CUserPageLblIdleLbAnchor, CUserPageLblIdleRtAnchor, CuiColor.TextAlt,
-                    GetMessage("Idle Time Label Format", aUiUserId, Math.Round(aPlayer.IdleTime, 2)), string.Empty, 14, TextAnchor.MiddleLeft
+                    string.Format(lang.GetMessage("Idle Time Label Format", this, aUiUserId), Math.Round(aPlayer.IdleTime, 2)), string.Empty, 14,
+                    TextAnchor.MiddleLeft
                 );
 
                 if (Economics != null) {
                     aUIObj.AddLabel(
                         aParent, CUserPageLblBalanceLbAnchor, CUserPageLblBalanceRtAnchor, CuiColor.TextAlt,
-                        GetMessage("Economics Balance Label Format", aUiUserId, Math.Round((double)Economics.Call("Balance", aPlayerId), 2)), string.Empty, 14,
-                        TextAnchor.MiddleLeft
+                        string.Format(lang.GetMessage("Economics Balance Label Format", this, aUiUserId),
+                        Math.Round((double)Economics.Call("Balance", aPlayerId), 2)), string.Empty, 14, TextAnchor.MiddleLeft
                     );
                     LogDebug("AddUserPageInfoLabels > Economics info has been added.");
                 }
@@ -1345,496 +1288,57 @@ namespace Oxide.Plugins
                 if (ServerRewards != null) {
                     aUIObj.AddLabel(
                         aParent, CUserPageLblRewardPointsLbAnchor, CUserPageLblRewardPointsRtAnchor, CuiColor.TextAlt,
-                        GetMessage("ServerRewards Points Label Format", aUiUserId, (int)(ServerRewards.Call("CheckPoints", aPlayerId) ?? 0)), string.Empty, 14,
-                        TextAnchor.MiddleLeft
+                        string.Format(lang.GetMessage("ServerRewards Points Label Format", this, aUiUserId),
+                        (int)(ServerRewards.Call("CheckPoints", aPlayerId) ?? 0)), string.Empty, 14, TextAnchor.MiddleLeft
                     );
                     LogDebug("AddUserPageInfoLabels > ServerRewards info has been added.");
                 }
 
                 aUIObj.AddLabel(
-                    aParent, CUserPageLblHealthLbAnchor, CUserPageLblHealthRtAnchor, CuiColor.TextAlt, GetMessage("Health Label Format", aUiUserId, aPlayer.health),
-                    string.Empty, 14, TextAnchor.MiddleLeft
+                    aParent, CUserPageLblHealthLbAnchor, CUserPageLblHealthRtAnchor, CuiColor.TextAlt,
+                    string.Format(lang.GetMessage("Health Label Format", this, aUiUserId), aPlayer.health), string.Empty, 14, TextAnchor.MiddleLeft
                 );
                 aUIObj.AddLabel(
                     aParent, CUserPageLblCalLbAnchor, CUserPageLblCalRtAnchor, CuiColor.TextAlt,
-                    GetMessage("Calories Label Format", aUiUserId, aPlayer.metabolism?.calories?.value), string.Empty, 14, TextAnchor.MiddleLeft
+                    string.Format(lang.GetMessage("Calories Label Format", this, aUiUserId), aPlayer.metabolism?.calories?.value), string.Empty, 14,
+                    TextAnchor.MiddleLeft
                 );
                 aUIObj.AddLabel(
                     aParent, CUserPageLblHydraLbAnchor, CUserPageLblHydraRtAnchor, CuiColor.TextAlt,
-                    GetMessage("Hydration Label Format", aUiUserId, aPlayer.metabolism?.hydration?.value), string.Empty, 14, TextAnchor.MiddleLeft
+                    string.Format(lang.GetMessage("Hydration Label Format", this, aUiUserId), aPlayer.metabolism?.hydration?.value), string.Empty, 14,
+                    TextAnchor.MiddleLeft
                 );
                 aUIObj.AddLabel(
                     aParent, CUserPageLblTempLbAnchor, CUserPageLblTempRtAnchor, CuiColor.TextAlt,
-                    GetMessage("Temp Label Format", aUiUserId, aPlayer.metabolism?.temperature?.value), string.Empty, 14, TextAnchor.MiddleLeft
+                    string.Format(lang.GetMessage("Temp Label Format", this, aUiUserId), aPlayer.metabolism?.temperature?.value), string.Empty, 14,
+                    TextAnchor.MiddleLeft
                 );
                 aUIObj.AddLabel(
                     aParent, CUserPageLblWetLbAnchor, CUserPageLblWetRtAnchor, CuiColor.TextAlt,
-                    GetMessage("Wetness Label Format", aUiUserId, aPlayer.metabolism?.wetness?.value), string.Empty, 14, TextAnchor.MiddleLeft
+                    string.Format(lang.GetMessage("Wetness Label Format", this, aUiUserId), aPlayer.metabolism?.wetness?.value), string.Empty, 14,
+                    TextAnchor.MiddleLeft
                 );
                 aUIObj.AddLabel(
                     aParent, CUserPageLblComfortLbAnchor, CUserPageLblComfortRtAnchor, CuiColor.TextAlt,
-                    GetMessage("Comfort Label Format", aUiUserId, aPlayer.metabolism?.comfort?.value), string.Empty, 14, TextAnchor.MiddleLeft
+                    string.Format(lang.GetMessage("Comfort Label Format", this, aUiUserId), aPlayer.metabolism?.comfort?.value), string.Empty, 14,
+                    TextAnchor.MiddleLeft
                 );
                 aUIObj.AddLabel(
                     aParent, CUserPageLblBleedLbAnchor, CUserPageLblBleedRtAnchor, CuiColor.TextAlt,
-                    GetMessage("Bleeding Label Format", aUiUserId, aPlayer.metabolism?.bleeding?.value), string.Empty, 14, TextAnchor.MiddleLeft
+                    string.Format(lang.GetMessage("Bleeding Label Format", this, aUiUserId), aPlayer.metabolism?.bleeding?.value), string.Empty, 14,
+                    TextAnchor.MiddleLeft
                 );
                 aUIObj.AddLabel(
                     aParent, CUserPageLblRads1LbAnchor, CUserPageLblRads1RtAnchor, CuiColor.TextAlt,
-                    GetMessage("Radiation Label Format", aUiUserId, aPlayer.metabolism?.radiation_poison?.value), string.Empty, 14, TextAnchor.MiddleLeft
+                    string.Format(lang.GetMessage("Radiation Label Format", this, aUiUserId), aPlayer.metabolism?.radiation_poison?.value), string.Empty, 14,
+                    TextAnchor.MiddleLeft
                 );
                 aUIObj.AddLabel(
                     aParent, CUserPageLblRads2LbAnchor, CUserPageLblRads2RtAnchor, CuiColor.TextAlt,
-                    GetMessage("Radiation Protection Label Format", aUiUserId, aPlayer.RadiationProtection()), string.Empty, 14, TextAnchor.MiddleLeft
+                    string.Format(lang.GetMessage("Radiation Protection Label Format", this, aUiUserId), aPlayer.RadiationProtection()), string.Empty, 14,
+                    TextAnchor.MiddleLeft
                 );
                 LogDebug("AddUserPageInfoLabels > Player statistics info has been added.");
-            }
-        }
-
-        /// <summary>
-        /// Add the first row of actions to the parent element
-        /// </summary>
-        /// <param name="aUIObj">Cui object</param>
-        /// <param name="aParent">Parent panel name</param>
-        /// <param name="aUiUserId">UI destination Player ID (SteamId64)</param>
-        /// <param name="aPlayerId">Player ID (SteamId64)</param>
-        /// <param name="aPlayer">Player who's information we need to display</param>
-        private void AddUserPageFirstActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId, ref BasePlayer aPlayer)
-        {
-            if (VerifyPermission(aUiUserId, CPermBan)) {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
-                    GetMessage("Ban Button Text", aUiUserId), $"{CBanUserCmd} {aPlayerId}"
-                );
-            } else {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiColor.ButtonInactive, CuiColor.Text, GetMessage("Ban Button Text", aUiUserId)
-                );
-            }
-
-            if (VerifyPermission(aUiUserId, CPermKick) && aPlayer.IsConnected) {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnKickLbAnchor, CUserPageBtnKickRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
-                    GetMessage("Kick Button Text", aUiUserId), $"{CKickUserCmd} {aPlayerId}"
-                );
-            } else {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnKickLbAnchor, CUserPageBtnKickRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Kick Button Text", aUiUserId)
-                );
-            }
-
-            aUIObj.AddLabel(
-                aParent, CUserPageLblReasonLbAnchor, CUserPageLblReasonRtAnchor, CuiColor.TextAlt, GetMessage("Reason Input Label Text", aUiUserId),
-                string.Empty, 14, TextAnchor.MiddleLeft
-            );
-            string panelReasonGroup = aUIObj.AddPanel(aParent, CUserPagePanelReasonLbAnchor, CUserPagePanelReasonRtAnchor, false, CuiColor.BackgroundDark);
-            aUIObj.AddInputField(
-                panelReasonGroup, CUserPageEdtReasonLbAnchor, CUserPageEdtReasonRtAnchor, CuiColor.TextAlt, string.Empty, 24, CUserPageReasonInputTextCmd
-            );
-        }
-
-        /// <summary>
-        /// Add the second row of actions to the parent element
-        /// </summary>
-        /// <param name="aUIObj">Cui object</param>
-        /// <param name="aParent">Parent panel name</param>
-        /// <param name="aUiUserId">UI destination Player ID (SteamId64)</param>
-        /// <param name="aPlayerId">Player ID (SteamId64)</param>
-        /// <param name="aPlayer">Player who's information we need to display</param>
-        private void AddUserPageSecondActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId, ref BasePlayer aPlayer)
-        {
-            bool playerConnected = aPlayer.IsConnected;
-
-            if (VerifyPermission(aUiUserId, CPermVoiceMute) && playerConnected) {
-                if (GetIsVoiceMuted(ref aPlayer)) {
-                    aUIObj.AddButton(
-                        aParent, CUserPageBtnVUnmuteLbAnchor, CUserPageBtnVUnmuteRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
-                        GetMessage("Voice Unmute Button Text", aUiUserId), $"{CVoiceUnmuteUserCmd} {aPlayerId}"
-                    );
-                    aUIObj.AddButton(
-                        aParent, CUserPageBtnVMuteLbAnchor, CUserPageBtnVMuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                        GetMessage("Voice Mute Button Text", aUiUserId)
-                    );
-                } else {
-                    aUIObj.AddButton(
-                        aParent, CUserPageBtnVUnmuteLbAnchor, CUserPageBtnVUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                        GetMessage("Voice Unmute Button Text", aUiUserId)
-                    );
-                    aUIObj.AddButton(
-                        aParent, CUserPageBtnVMuteLbAnchor, CUserPageBtnVMuteRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
-                        GetMessage("Voice Mute Button Text", aUiUserId), $"{CVoiceMuteUserCmd} {aPlayerId}"
-                    );
-                }
-            } else {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnVUnmuteLbAnchor, CUserPageBtnVUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Voice Unmute Button Text", aUiUserId)
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnVMuteLbAnchor, CUserPageBtnVMuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Voice Mute Button Text", aUiUserId)
-                );
-            }
-        }
-
-        /// <summary>
-        /// Add the third row of actions to the parent element
-        /// </summary>
-        /// <param name="aUIObj">Cui object</param>
-        /// <param name="aParent">Parent panel name</param>
-        /// <param name="aUiUserId">UI destination Player ID (SteamId64)</param>
-        /// <param name="aPlayerId">Player ID (SteamId64)</param>
-        /// <param name="aPlayer">Player who's information we need to display</param>
-        private void AddUserPageThirdActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId, ref BasePlayer aPlayer)
-        {
-            bool playerConnected = aPlayer.IsConnected;
-
-            if (VerifyPermission(aUiUserId, CPermChatMute) && playerConnected) {
-                if (GetIsChatMuted(ref aPlayer)) {
-                    aUIObj.AddButton(
-                        aParent, CUserPageBtnCUnmuteLbAnchor, CUserPageBtnCUnmuteRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
-                        GetMessage("Chat Unmute Button Text", aUiUserId), $"{CChatUnmuteUserCmd} {aPlayerId}"
-                    );
-                    aUIObj.AddButton(
-                        aParent, CUserPageBtnCMuteLbAnchor, CUserPageBtnCMuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                        GetMessage("Chat Mute Button Text", aUiUserId)
-                    );
-
-                    if (BetterChatMute != null) {
-                        aUIObj.AddButton(
-                            aParent, CUserPageBtnCMuteFifteenLbAnchor, CUserPageBtnCMuteFifteenRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                            GetMessage("Chat Mute Button Text 15", aUiUserId)
-                        );
-                        aUIObj.AddButton(
-                            aParent, CUserPageBtnCMuteThirtyLbAnchor, CUserPageBtnCMuteThirtyRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                            GetMessage("Chat Mute Button Text 30", aUiUserId)
-                        );
-                        aUIObj.AddButton(
-                            aParent, CUserPageBtnCMuteSixtyLbAnchor, CUserPageBtnCMuteSixtyRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                            GetMessage("Chat Mute Button Text 60", aUiUserId)
-                        );
-                    }
-                } else {
-                    aUIObj.AddButton(
-                        aParent, CUserPageBtnCUnmuteLbAnchor, CUserPageBtnCUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                        GetMessage("Chat Unmute Button Text", aUiUserId)
-                    );
-                    aUIObj.AddButton(
-                        aParent, CUserPageBtnCMuteLbAnchor, CUserPageBtnCMuteRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
-                        GetMessage("Chat Mute Button Text", aUiUserId), $"{CChatMuteUserCmd} {aPlayerId} 0"
-                    );
-
-                    if (BetterChatMute != null) {
-                        aUIObj.AddButton(
-                            aParent, CUserPageBtnCMuteFifteenLbAnchor, CUserPageBtnCMuteFifteenRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
-                            GetMessage("Chat Mute Button Text 15", aUiUserId), $"{CChatMuteUserCmd} {aPlayerId} 15"
-                        );
-                        aUIObj.AddButton(
-                            aParent, CUserPageBtnCMuteThirtyLbAnchor, CUserPageBtnCMuteThirtyRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
-                            GetMessage("Chat Mute Button Text 30", aUiUserId), $"{CChatMuteUserCmd} {aPlayerId} 30"
-                        );
-                        aUIObj.AddButton(
-                            aParent, CUserPageBtnCMuteSixtyLbAnchor, CUserPageBtnCMuteSixtyRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
-                            GetMessage("Chat Mute Button Text 60", aUiUserId), $"{CChatMuteUserCmd} {aPlayerId} 60"
-                        );
-                    }
-                }
-            } else {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnCUnmuteLbAnchor, CUserPageBtnCUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Chat Unmute Button Text", aUiUserId)
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnCMuteLbAnchor, CUserPageBtnCMuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Chat Mute Button Text", aUiUserId)
-                );
-            }
-        }
-
-        /// <summary>
-        /// Add the third row of actions to the parent element
-        /// </summary>
-        /// <param name="aUIObj">Cui object</param>
-        /// <param name="aParent">Parent panel name</param>
-        /// <param name="aUiUserId">UI destination Player ID (SteamId64)</param>
-        /// <param name="aPlayerId">Player ID (SteamId64)</param>
-        /// <param name="aPlayer">Player who's information we need to display</param>
-        private void AddUserPageFourthActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId, ref BasePlayer aPlayer)
-        {
-            if (Freeze == null) {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Freeze Not Installed Button Text", aUiUserId)
-                );
-            } else if (VerifyPermission(aUiUserId, CPermFreeze) && aPlayer.IsConnected) {
-                if (GetIsFrozen(aPlayerId)) {
-                    aUIObj.AddButton(
-                        aParent, CUserPageBtnUnFreezeLbAnchor, CUserPageBtnUnFreezeRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
-                        GetMessage("UnFreeze Button Text", aUiUserId), $"{CUnreezeCmd} {aPlayerId}"
-                    );
-                    aUIObj.AddButton(
-                        aParent, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                        GetMessage("Freeze Button Text", aUiUserId)
-                    );
-                } else {
-                    aUIObj.AddButton(
-                        aParent, CUserPageBtnUnFreezeLbAnchor, CUserPageBtnUnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                        GetMessage("UnFreeze Button Text", aUiUserId)
-                    );
-                    aUIObj.AddButton(
-                        aParent, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
-                        GetMessage("Freeze Button Text", aUiUserId), $"{CFreezeCmd} {aPlayerId}"
-                    );
-                }
-            } else {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnUnFreezeLbAnchor, CUserPageBtnUnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("UnFreeze Button Text", aUiUserId)
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Freeze Button Text", aUiUserId)
-                );
-            }
-        }
-
-        /// <summary>
-        /// Add the fourth row of actions to the parent element
-        /// </summary>
-        /// <param name="aUIObj">Cui object</param>
-        /// <param name="aParent">Parent panel name</param>
-        /// <param name="aUiUserId">UI destination Player ID (SteamId64)</param>
-        /// <param name="aPlayerId">Player ID (SteamId64)</param>
-        private void AddUserPageFifthActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId)
-        {
-            if (VerifyPermission(aUiUserId, CPermClearInventory)) {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnClearInventoryLbAnchor, CUserPageBtnClearInventoryRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
-                    GetMessage("Clear Inventory Button Text", aUiUserId), $"{CClearUserInventoryCmd} {aPlayerId}"
-                );
-            } else {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnClearInventoryLbAnchor, CUserPageBtnClearInventoryRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Clear Inventory Button Text", aUiUserId)
-                );
-            }
-
-            if (VerifyPermission(aUiUserId, CPermResetBP)) {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnResetBPLbAnchor, CUserPageBtnResetBPRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
-                    GetMessage("Reset Blueprints Button Text", aUiUserId), $"{CResetUserBPCmd} {aPlayerId}"
-                );
-            } else {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnResetBPLbAnchor, CUserPageBtnResetBPRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Reset Blueprints Button Text", aUiUserId)
-                );
-            }
-
-            if (VerifyPermission(aUiUserId, CPermResetMetabolism)) {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnResetMetabolismLbAnchor, CUserPageBtnResetMetabolismRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
-                    GetMessage("Reset Metabolism Button Text", aUiUserId), $"{CResetUserMetabolismCmd} {aPlayerId}"
-                );
-            } else {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnResetMetabolismLbAnchor, CUserPageBtnResetMetabolismRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Reset Metabolism Button Text", aUiUserId)
-                );
-            }
-
-            if (VerifyPermission(aUiUserId, CPermRecoverMetabolism)) {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnRecoverMetabolismLbAnchor, CUserPageBtnRecoverMetabolismRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
-                    GetMessage("Recover Metabolism Button Text", aUiUserId), $"{CRecoverUserMetabolismCmd} {aPlayerId}"
-                );
-            } else {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnRecoverMetabolismLbAnchor, CUserPageBtnRecoverMetabolismRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Recover Metabolism Button Text", aUiUserId)
-                );
-            }
-        }
-
-        /// <summary>
-        /// Add the fifth row of actions to the parent element
-        /// </summary>
-        /// <param name="aUIObj">Cui object</param>
-        /// <param name="aParent">Parent panel name</param>
-        /// <param name="aUiUserId">UI destination Player ID (SteamId64)</param>
-        /// <param name="aPlayerId">Player ID (SteamId64)</param>
-        private void AddUserPageSixthActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId)
-        {
-            if (VerifyPermission(aUiUserId, CPermTeleport)) {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnTeleportToLbAnchor, CUserPageBtnTeleportToRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
-                    GetMessage("Teleport To Player Button Text", aUiUserId), $"{CTeleportToUserCmd} {aPlayerId}"
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnTeleportLbAnchor, CUserPageBtnTeleportRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
-                    GetMessage("Teleport Player Button Text", aUiUserId), $"{CTeleportUserCmd} {aPlayerId}"
-                );
-            } else {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnTeleportToLbAnchor, CUserPageBtnTeleportToRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Teleport To Player Button Text", aUiUserId)
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnTeleportLbAnchor, CUserPageBtnTeleportRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Teleport Player Button Text", aUiUserId)
-                );
-            }
-
-            if (VerifyPermission(aUiUserId, CPermSpectate)) {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnSpectateLbAnchor, CUserPageBtnSpectateRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
-                    GetMessage("Spectate Player Button Text", aUiUserId), $"{CSpectateUserCmd} {aPlayerId}"
-                );
-            } else {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnSpectateLbAnchor, CUserPageBtnSpectateRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Spectate Player Button Text", aUiUserId)
-                );
-            }
-        }
-
-        /// <summary>
-        /// Add the sixth row of actions to the parent element
-        /// </summary>
-        /// <param name="aUIObj">Cui object</param>
-        /// <param name="aParent">Parent panel name</param>
-        /// <param name="aUiUserId">UI destination Player ID (SteamId64)</param>
-        /// <param name="aPlayerId">Player ID (SteamId64)</param>
-        private void AddUserPageSeventhActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId)
-        {
-            if (PermissionsManager == null) {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Perms Not Installed Button Text", aUiUserId)
-                );
-            } else if (VerifyPermission(aUiUserId, CPermPerms)) {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
-                    GetMessage("Perms Button Text", aUiUserId), $"{CPermsCmd} {aPlayerId}"
-                );
-            } else {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Perms Button Text", aUiUserId)
-                );
-            }
-        }
-
-        /// <summary>
-        /// Add the eleventh row of actions to the parent element
-        /// </summary>
-        /// <param name="aUIObj">Cui object</param>
-        /// <param name="aParent">Parent panel name</param>
-        /// <param name="aUiUserId">UI destination Player ID (SteamId64)</param>
-        /// <param name="aPlayerId">Player ID (SteamId64)</param>
-        private void AddUserPageEleventhActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId)
-        {
-            if (VerifyPermission(aUiUserId, CPermHurt)) {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnHurt25LbAnchor, CUserPageBtnHurt25RtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
-                    GetMessage("Hurt 25 Button Text", aUiUserId), $"{CHurtUserCmd} {aPlayerId} 25"
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnHurt50LbAnchor, CUserPageBtnHurt50RtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
-                    GetMessage("Hurt 50 Button Text", aUiUserId), $"{CHurtUserCmd} {aPlayerId} 50"
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnHurt75LbAnchor, CUserPageBtnHurt75RtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
-                    GetMessage("Hurt 75 Button Text", aUiUserId), $"{CHurtUserCmd} {aPlayerId} 75"
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnHurt100LbAnchor, CUserPageBtnHurt100RtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
-                    GetMessage("Hurt 100 Button Text", aUiUserId), $"{CHurtUserCmd} {aPlayerId} 100"
-                );
-            } else {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnHurt25LbAnchor, CUserPageBtnHurt25RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Hurt 25 Button Text", aUiUserId)
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnHurt50LbAnchor, CUserPageBtnHurt50RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Hurt 50 Button Text", aUiUserId)
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnHurt75LbAnchor, CUserPageBtnHurt75RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Hurt 75 Button Text", aUiUserId)
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnHurt100LbAnchor, CUserPageBtnHurt100RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Hurt 100 Button Text", aUiUserId)
-                );
-            }
-
-            if (VerifyPermission(aUiUserId, CPermKill)) {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnKillLbAnchor, CUserPageBtnKillRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
-                    GetMessage("Kill Button Text", aUiUserId), $"{CKillUserCmd} {aPlayerId}"
-                );
-            } else {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnKillLbAnchor, CUserPageBtnKillRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Kill Button Text", aUiUserId)
-                );
-            }
-        }
-
-        /// <summary>
-        /// Add the twelfth row of actions to the parent element
-        /// </summary>
-        /// <param name="aUIObj">Cui object</param>
-        /// <param name="aParent">Parent panel name</param>
-        /// <param name="aUiUserId">UI destination Player ID (SteamId64)</param>
-        /// <param name="aPlayerId">Player ID (SteamId64)</param>
-        private void AddUserPageTwelfthActionRow(ref Cui aUIObj, string aParent, string aUiUserId, ulong aPlayerId)
-        {
-            if (VerifyPermission(aUiUserId, CPermHeal)) {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnHeal25LbAnchor, CUserPageBtnHeal25RtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
-                    GetMessage("Heal 25 Button Text", aUiUserId), $"{CHealUserCmd} {aPlayerId} 25"
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnHeal50LbAnchor, CUserPageBtnHeal50RtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
-                    GetMessage("Heal 50 Button Text", aUiUserId), $"{CHealUserCmd} {aPlayerId} 50"
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnHeal75LbAnchor, CUserPageBtnHeal75RtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
-                    GetMessage("Heal 75 Button Text", aUiUserId), $"{CHealUserCmd} {aPlayerId} 75"
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnHeal100LbAnchor, CUserPageBtnHeal100RtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
-                    GetMessage("Heal 100 Button Text", aUiUserId), $"{CHealUserCmd} {aPlayerId} 100"
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnHealWoundsLbAnchor, CUserPageBtnHealWoundsRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
-                    GetMessage("Heal Wounds Button Text", aUiUserId), $"{CHealUserCmd} {aPlayerId} 0"
-                );
-            } else {
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnHeal25LbAnchor, CUserPageBtnHeal25RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Heal 25 Button Text", aUiUserId)
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnHeal50LbAnchor, CUserPageBtnHeal50RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Heal 50 Button Text", aUiUserId)
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnHeal75LbAnchor, CUserPageBtnHeal75RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Heal 75 Button Text", aUiUserId)
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnHeal100LbAnchor, CUserPageBtnHeal100RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Heal 100 Button Text", aUiUserId)
-                );
-                aUIObj.AddButton(
-                    aParent, CUserPageBtnHealWoundsLbAnchor, CUserPageBtnHealWoundsRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                    GetMessage("Heal Wounds Button Text", aUiUserId)
-                );
             }
         }
 
@@ -1856,11 +1360,11 @@ namespace Oxide.Plugins
             // Add title labels
             aUIObj.AddLabel(
                 infoPanel, CUserPageLblinfoTitleLbAnchor, CUserPageLblinfoTitleRtAnchor, CuiColor.TextTitle,
-                GetMessage("Player Info Label Text", aUIObj.PlayerIdString), string.Empty, 14, TextAnchor.MiddleLeft
+                lang.GetMessage("Player Info Label Text", this, aUIObj.PlayerIdString), string.Empty, 14, TextAnchor.MiddleLeft
             );
             aUIObj.AddLabel(
                 actionPanel, CUserPageLblActionTitleLbAnchor, CUserPageLblActionTitleRtAnchor, CuiColor.TextTitle,
-                GetMessage("Player Actions Label Text", aUIObj.PlayerIdString), string.Empty, 14, TextAnchor.MiddleLeft
+                lang.GetMessage("Player Actions Label Text", this, aUIObj.PlayerIdString), string.Empty, 14, TextAnchor.MiddleLeft
             );
             LogDebug("BuildUserPage > Title lables have been added.");
 
@@ -1870,54 +1374,397 @@ namespace Oxide.Plugins
 
                 aUIObj.AddLabel(
                     panel, CMainLblTitleLbAnchor, CMainLblTitleRtAnchor, CuiColor.TextAlt,
-                    GetMessage("User Page Title Format", aUIObj.PlayerIdString, EscapeString(player.displayName), string.Empty), string.Empty, 18,
-                    TextAnchor.MiddleLeft
+                    string.Format(lang.GetMessage("User Page Title Format", this, aUIObj.PlayerIdString), EscapeString(player.displayName), string.Empty),
+                    string.Empty, 18, TextAnchor.MiddleLeft
                 );
                 // Add user info labels
                 AddUserPageInfoLabels(ref aUIObj, infoPanel, aUIObj.PlayerIdString, aPlayerId, ref player);
 
                 // --- Build player action panel
                 // Ban, Kick
-                AddUserPageFirstActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId, ref player);
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermBan)) {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                        lang.GetMessage("Ban Button Text", this, aUIObj.PlayerIdString), $"{CBanUserCmd} {aPlayerId}"
+                    );
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Ban Button Text", this, aUIObj.PlayerIdString)
+                    );
+                }
+
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermKick) && player.IsConnected) {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnKickLbAnchor, CUserPageBtnKickRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                        lang.GetMessage("Kick Button Text", this, aUIObj.PlayerIdString), $"{CKickUserCmd} {aPlayerId}"
+                    );
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnKickLbAnchor, CUserPageBtnKickRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Kick Button Text", this, aUIObj.PlayerIdString)
+                    );
+                }
+
+                aUIObj.AddLabel(
+                    actionPanel, CUserPageLblReasonLbAnchor, CUserPageLblReasonRtAnchor, CuiColor.TextAlt,
+                    lang.GetMessage("Reason Input Label Text", this, aUIObj.PlayerIdString), string.Empty, 14, TextAnchor.MiddleLeft
+                );
+                string panelReasonGroup = aUIObj.AddPanel(actionPanel, CUserPagePanelReasonLbAnchor, CUserPagePanelReasonRtAnchor, false, CuiColor.BackgroundDark);
+                aUIObj.AddInputField(
+                    panelReasonGroup, CUserPageEdtReasonLbAnchor, CUserPageEdtReasonRtAnchor, CuiColor.TextAlt, string.Empty, 24, CUserPageReasonInputTextCmd
+                );
+
                 // Unmute voice, Mute voice
-                AddUserPageSecondActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId, ref player);
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermVoiceMute) && player.IsConnected) {
+                    if (GetIsVoiceMuted(ref player)) {
+                        aUIObj.AddButton(
+                            actionPanel, CUserPageBtnVUnmuteLbAnchor, CUserPageBtnVUnmuteRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
+                            lang.GetMessage("Voice Unmute Button Text", this, aUIObj.PlayerIdString), $"{CVoiceUnmuteUserCmd} {aPlayerId}"
+                        );
+                        aUIObj.AddButton(
+                            actionPanel, CUserPageBtnVMuteLbAnchor, CUserPageBtnVMuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                            lang.GetMessage("Voice Mute Button Text", this, aUIObj.PlayerIdString)
+                        );
+                    } else {
+                        aUIObj.AddButton(
+                            actionPanel, CUserPageBtnVUnmuteLbAnchor, CUserPageBtnVUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                            lang.GetMessage("Voice Unmute Button Text", this, aUIObj.PlayerIdString)
+                        );
+                        aUIObj.AddButton(
+                            actionPanel, CUserPageBtnVMuteLbAnchor, CUserPageBtnVMuteRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                            lang.GetMessage("Voice Mute Button Text", this, aUIObj.PlayerIdString), $"{CVoiceMuteUserCmd} {aPlayerId}"
+                        );
+                    }
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnVUnmuteLbAnchor, CUserPageBtnVUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Voice Unmute Button Text", this, aUIObj.PlayerIdString)
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnVMuteLbAnchor, CUserPageBtnVMuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Voice Mute Button Text", this, aUIObj.PlayerIdString)
+                    );
+                }
+
                 // Unmute chat, Mute chat (And timed ones if BetterChat is available)
-                AddUserPageThirdActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId, ref player);
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermChatMute) && player.IsConnected) {
+                    if (GetIsChatMuted(ref player)) {
+                        aUIObj.AddButton(
+                            actionPanel, CUserPageBtnCUnmuteLbAnchor, CUserPageBtnCUnmuteRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
+                            lang.GetMessage("Chat Unmute Button Text", this, aUIObj.PlayerIdString), $"{CChatUnmuteUserCmd} {aPlayerId}"
+                        );
+                        aUIObj.AddButton(
+                            actionPanel, CUserPageBtnCMuteLbAnchor, CUserPageBtnCMuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                            lang.GetMessage("Chat Mute Button Text", this, aUIObj.PlayerIdString)
+                        );
+
+                        if (BetterChatMute != null) {
+                            aUIObj.AddButton(
+                                actionPanel, CUserPageBtnCMuteFifteenLbAnchor, CUserPageBtnCMuteFifteenRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                                lang.GetMessage("Chat Mute Button Text 15", this, aUIObj.PlayerIdString)
+                            );
+                            aUIObj.AddButton(
+                                actionPanel, CUserPageBtnCMuteThirtyLbAnchor, CUserPageBtnCMuteThirtyRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                                lang.GetMessage("Chat Mute Button Text 30", this, aUIObj.PlayerIdString)
+                            );
+                            aUIObj.AddButton(
+                                actionPanel, CUserPageBtnCMuteSixtyLbAnchor, CUserPageBtnCMuteSixtyRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                                lang.GetMessage("Chat Mute Button Text 60", this, aUIObj.PlayerIdString)
+                            );
+                        }
+                    } else {
+                        aUIObj.AddButton(
+                            actionPanel, CUserPageBtnCUnmuteLbAnchor, CUserPageBtnCUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                            lang.GetMessage("Chat Unmute Button Text", this, aUIObj.PlayerIdString)
+                        );
+                        aUIObj.AddButton(
+                            actionPanel, CUserPageBtnCMuteLbAnchor, CUserPageBtnCMuteRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                            lang.GetMessage("Chat Mute Button Text", this, aUIObj.PlayerIdString), $"{CChatMuteUserCmd} {aPlayerId} 0"
+                        );
+
+                        if (BetterChatMute != null) {
+                            aUIObj.AddButton(
+                                actionPanel, CUserPageBtnCMuteFifteenLbAnchor, CUserPageBtnCMuteFifteenRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                                lang.GetMessage("Chat Mute Button Text 15", this, aUIObj.PlayerIdString), $"{CChatMuteUserCmd} {aPlayerId} 15"
+                            );
+                            aUIObj.AddButton(
+                                actionPanel, CUserPageBtnCMuteThirtyLbAnchor, CUserPageBtnCMuteThirtyRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                                lang.GetMessage("Chat Mute Button Text 30", this, aUIObj.PlayerIdString), $"{CChatMuteUserCmd} {aPlayerId} 30"
+                            );
+                            aUIObj.AddButton(
+                                actionPanel, CUserPageBtnCMuteSixtyLbAnchor, CUserPageBtnCMuteSixtyRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                                lang.GetMessage("Chat Mute Button Text 60", this, aUIObj.PlayerIdString), $"{CChatMuteUserCmd} {aPlayerId} 60"
+                            );
+                        }
+                    }
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnCUnmuteLbAnchor, CUserPageBtnCUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Chat Unmute Button Text", this, aUIObj.PlayerIdString)
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnCMuteLbAnchor, CUserPageBtnCMuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Chat Mute Button Text", this, aUIObj.PlayerIdString)
+                    );
+                }
+
                 // Unfreeze, Freeze
-                AddUserPageFourthActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId, ref player);
+                if (Freeze == null) {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Freeze Not Installed Button Text", this, aUIObj.PlayerIdString)
+                    );
+                } else if (VerifyPermission(aUIObj.PlayerIdString, CPermFreeze) && player.IsConnected) {
+                    if (GetIsFrozen(aPlayerId)) {
+                        aUIObj.AddButton(
+                            actionPanel, CUserPageBtnUnFreezeLbAnchor, CUserPageBtnUnFreezeRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
+                            lang.GetMessage("UnFreeze Button Text", this, aUIObj.PlayerIdString), $"{CUnreezeCmd} {aPlayerId}"
+                        );
+                        aUIObj.AddButton(
+                            actionPanel, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                            lang.GetMessage("Freeze Button Text", this, aUIObj.PlayerIdString)
+                        );
+                    } else {
+                        aUIObj.AddButton(
+                            actionPanel, CUserPageBtnUnFreezeLbAnchor, CUserPageBtnUnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                            lang.GetMessage("UnFreeze Button Text", this, aUIObj.PlayerIdString)
+                        );
+                        aUIObj.AddButton(
+                            actionPanel, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                            lang.GetMessage("Freeze Button Text", this, aUIObj.PlayerIdString), $"{CFreezeCmd} {aPlayerId}"
+                        );
+                    }
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnUnFreezeLbAnchor, CUserPageBtnUnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("UnFreeze Button Text", this, aUIObj.PlayerIdString)
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Freeze Button Text", this, aUIObj.PlayerIdString)
+                    );
+                }
+
                 // Clear inventory, Reset BP, Reset metabolism
-                AddUserPageFifthActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId);
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermClearInventory)) {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnClearInventoryLbAnchor, CUserPageBtnClearInventoryRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
+                        lang.GetMessage("Clear Inventory Button Text", this, aUIObj.PlayerIdString), $"{CClearUserInventoryCmd} {aPlayerId}"
+                    );
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnClearInventoryLbAnchor, CUserPageBtnClearInventoryRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Clear Inventory Button Text", this, aUIObj.PlayerIdString)
+                    );
+                }
+
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermResetBP)) {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnResetBPLbAnchor, CUserPageBtnResetBPRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
+                        lang.GetMessage("Reset Blueprints Button Text", this, aUIObj.PlayerIdString), $"{CResetUserBPCmd} {aPlayerId}"
+                    );
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnResetBPLbAnchor, CUserPageBtnResetBPRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Reset Blueprints Button Text", this, aUIObj.PlayerIdString)
+                    );
+                }
+
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermResetMetabolism)) {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnResetMetabolismLbAnchor, CUserPageBtnResetMetabolismRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
+                        lang.GetMessage("Reset Metabolism Button Text", this, aUIObj.PlayerIdString), $"{CResetUserMetabolismCmd} {aPlayerId}"
+                    );
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnResetMetabolismLbAnchor, CUserPageBtnResetMetabolismRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Reset Metabolism Button Text", this, aUIObj.PlayerIdString)
+                    );
+                }
+
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermRecoverMetabolism)) {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnRecoverMetabolismLbAnchor, CUserPageBtnRecoverMetabolismRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
+                        lang.GetMessage("Recover Metabolism Button Text", this, aUIObj.PlayerIdString), $"{CRecoverUserMetabolismCmd} {aPlayerId}"
+                    );
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnRecoverMetabolismLbAnchor, CUserPageBtnRecoverMetabolismRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Recover Metabolism Button Text", this, aUIObj.PlayerIdString)
+                    );
+                }
+
                 // Teleport to, Teleport, Spectate
-                AddUserPageSixthActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId);
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermTeleport)) {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnTeleportToLbAnchor, CUserPageBtnTeleportToRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
+                        lang.GetMessage("Teleport To Player Button Text", this, aUIObj.PlayerIdString), $"{CTeleportToUserCmd} {aPlayerId}"
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnTeleportLbAnchor, CUserPageBtnTeleportRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
+                        lang.GetMessage("Teleport Player Button Text", this, aUIObj.PlayerIdString), $"{CTeleportUserCmd} {aPlayerId}"
+                    );
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnTeleportToLbAnchor, CUserPageBtnTeleportToRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Teleport To Player Button Text", this, aUIObj.PlayerIdString)
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnTeleportLbAnchor, CUserPageBtnTeleportRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Teleport Player Button Text", this, aUIObj.PlayerIdString)
+                    );
+                }
+
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermSpectate)) {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnSpectateLbAnchor, CUserPageBtnSpectateRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
+                        lang.GetMessage("Spectate Player Button Text", this, aUIObj.PlayerIdString), $"{CSpectateUserCmd} {aPlayerId}"
+                    );
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnSpectateLbAnchor, CUserPageBtnSpectateRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Spectate Player Button Text", this, aUIObj.PlayerIdString)
+                    );
+                }
+
                 // Perms
-                AddUserPageSeventhActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId);
+                if (PermissionsManager == null) {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Perms Not Installed Button Text", this, aUIObj.PlayerIdString)
+                    );
+                } else if (VerifyPermission(aUIObj.PlayerIdString, CPermPerms)) {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
+                        lang.GetMessage("Perms Button Text", this, aUIObj.PlayerIdString), $"{CPermsCmd} {aPlayerId}"
+                    );
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Perms Button Text", this, aUIObj.PlayerIdString)
+                    );
+                }
+
                 // Hurt 25, Hurt 50, Hurt 75, Hurt 100, Kill
-                AddUserPageEleventhActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId);
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermHurt)) {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnHurt25LbAnchor, CUserPageBtnHurt25RtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                        lang.GetMessage("Hurt 25 Button Text", this, aUIObj.PlayerIdString), $"{CHurtUserCmd} {aPlayerId} 25"
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnHurt50LbAnchor, CUserPageBtnHurt50RtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                        lang.GetMessage("Hurt 50 Button Text", this, aUIObj.PlayerIdString), $"{CHurtUserCmd} {aPlayerId} 50"
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnHurt75LbAnchor, CUserPageBtnHurt75RtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                        lang.GetMessage("Hurt 75 Button Text", this, aUIObj.PlayerIdString), $"{CHurtUserCmd} {aPlayerId} 75"
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnHurt100LbAnchor, CUserPageBtnHurt100RtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                        lang.GetMessage("Hurt 100 Button Text", this, aUIObj.PlayerIdString), $"{CHurtUserCmd} {aPlayerId} 100"
+                    );
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnHurt25LbAnchor, CUserPageBtnHurt25RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Hurt 25 Button Text", this, aUIObj.PlayerIdString)
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnHurt50LbAnchor, CUserPageBtnHurt50RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Hurt 50 Button Text", this, aUIObj.PlayerIdString)
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnHurt75LbAnchor, CUserPageBtnHurt75RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Hurt 75 Button Text", this, aUIObj.PlayerIdString)
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnHurt100LbAnchor, CUserPageBtnHurt100RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Hurt 100 Button Text", this, aUIObj.PlayerIdString)
+                    );
+                }
+
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermKill)) {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnKillLbAnchor, CUserPageBtnKillRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                        lang.GetMessage("Kill Button Text", this, aUIObj.PlayerIdString), $"{CKillUserCmd} {aPlayerId}"
+                    );
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnKillLbAnchor, CUserPageBtnKillRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Kill Button Text", this, aUIObj.PlayerIdString)
+                    );
+                }
+
                 // Heal 25, Heal 50, Heal 75, Heal 100, Heal wounds
-                AddUserPageTwelfthActionRow(ref aUIObj, actionPanel, aUIObj.PlayerIdString, aPlayerId);
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermHeal)) {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnHeal25LbAnchor, CUserPageBtnHeal25RtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
+                        lang.GetMessage("Heal 25 Button Text", this, aUIObj.PlayerIdString), $"{CHealUserCmd} {aPlayerId} 25"
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnHeal50LbAnchor, CUserPageBtnHeal50RtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
+                        lang.GetMessage("Heal 50 Button Text", this, aUIObj.PlayerIdString), $"{CHealUserCmd} {aPlayerId} 50"
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnHeal75LbAnchor, CUserPageBtnHeal75RtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
+                        lang.GetMessage("Heal 75 Button Text", this, aUIObj.PlayerIdString), $"{CHealUserCmd} {aPlayerId} 75"
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnHeal100LbAnchor, CUserPageBtnHeal100RtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
+                        lang.GetMessage("Heal 100 Button Text", this, aUIObj.PlayerIdString), $"{CHealUserCmd} {aPlayerId} 100"
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnHealWoundsLbAnchor, CUserPageBtnHealWoundsRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
+                        lang.GetMessage("Heal Wounds Button Text", this, aUIObj.PlayerIdString), $"{CHealUserCmd} {aPlayerId} 0"
+                    );
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnHeal25LbAnchor, CUserPageBtnHeal25RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Heal 25 Button Text", this, aUIObj.PlayerIdString)
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnHeal50LbAnchor, CUserPageBtnHeal50RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Heal 50 Button Text", this, aUIObj.PlayerIdString)
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnHeal75LbAnchor, CUserPageBtnHeal75RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Heal 75 Button Text", this, aUIObj.PlayerIdString)
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnHeal100LbAnchor, CUserPageBtnHeal100RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Heal 100 Button Text", this, aUIObj.PlayerIdString)
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnHealWoundsLbAnchor, CUserPageBtnHealWoundsRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Heal Wounds Button Text", this, aUIObj.PlayerIdString)
+                    );
+                }
             } else {
                 ServerUsers.User serverUser = ServerUsers.Get(aPlayerId);
                 aUIObj.AddLabel(
                     panel, CMainLblTitleLbAnchor, CMainLblTitleRtAnchor, CuiColor.TextAlt,
-                    GetMessage("User Page Title Format", aUIObj.PlayerIdString, serverUser.username, GetMessage("Banned Label Text", aUIObj.PlayerIdString)),
-                    string.Empty, 18, TextAnchor.MiddleLeft
+                    string.Format(
+                        lang.GetMessage("User Page Title Format", this, aUIObj.PlayerIdString), serverUser.username,
+                        lang.GetMessage("Banned Label Text", this, aUIObj.PlayerIdString)
+                    ), string.Empty, 18, TextAnchor.MiddleLeft
                 );
                 // Add user info labels
                 aUIObj.AddLabel(
                     infoPanel, CUserPageLblIdLbAnchor, CUserPageLblIdRtAnchor, CuiColor.TextAlt,
-                    GetMessage("Id Label Format", aUIObj.PlayerIdString, aPlayerId, string.Empty), string.Empty, 14, TextAnchor.MiddleLeft
+                    string.Format(lang.GetMessage("Id Label Format", this, aUIObj.PlayerIdString), aPlayerId, string.Empty), string.Empty, 14,
+                    TextAnchor.MiddleLeft
                 );
 
                 // --- Build player action panel
                 if (VerifyPermission(aUIObj.PlayerIdString, CPermBan)) {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiColor.Button, CuiColor.TextAlt,
-                        GetMessage("Unban Button Text", aUIObj.PlayerIdString), $"{CUnbanUserCmd} {aPlayerId}"
+                        lang.GetMessage("Unban Button Text", this, aUIObj.PlayerIdString), $"{CUnbanUserCmd} {aPlayerId}"
                     );
                 } else {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                        GetMessage("Unban Button Text", aUIObj.PlayerIdString)
+                        lang.GetMessage("Unban Button Text", this, aUIObj.PlayerIdString)
                     );
                 }
             }
@@ -2531,9 +2378,11 @@ namespace Oxide.Plugins
         #region Variables
         private static PlayerAdministration FPluginInstance;
         private ConfigData FConfigData;
-        private Dictionary<ulong, string> FMainPageBanIdInputText = new Dictionary<ulong, string>();     // Format: <userId, text>
-        private Dictionary<ulong, string> FUserBtnPageSearchInputText = new Dictionary<ulong, string>(); // Format: <userId, text>
-        private Dictionary<ulong, string> FUserPageReasonInputText = new Dictionary<ulong, string>();    // Format: <userId, text>
+        private Dictionary<string, string> FMainPageBanIdInputText = new Dictionary<string, string>();     // Format: <userId, text>
+        private Dictionary<string, string> FUserBtnPageSearchInputText = new Dictionary<string, string>(); // Format: <userId, text>
+        private Dictionary<string, string> FUserPageReasonInputText = new Dictionary<string, string>();    // Format: <userId, text>
+        private Dictionary<string, string> FOnlineUserList = new Dictionary<string, string>();             // Format: <userId, username>
+        private Dictionary<string, string> FOfflineUserList = new Dictionary<string, string>();            // Format: <userId, username>
         #endregion Variables
 
         #region Hooks
@@ -2566,6 +2415,20 @@ namespace Oxide.Plugins
 
             if (UpgradeTo156())
                 LogDebug("Upgraded the config to version 1.5.6");
+
+            foreach (BasePlayer user in Player.Players) {
+                ServerUsers.User servUser = ServerUsers.Get(user.userID);
+
+                if (servUser == null || servUser?.group != ServerUsers.UserGroup.Banned)
+                    FOnlineUserList[user.IPlayer.Id] = user.IPlayer.Name;
+            }
+
+            foreach (BasePlayer user in Player.Sleepers) {
+                ServerUsers.User servUser = ServerUsers.Get(user.userID);
+
+                if (servUser == null || servUser?.group != ServerUsers.UserGroup.Banned)
+                    FOfflineUserList[user.IPlayer.Id] = user.IPlayer.Name;
+            }
         }
 
         void Unload()
@@ -2573,29 +2436,53 @@ namespace Oxide.Plugins
             foreach (BasePlayer player in Player.Players) {
                 CuiHelper.DestroyUi(player, CBasePanelName);
 
-                if (FMainPageBanIdInputText.ContainsKey(player.userID))
-                    FMainPageBanIdInputText.Remove(player.userID);
+                if (FMainPageBanIdInputText.ContainsKey(player.UserIDString))
+                    FMainPageBanIdInputText.Remove(player.UserIDString);
 
-                if (FUserBtnPageSearchInputText.ContainsKey(player.userID))
-                    FUserBtnPageSearchInputText.Remove(player.userID);
+                if (FUserBtnPageSearchInputText.ContainsKey(player.UserIDString))
+                    FUserBtnPageSearchInputText.Remove(player.UserIDString);
 
-                if (FUserPageReasonInputText.ContainsKey(player.userID))
-                    FUserPageReasonInputText.Remove(player.userID);
+                if (FUserPageReasonInputText.ContainsKey(player.UserIDString))
+                    FUserPageReasonInputText.Remove(player.UserIDString);
             }
 
+            FOnlineUserList.Clear();
+            FOfflineUserList.Clear();
             FPluginInstance = null;
         }
 
-        void OnPlayerDisconnected(BasePlayer player, string reason)
+        void OnUserConnected(IPlayer aPlayer)
         {
-            if (FMainPageBanIdInputText.ContainsKey(player.userID))
-                FMainPageBanIdInputText.Remove(player.userID);
+            if (FOfflineUserList.ContainsKey(aPlayer.Id))
+                FOfflineUserList.Remove(aPlayer.Id);
 
-            if (FUserBtnPageSearchInputText.ContainsKey(player.userID))
-                FUserBtnPageSearchInputText.Remove(player.userID);
+            FOnlineUserList[aPlayer.Id] = aPlayer.Name;
+        }
 
-            if (FUserPageReasonInputText.ContainsKey(player.userID))
-                FUserPageReasonInputText.Remove(player.userID);
+        void OnUserDisconnected(IPlayer aPlayer)
+        {
+            if (FMainPageBanIdInputText.ContainsKey(aPlayer.Id))
+                FMainPageBanIdInputText.Remove(aPlayer.Id);
+
+            if (FUserBtnPageSearchInputText.ContainsKey(aPlayer.Id))
+                FUserBtnPageSearchInputText.Remove(aPlayer.Id);
+
+            if (FUserPageReasonInputText.ContainsKey(aPlayer.Id))
+                FUserPageReasonInputText.Remove(aPlayer.Id);
+
+            if (FOnlineUserList.ContainsKey(aPlayer.Id))
+                FOnlineUserList.Remove(aPlayer.Id);
+
+            FOfflineUserList[aPlayer.Id] = aPlayer.Name;
+        }
+
+        void OnUserNameUpdated(string aId, string aOldName, string aNewName)
+        {
+            if (FOnlineUserList.ContainsKey(aId))
+                FOnlineUserList[aId] = aNewName;
+
+            if (FOfflineUserList.ContainsKey(aId))
+                FOfflineUserList[aId] = aNewName;
         }
 
         protected override void LoadConfig()
@@ -2763,15 +2650,14 @@ namespace Oxide.Plugins
 
             if (aPlayer.IsServer)
                 return;
+            
+            CuiHelper.DestroyUi(BasePlayer.Find(aPlayer.Id), CBasePanelName);
 
-            BasePlayer player = BasePlayer.Find(aPlayer.Id);
-            CuiHelper.DestroyUi(player, CBasePanelName);
+            if (FMainPageBanIdInputText.ContainsKey(aPlayer.Id))
+                FMainPageBanIdInputText.Remove(aPlayer.Id);
 
-            if (FMainPageBanIdInputText.ContainsKey(player.userID))
-                FMainPageBanIdInputText.Remove(player.userID);
-
-            if (FUserBtnPageSearchInputText.ContainsKey(player.userID))
-                FUserBtnPageSearchInputText.Remove(player.userID);
+            if (FUserBtnPageSearchInputText.ContainsKey(aPlayer.Id))
+                FUserBtnPageSearchInputText.Remove(aPlayer.Id);
         }
 
         [Command(CSwitchUiCmd)]
@@ -2861,11 +2747,11 @@ namespace Oxide.Plugins
 
             if (aPlayer.IsServer) {
                 if (permission.UserHasPermission(targetId.ToString(), CPermProtectBan)) {
-                    aPlayer.Reply(GetMessage("Protection Active Text", null));
+                    aPlayer.Reply(lang.GetMessage("Protection Active Text", this));
                     return;
                 }
 
-                string banReasonMsg = GetMessage("Ban Reason Message Text", targetId.ToString());
+                string banReasonMsg = lang.GetMessage("Ban Reason Message Text", this, targetId.ToString());
                 Player.Ban(targetId, banReasonMsg);
                 LogInfo($"{aPlayer.Name}: Banned user ID {targetId}");
                 SendDiscordKickBanMessage(aPlayer.Name, string.Empty, ServerUsers.Get(targetId).username, targetId.ToString(), banReasonMsg, true);
@@ -2876,24 +2762,24 @@ namespace Oxide.Plugins
                     return;
 
                 if (permission.UserHasPermission(targetId.ToString(), CPermProtectBan)) {
-                    SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                    rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, aPlayer.Id));
                     return;
                 }
 
                 string banReasonMsg;
 
-                if (FUserPageReasonInputText.ContainsKey(player.userID)) {
-                    banReasonMsg = FUserPageReasonInputText[player.userID].Trim();
+                if (FUserPageReasonInputText.ContainsKey(aPlayer.Id)) {
+                    banReasonMsg = FUserPageReasonInputText[aPlayer.Id].Trim();
 
                     if (string.IsNullOrEmpty(banReasonMsg))
-                        banReasonMsg = GetMessage("Ban Reason Message Text", targetId.ToString());
+                        banReasonMsg = lang.GetMessage("Ban Reason Message Text", this, targetId.ToString());
                 } else {
-                    banReasonMsg = GetMessage("Ban Reason Message Text", targetId.ToString());
+                    banReasonMsg = lang.GetMessage("Ban Reason Message Text", this, targetId.ToString());
                 }
 
                 Player.Ban(targetId, banReasonMsg);
                 LogInfo($"{player.displayName}: Banned user ID {targetId}");
-                SendDiscordKickBanMessage(player.displayName, player.UserIDString, ServerUsers.Get(targetId).username, targetId.ToString(), banReasonMsg, true);
+                SendDiscordKickBanMessage(player.displayName, aPlayer.Id, ServerUsers.Get(targetId).username, targetId.ToString(), banReasonMsg, true);
                 timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
             }
         }
@@ -2907,21 +2793,21 @@ namespace Oxide.Plugins
 
             if (
                 aPlayer.IsServer ||
-                !VerifyPermission(ref player, CPermBan, true) || !FMainPageBanIdInputText.ContainsKey(player.userID) ||
-                !ulong.TryParse(FMainPageBanIdInputText[player.userID], out targetId)
+                !VerifyPermission(ref player, CPermBan, true) || !FMainPageBanIdInputText.ContainsKey(aPlayer.Id) ||
+                !ulong.TryParse(FMainPageBanIdInputText[aPlayer.Id], out targetId)
             )
                 return;
 
             if (permission.UserHasPermission(targetId.ToString(), CPermProtectBan)) {
-                SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, aPlayer.Id));
                 return;
             }
 
-            string banReasonMsg = GetMessage("Ban Reason Message Text", targetId.ToString());
+            string banReasonMsg = lang.GetMessage("Ban Reason Message Text", this, targetId.ToString());
             Player.Ban(targetId, banReasonMsg);
             ServerUsers.User targetPlayer = ServerUsers.Get(targetId);
             LogInfo($"{player.displayName}: Banned user ID {targetId}");
-            SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.username, targetId.ToString(), banReasonMsg, true);
+            SendDiscordKickBanMessage(player.displayName, aPlayer.Id, targetPlayer.username, targetId.ToString(), banReasonMsg, true);
             timer.Once(0.01f, () => BuildUI(player, UiPage.Main));
         }
 
@@ -2935,11 +2821,11 @@ namespace Oxide.Plugins
                 return;
 
             BasePlayer targetPlayer = BasePlayer.FindByID(targetId);
-            string kickReasonMsg = GetMessage("Kick Reason Message Text", targetId.ToString());
+            string kickReasonMsg = lang.GetMessage("Kick Reason Message Text", this, targetId.ToString());
 
             if (aPlayer.IsServer) {
                 if (permission.UserHasPermission(targetId.ToString(), CPermProtectKick)) {
-                    aPlayer.Reply(GetMessage("Protection Active Text", null));
+                    aPlayer.Reply(lang.GetMessage("Protection Active Text", this));
                     return;
                 }
 
@@ -2953,13 +2839,13 @@ namespace Oxide.Plugins
                     return;
 
                 if (permission.UserHasPermission(targetId.ToString(), CPermProtectKick)) {
-                    SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                    rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, aPlayer.Id));
                     return;
                 }
                 
                 targetPlayer?.Kick(kickReasonMsg);
                 LogInfo($"{player.displayName}: Kicked user ID {targetId}");
-                SendDiscordKickBanMessage(player.displayName, player.UserIDString, targetPlayer.displayName, targetPlayer.UserIDString, kickReasonMsg, false);
+                SendDiscordKickBanMessage(player.displayName, aPlayer.Id, targetPlayer.displayName, targetPlayer.UserIDString, kickReasonMsg, false);
                 timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
             }
         }
@@ -3086,7 +2972,7 @@ namespace Oxide.Plugins
                     if (time == 0f) {
                         BetterChatMute.Call("API_Mute", target.IPlayer, aPlayer);
                     } else {
-                        BetterChatMute.Call("API_TimeMute", target.IPlayer, player.IPlayer, TimeSpan.FromMinutes(time));
+                        BetterChatMute.Call("API_TimeMute", target.IPlayer, aPlayer, TimeSpan.FromMinutes(time));
                     }
                 } else {
                     target?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, true);
@@ -3140,7 +3026,7 @@ namespace Oxide.Plugins
 
             if (aPlayer.IsServer) {
                 if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
-                    aPlayer.Reply(GetMessage("Protection Active Text", null));
+                    aPlayer.Reply(lang.GetMessage("Protection Active Text", this));
                     return;
                 }
 
@@ -3153,7 +3039,7 @@ namespace Oxide.Plugins
                     return;
 
                 if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
-                    SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                    rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, aPlayer.Id));
                     return;
                 }
 
@@ -3174,7 +3060,7 @@ namespace Oxide.Plugins
 
             if (aPlayer.IsServer) {
                 if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
-                    aPlayer.Reply(GetMessage("Protection Active Text", null));
+                    aPlayer.Reply(lang.GetMessage("Protection Active Text", this));
                     return;
                 }
 
@@ -3187,7 +3073,7 @@ namespace Oxide.Plugins
                     return;
 
                 if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
-                    SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                    rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, player.UserIDString));
                     return;
                 }
 
@@ -3208,7 +3094,7 @@ namespace Oxide.Plugins
 
             if (aPlayer.IsServer) {
                 if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
-                    aPlayer.Reply(GetMessage("Protection Active Text", null));
+                    aPlayer.Reply(lang.GetMessage("Protection Active Text", this));
                     return;
                 }
 
@@ -3221,7 +3107,7 @@ namespace Oxide.Plugins
                     return;
 
                 if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
-                    SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                    rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, aPlayer.Id));
                     return;
                 }
 
@@ -3344,7 +3230,7 @@ namespace Oxide.Plugins
 
             if (aPlayer.IsServer) {
                 if (permission.UserHasPermission(targetId.ToString(), CPermProtectHurt)) {
-                    aPlayer.Reply(GetMessage("Protection Active Text", null));
+                    aPlayer.Reply(lang.GetMessage("Protection Active Text", this));
                     return;
                 }
 
@@ -3357,7 +3243,7 @@ namespace Oxide.Plugins
                     return;
 
                 if (permission.UserHasPermission(targetId.ToString(), CPermProtectHurt)) {
-                    SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                    rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, aPlayer.Id));
                     return;
                 }
 
@@ -3378,7 +3264,7 @@ namespace Oxide.Plugins
 
             if (aPlayer.IsServer) {
                 if (permission.UserHasPermission(targetId.ToString(), CPermProtectKill)) {
-                    aPlayer.Reply(GetMessage("Protection Active Text", null));
+                    aPlayer.Reply(lang.GetMessage("Protection Active Text", this));
                     return;
                 }
 
@@ -3391,7 +3277,7 @@ namespace Oxide.Plugins
                     return;
 
                 if (permission.UserHasPermission(targetId.ToString(), CPermProtectKill)) {
-                    SendMessage(ref player, GetMessage("Protection Active Text", player.UserIDString));
+                    rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, player.UserIDString));
                     return;
                 }
 
@@ -3442,16 +3328,16 @@ namespace Oxide.Plugins
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
             if (aPlayer.IsServer || !VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0) {
-                if (FMainPageBanIdInputText.ContainsKey(player.userID))
-                    FMainPageBanIdInputText.Remove(player.userID);
+                if (FMainPageBanIdInputText.ContainsKey(aPlayer.Id))
+                    FMainPageBanIdInputText.Remove(aPlayer.Id);
 
                 return;
             }
 
-            if (FMainPageBanIdInputText.ContainsKey(player.userID)) {
-                FMainPageBanIdInputText[player.userID] = aArgs[0];
+            if (FMainPageBanIdInputText.ContainsKey(aPlayer.Id)) {
+                FMainPageBanIdInputText[aPlayer.Id] = aArgs[0];
             } else {
-                FMainPageBanIdInputText.Add(player.userID, aArgs[0]);
+                FMainPageBanIdInputText.Add(aPlayer.Id, aArgs[0]);
             }
         }
 
@@ -3461,16 +3347,16 @@ namespace Oxide.Plugins
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
             if (aPlayer.IsServer || !VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0) {
-                if (FUserBtnPageSearchInputText.ContainsKey(player.userID))
-                    FUserBtnPageSearchInputText.Remove(player.userID);
+                if (FUserBtnPageSearchInputText.ContainsKey(aPlayer.Id))
+                    FUserBtnPageSearchInputText.Remove(aPlayer.Id);
 
                 return;
             }
 
-            if (FUserBtnPageSearchInputText.ContainsKey(player.userID)) {
-                FUserBtnPageSearchInputText[player.userID] = aArgs[0];
+            if (FUserBtnPageSearchInputText.ContainsKey(aPlayer.Id)) {
+                FUserBtnPageSearchInputText[aPlayer.Id] = aArgs[0];
             } else {
-                FUserBtnPageSearchInputText.Add(player.userID, aArgs[0]);
+                FUserBtnPageSearchInputText.Add(aPlayer.Id, aArgs[0]);
             }
         }
 
@@ -3478,18 +3364,18 @@ namespace Oxide.Plugins
         private void PlayerAdministrationUserPageReasonInputTextCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
-
+            
             if (aPlayer.IsServer || !VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0) {
-                if (FUserPageReasonInputText.ContainsKey(player.userID))
-                    FUserPageReasonInputText.Remove(player.userID);
+                if (FUserPageReasonInputText.ContainsKey(aPlayer.Id))
+                    FUserPageReasonInputText.Remove(aPlayer.Id);
 
                 return;
             }
 
-            if (FUserPageReasonInputText.ContainsKey(player.userID)) {
-                FUserPageReasonInputText[player.userID] = aArgs[0];
+            if (FUserPageReasonInputText.ContainsKey(aPlayer.Id)) {
+                FUserPageReasonInputText[aPlayer.Id] = aArgs[0];
             } else {
-                FUserPageReasonInputText.Add(player.userID, aArgs[0]);
+                FUserPageReasonInputText.Add(aPlayer.Id, aArgs[0]);
             }
         }
         #endregion Text Update Callbacks
