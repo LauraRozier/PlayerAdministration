@@ -40,7 +40,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.5.10")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.11")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -2443,14 +2443,14 @@ namespace Oxide.Plugins
                 ServerUsers.User servUser = ServerUsers.Get(user.userID);
 
                 if (servUser == null || servUser?.group != ServerUsers.UserGroup.Banned)
-                    FOnlineUserList[user.IPlayer.Id] = user.IPlayer.Name;
+                    FOnlineUserList[user.UserIDString] = user.displayName;
             }
 
             foreach (BasePlayer user in Player.Sleepers) {
                 ServerUsers.User servUser = ServerUsers.Get(user.userID);
 
                 if (servUser == null || servUser?.group != ServerUsers.UserGroup.Banned)
-                    FOfflineUserList[user.IPlayer.Id] = user.IPlayer.Name;
+                    FOfflineUserList[user.UserIDString] = user.displayName;
             }
         }
 
