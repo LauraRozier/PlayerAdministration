@@ -2415,20 +2415,6 @@ namespace Oxide.Plugins
 
             if (UpgradeTo156())
                 LogDebug("Upgraded the config to version 1.5.6");
-
-            foreach (BasePlayer user in Player.Players) {
-                ServerUsers.User servUser = ServerUsers.Get(user.userID);
-
-                if (servUser == null || servUser?.group != ServerUsers.UserGroup.Banned)
-                    FOnlineUserList[user.IPlayer.Id] = user.IPlayer.Name;
-            }
-
-            foreach (BasePlayer user in Player.Sleepers) {
-                ServerUsers.User servUser = ServerUsers.Get(user.userID);
-
-                if (servUser == null || servUser?.group != ServerUsers.UserGroup.Banned)
-                    FOfflineUserList[user.IPlayer.Id] = user.IPlayer.Name;
-            }
         }
 
         void Unload()
@@ -2449,6 +2435,23 @@ namespace Oxide.Plugins
             FOnlineUserList.Clear();
             FOfflineUserList.Clear();
             FPluginInstance = null;
+        }
+
+        void OnServerInitialized()
+        {
+            foreach (BasePlayer user in Player.Players) {
+                ServerUsers.User servUser = ServerUsers.Get(user.userID);
+
+                if (servUser == null || servUser?.group != ServerUsers.UserGroup.Banned)
+                    FOnlineUserList[user.IPlayer.Id] = user.IPlayer.Name;
+            }
+
+            foreach (BasePlayer user in Player.Sleepers) {
+                ServerUsers.User servUser = ServerUsers.Get(user.userID);
+
+                if (servUser == null || servUser?.group != ServerUsers.UserGroup.Banned)
+                    FOfflineUserList[user.IPlayer.Id] = user.IPlayer.Name;
+            }
         }
 
         void OnUserConnected(IPlayer aPlayer)
