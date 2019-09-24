@@ -40,7 +40,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.5.11")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.12")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -1220,14 +1220,6 @@ namespace Oxide.Plugins
                     (aPlayer.IsDeveloper ? lang.GetMessage("Dev Label Text", this, aUiUserId) : string.Empty)
                 ), string.Empty, 14, TextAnchor.MiddleLeft
             );
-            /*
-            aUIObj.AddInputField(
-                aParent, CUserPageLblIdLbAnchor, CUserPageLblIdRtAnchor, CuiColor.TextAlt, string.Format(
-                    lang.GetMessage("Id Label Format", this, aUiUserId), aPlayerId,
-                    (aPlayer.IsDeveloper ? lang.GetMessage("Dev Label Text", this, aUiUserId) : string.Empty)
-                ), 100, string.Empty, false, string.Empty, 14, TextAnchor.MiddleLeft
-            );
-            */
             aUIObj.AddLabel(
                 aParent, CUserPageLblAuthLbAnchor, CUserPageLblAuthRtAnchor, CuiColor.TextAlt,
                 string.Format(lang.GetMessage("Auth Level Label Format", this, aUiUserId), authLevel), string.Empty, 14, TextAnchor.MiddleLeft
@@ -2531,6 +2523,7 @@ namespace Oxide.Plugins
                     { "Kick Reason Message Text", "Administrative decision" },
                     { "Ban Reason Message Text", "Administrative decision" },
                     { "Protection Active Text", "Unable to perform this action, protection is enabled for this user" },
+                    { "Dead Player Error Text", "Unable to perform this action, the target player is dead" },
 
                     { "Never Label Text", "Never" },
                     { "Banned Label Text", " (Banned)" },
@@ -3167,8 +3160,15 @@ namespace Oxide.Plugins
             if (aPlayer.IsServer || !VerifyPermission(ref player, CPermTeleport, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            player.Teleport(BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId));
-            LogInfo($"{player.displayName}: Teleported to user ID {targetId}");
+            BasePlayer targetPlayer = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
+
+            if (targetPlayer.IsAlive()) {
+                player.Teleport(targetPlayer.transform.position);
+                LogInfo($"{player.displayName}: Teleported to user ID {targetId}");
+            } else {
+                aPlayer.Reply(lang.GetMessage("Dead Player Error Text", this, aPlayer.Id));
+            }
+
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
@@ -3183,8 +3183,14 @@ namespace Oxide.Plugins
                 return;
 
             BasePlayer targetPlayer = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
-            targetPlayer.Teleport(player);
-            LogInfo($"{targetPlayer.displayName}: Teleported to admin {player.displayName}");
+
+            if (targetPlayer.IsAlive()) {
+                targetPlayer.Teleport(player.transform.position);
+                LogInfo($"{targetPlayer.displayName}: Teleported to admin {player.displayName}");
+            } else {
+                aPlayer.Reply(lang.GetMessage("Dead Player Error Text", this, aPlayer.Id));
+            }
+
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
@@ -3218,7 +3224,7 @@ namespace Oxide.Plugins
                 return;
 
             player.SendConsoleCommand($"chat.say \"/{CPermsPermsCmd} {targetId}\"");
-            timer.Once(0.01f, () => LogInfo($"{player.displayName}: Opened the permissions manager for user ID {targetId}"));
+            LogInfo($"{player.displayName}: Opened the permissions manager for user ID {targetId}");
         }
 
         [Command(CHurtUserCmd)]

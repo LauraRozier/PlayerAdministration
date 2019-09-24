@@ -112,6 +112,7 @@ The default messages are in the `PlayerAdministration.json` file under the `oxid
   "Kick Reason Message Text": "Administrative decision",
   "Ban Reason Message Text": "Administrative decision",
   "Protection Active Text": "Unable to perform this action, protection is enabled for this user",
+  "Dead Player Error Text": "Unable to perform this action, the target player is dead",
 
   "Never Label Text": "Never",
   "Banned Label Text": " (Banned)",
