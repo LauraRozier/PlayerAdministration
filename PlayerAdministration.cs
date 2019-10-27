@@ -40,7 +40,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.5.12")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.15")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -541,7 +541,7 @@ namespace Oxide.Plugins
             /// Draw the UI to the player's client
             /// </summary>
             /// <returns></returns>
-            public bool Draw() => CuiHelper.AddUi(FPlayer, CuiHelper.ToJson(FContainer, false));
+            public bool Draw() => CuiHelper.AddUi(FPlayer, CuiHelper.ToJson(FContainer));
         }
         #endregion GUI
 
@@ -595,7 +595,7 @@ namespace Oxide.Plugins
                 CuiPoint rtAnchor = new CuiPoint(calcLeft + dimensions.x, calcTop);
                 int suffix = 0;
 
-                string btnTextTemp = EscapeString(user.Value);
+                string btnTextTemp = EscapeString(user.Value ?? "");
                 string btnCommand = string.Format(aCommandFmt, user.Key);
 
                 if (string.IsNullOrEmpty(btnTextTemp) || CUnknownNameList.Contains(btnTextTemp.ToLower()))
@@ -1831,7 +1831,7 @@ namespace Oxide.Plugins
         #endregion
 
         #region Constants
-        private static readonly bool CDebugEnabled = true;
+        private static readonly bool CDebugEnabled = false;
         private const int CMaxPlayerCols = 5;
         private const int CMaxPlayerRows = 12;
         private const int CMaxPlayerButtons = CMaxPlayerCols * CMaxPlayerRows;
@@ -2448,10 +2448,12 @@ namespace Oxide.Plugins
 
         void OnUserConnected(IPlayer aPlayer)
         {
-            if (FOfflineUserList.ContainsKey(aPlayer.Id))
-                FOfflineUserList.Remove(aPlayer.Id);
+            BasePlayer user = BasePlayer.Find(aPlayer.Id) ?? BasePlayer.FindSleeping(aPlayer.Id);
 
-            FOnlineUserList[aPlayer.Id] = aPlayer.Name;
+            if (FOfflineUserList.ContainsKey(user.UserIDString))
+                FOfflineUserList.Remove(user.displayName);
+
+            FOnlineUserList[user.UserIDString] = user.displayName;
         }
 
         void OnUserDisconnected(IPlayer aPlayer)
@@ -2465,10 +2467,12 @@ namespace Oxide.Plugins
             if (FUserPageReasonInputText.ContainsKey(aPlayer.Id))
                 FUserPageReasonInputText.Remove(aPlayer.Id);
 
-            if (FOnlineUserList.ContainsKey(aPlayer.Id))
-                FOnlineUserList.Remove(aPlayer.Id);
+            BasePlayer user = BasePlayer.Find(aPlayer.Id) ?? BasePlayer.FindSleeping(aPlayer.Id);
 
-            FOfflineUserList[aPlayer.Id] = aPlayer.Name;
+            if (FOnlineUserList.ContainsKey(user.UserIDString))
+                FOnlineUserList.Remove(user.UserIDString);
+
+            FOfflineUserList[user.UserIDString] = user.displayName;
         }
 
         void OnUserNameUpdated(string aId, string aOldName, string aNewName)
