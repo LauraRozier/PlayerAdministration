@@ -40,7 +40,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.5.15")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.16")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -190,6 +190,7 @@ namespace Oxide.Plugins
             private readonly BasePlayer FPlayer;
             public readonly ulong PlayerId;
             public readonly string PlayerIdString;
+            public readonly float StartTime = Time.realtimeSinceStartup;
 
             /// <summary>
             /// Constructor
@@ -542,6 +543,10 @@ namespace Oxide.Plugins
             /// </summary>
             /// <returns></returns>
             public bool Draw() => CuiHelper.AddUi(FPlayer, CuiHelper.ToJson(FContainer));
+
+            public string JSON {
+                get { return CuiHelper.ToJson(FContainer, true); }
+            }
         }
         #endregion GUI
 
@@ -1068,6 +1073,7 @@ namespace Oxide.Plugins
             }
 
             LogDebug("Built the main page");
+            LogDebug($"Elapsed time (BuildMainPage): {(Time.realtimeSinceStartup - aUIObj.StartTime).ToString("F8")}");
         }
 
         /// <summary>
@@ -1192,6 +1198,7 @@ namespace Oxide.Plugins
             }
 
             LogDebug("Built the user button page");
+            LogDebug($"Elapsed time (BuildUserBtnPage): {(Time.realtimeSinceStartup - aUIObj.StartTime).ToString("F8")}");
         }
 
         /// <summary>
@@ -1762,6 +1769,7 @@ namespace Oxide.Plugins
             }
 
             LogDebug("Built user information page");
+            LogDebug($"Elapsed time (BuildUserPage): {(Time.realtimeSinceStartup - aUIObj.StartTime).ToString("F8")}");
         }
 
         /// <summary>
@@ -1777,6 +1785,7 @@ namespace Oxide.Plugins
             Cui newUiLib = new Cui(aPlayer);
             newUiLib.AddElement(CBasePanelName, CMainPanel, CMainPanelName);
             BuildTabMenu(ref newUiLib, aPageType);
+            LogDebug($"Elapsed time (BuildTabMenu): {(Time.realtimeSinceStartup - newUiLib.StartTime).ToString("F8")}");
 
             switch (aPageType) {
                 case UiPage.Main: {
@@ -1806,9 +1815,12 @@ namespace Oxide.Plugins
                 }
             }
 
+            LogDebug($"BuildUI JSON value: \n{newUiLib.JSON}");
             // Cleanup any old/active UI and draw the new one
             CuiHelper.DestroyUi(aPlayer, CMainPanelName);
+            LogDebug($"Elapsed time (CuiHelper.DestroyUi): {(Time.realtimeSinceStartup - newUiLib.StartTime).ToString("F8")}");
             newUiLib.Draw();
+            LogDebug($"Elapsed time (newUiLib.Draw): {(Time.realtimeSinceStartup - newUiLib.StartTime).ToString("F8")}");
         }
         #endregion GUI build methods
 
@@ -2432,6 +2444,9 @@ namespace Oxide.Plugins
         void OnServerInitialized()
         {
             foreach (BasePlayer user in Player.Players) {
+                if (user.IsNpc)
+                    continue;
+
                 ServerUsers.User servUser = ServerUsers.Get(user.userID);
 
                 if (servUser == null || servUser?.group != ServerUsers.UserGroup.Banned)
@@ -2439,6 +2454,9 @@ namespace Oxide.Plugins
             }
 
             foreach (BasePlayer user in Player.Sleepers) {
+                if (user.IsNpc)
+                    continue;
+
                 ServerUsers.User servUser = ServerUsers.Get(user.userID);
 
                 if (servUser == null || servUser?.group != ServerUsers.UserGroup.Banned)
@@ -2449,6 +2467,9 @@ namespace Oxide.Plugins
         void OnUserConnected(IPlayer aPlayer)
         {
             BasePlayer user = BasePlayer.Find(aPlayer.Id) ?? BasePlayer.FindSleeping(aPlayer.Id);
+
+            if (user.IsNpc)
+                return;
 
             if (FOfflineUserList.ContainsKey(user.UserIDString))
                 FOfflineUserList.Remove(user.displayName);
@@ -2469,8 +2490,12 @@ namespace Oxide.Plugins
 
             BasePlayer user = BasePlayer.Find(aPlayer.Id) ?? BasePlayer.FindSleeping(aPlayer.Id);
 
+
             if (FOnlineUserList.ContainsKey(user.UserIDString))
                 FOnlineUserList.Remove(user.UserIDString);
+
+            if (user.IsNpc)
+                return;
 
             FOfflineUserList[user.UserIDString] = user.displayName;
         }
@@ -3227,7 +3252,7 @@ namespace Oxide.Plugins
             if (aPlayer.IsServer || !VerifyPermission(ref player, CPermPerms, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            player.SendConsoleCommand($"chat.say \"/{CPermsPermsCmd} {targetId}\"");
+            player.SendConsoleCommand($"chat.say 0 \"/{CPermsPermsCmd} {targetId}\"");
             LogInfo($"{player.displayName}: Opened the permissions manager for user ID {targetId}");
         }
 

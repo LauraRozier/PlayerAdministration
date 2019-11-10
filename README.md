@@ -55,9 +55,9 @@ Hint: To easily add all protections use the RCON command: `oxide.grant {user <us
 ## Chat Commands
 
 Binding keys and saving the keybinds:
- `bind p chat.say /padmin`
+ `bind p chat.say 0 /padmin`
 or:
- `bind p "chat.say /padmin"`
+ `bind p "chat.say 0 /padmin"`
 Then to save it:
  `writecfg`
 
