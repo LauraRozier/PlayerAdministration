@@ -61,37 +61,37 @@ or:
 Then to save it:
  `writecfg`
 
-- **/padmin** -- Show the player administration menu ***(requires `playeradministration.show` permission)***
+- **/padmin** -- Show the player administration menu ***(requires `playeradministration.access.show` permission)***
 
 ## Console Commands
 
 - **playeradministration.closeui** -- Close the player administration menu
 - **playeradministration.switchui <UI Page Type>** -- Switch the UI to a different page (Check the code to see the types of UIPage) ***(requires `playeradministration.show` permission)***
-- **playeradministration.kickuser <Player ID>** -- Kick a player ***(requires `playeradministration.kick` permission)***
-- **playeradministration.banuser <Player ID>** -- Ban a player ***(requires `playeradministration.ban` permission)***
-- **playeradministration.mainpagebanbyid** -- Ban a player ***(requires `playeradministration.ban` permission AND only works from the UI due to the text input field)***
-- **playeradministration.unbanuser <Player ID>** -- Unban a player ***(requires `playeradministration.ban` permission)***
-- **playeradministration.perms <Player ID>** -- Open the perms UI for a player ***(requires `playeradministration.perms` permission)***
-- **playeradministration.vmuteuser <Player ID>** -- Mute voice for a player ***(requires `playeradministration.voicemute` permission)***
-- **playeradministration.vunmuteuser <Player ID>** -- Unmute voice for a player ***(requires `playeradministration.voicemute` permission)***
-- **playeradministration.cmuteuser <Player ID>** -- Mute chat for a player ***(requires `playeradministration.chatmute` permission)***
-- **playeradministration.cunmuteuser <Player ID>** -- Unmute chat for a player ***(requires `playeradministration.chatmute` permission)***
-- **playeradministration.freeze <Player ID>** -- Freeze a player ***(requires `playeradministration.freeze` permission)***
-- **playeradministration.unfreeze <Player ID>** -- Unfreeze a player ***(requires `playeradministration.freeze` permission)***
-- **playeradministration.clearuserinventory <Player ID>** -- Clear the inventory of a player ***(requires `playeradministration.clearinventory` permission)***
-- **playeradministration.resetuserblueprints <Player ID>** -- Completely reset the BPs of a player ***(requires `playeradministration.resetblueprint` permission)***
-- **playeradministration.resetusermetabolism <Player ID>** -- Reset the metabolism of a player to fresh spawn state ***(requires `playeradministration.resetmetabolism` permission)***
-- **playeradministration.recoverusermetabolism <Player ID>** -- Recover the metabolism of a player to 100% ***(requires `playeradministration.recovermetabolism` permission)***
-- **playeradministration.hurtuser <Player ID> <Amount>** -- Hurt a player for a certain amount ***(requires `playeradministration.hurt` permission)***
-- **playeradministration.killuser <Player ID>** -- Kill a player ***(requires `playeradministration.kill` permission)***
-- **playeradministration.healuser <Player ID> <Amount>** -- Heal a player for a certain amount ***(requires `playeradministration.heal` permission)***
-- **playeradministration.tptouser <Player ID>** -- Teleport to a player ***(requires `playeradministration.teleport` permission)***
-- **playeradministration.tpuser <Player ID>** -- Teleport a player to you ***(requires `playeradministration.teleport` permission)***
-- **playeradministration.spectateuser <Player ID>** -- Spectate a player ***(requires `playeradministration.spectate` permission)*** **Note: This will kill your character by the game's design!**
+- **playeradministration.kickuser <Player ID>** -- Kick a player ***(requires `playeradministration.access.kick` permission)***
+- **playeradministration.banuser <Player ID>** -- Ban a player ***(requires `playeradministration.access.ban` permission)***
+- **playeradministration.mainpagebanbyid** -- Ban a player ***(requires `playeradministration.access.ban` permission AND only works from the UI due to the text input field)***
+- **playeradministration.unbanuser <Player ID>** -- Unban a player ***(requires `playeradministration.access.ban` permission)***
+- **playeradministration.perms <Player ID>** -- Open the perms UI for a player ***(requires `playeradministration.access.perms` permission)***
+- **playeradministration.vmuteuser <Player ID>** -- Mute voice for a player ***(requires `playeradministration.access.voicemute` permission)***
+- **playeradministration.vunmuteuser <Player ID>** -- Unmute voice for a player ***(requires `playeradministration.access.voicemute` permission)***
+- **playeradministration.cmuteuser <Player ID>** -- Mute chat for a player ***(requires `playeradministration.access.chatmute` permission)***
+- **playeradministration.cunmuteuser <Player ID>** -- Unmute chat for a player ***(requires `playeradministration.access.chatmute` permission)***
+- **playeradministration.freeze <Player ID>** -- Freeze a player ***(requires `playeradministration.access.allowfreeze` permission)***
+- **playeradministration.unfreeze <Player ID>** -- Unfreeze a player ***(requires `playeradministration.access.allowfreeze` permission)***
+- **playeradministration.clearuserinventory <Player ID>** -- Clear the inventory of a player ***(requires `playeradministration.access.clearinventory` permission)***
+- **playeradministration.resetuserblueprints <Player ID>** -- Completely reset the BPs of a player ***(requires `playeradministration.access.resetblueprint` permission)***
+- **playeradministration.resetusermetabolism <Player ID>** -- Reset the metabolism of a player to fresh spawn state ***(requires `playeradministration.access.resetmetabolism` permission)***
+- **playeradministration.recoverusermetabolism <Player ID>** -- Recover the metabolism of a player to 100% ***(requires `playeradministration.access.recovermetabolism` permission)***
+- **playeradministration.hurtuser <Player ID> <Amount>** -- Hurt a player for a certain amount ***(requires `playeradministration.access.hurt` permission)***
+- **playeradministration.killuser <Player ID>** -- Kill a player ***(requires `playeradministration.access.kill` permission)***
+- **playeradministration.healuser <Player ID> <Amount>** -- Heal a player for a certain amount ***(requires `playeradministration.access.heal` permission)***
+- **playeradministration.tptouser <Player ID>** -- Teleport to a player ***(requires `playeradministration.access.teleport` permission)***
+- **playeradministration.tpuser <Player ID>** -- Teleport a player to you ***(requires `playeradministration.access.teleport` permission)***
+- **playeradministration.spectateuser <Player ID>** -- Spectate a player ***(requires `playeradministration.access.spectate` permission)*** **Note: This will kill your character by the game's design!**
 
 ## Configuration
 
-- **Use Permission System** -- When set to `false` the users with the `playeradministration.show` permission can use all actions
+- **Use Permission System** -- When set to `false` the users with the `playeradministration.access.show` permission can use all actions
 
 ```json
 {

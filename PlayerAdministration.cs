@@ -40,7 +40,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.5.16")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.17")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -3252,7 +3252,10 @@ namespace Oxide.Plugins
             if (aPlayer.IsServer || !VerifyPermission(ref player, CPermPerms, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            player.SendConsoleCommand($"chat.say 0 \"/{CPermsPermsCmd} {targetId}\"");
+            if (PermissionsManager != null && PermissionsManager.IsLoaded)
+                PermissionsManager.Call("cmdPerms", player, string.Empty, new[] { "player", "{targetId}" });
+
+            //player.SendConsoleCommand($"chat.say \"/{CPermsPermsCmd} {targetId}\"");
             LogInfo($"{player.displayName}: Opened the permissions manager for user ID {targetId}");
         }
 
