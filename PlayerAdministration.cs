@@ -40,7 +40,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.5.17a")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.18")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
