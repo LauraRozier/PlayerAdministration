@@ -40,7 +40,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.5.18")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.19")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -588,7 +588,7 @@ namespace Oxide.Plugins
             float margin = 0.09f;
             List<string> addedNames = new List<string>();
 
-            foreach (var user in userRange) {
+            foreach (KeyValuePair<string, string> user in userRange) {
                 if (++col >= CMaxPlayerCols) {
                     row++;
                     col = 0;
@@ -770,18 +770,11 @@ namespace Oxide.Plugins
         }
 
         /// <summary>
-        /// Check if the player has the VoiceMuted flag set
-        /// </summary>
-        /// <param name="aPlayer">The player</param>
-        /// <returns></returns>
-        private bool GetIsVoiceMuted(ref BasePlayer aPlayer) => aPlayer.HasPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted);
-
-        /// <summary>
         /// Check if the player has the ChatMute flag set
         /// </summary>
         /// <param name="aPlayer">The player</param>
         /// <returns></returns>
-        private bool GetIsChatMuted(ref BasePlayer aPlayer)
+        private bool GetIsMuted(ref BasePlayer aPlayer)
         {
             bool isServerMuted = aPlayer.HasPlayerFlag(BasePlayer.PlayerFlags.ChatMute);
 
@@ -913,8 +906,7 @@ namespace Oxide.Plugins
                 Config["Enable kick action"] != null || Config["Enable ban action"] != null || Config["Enable unban action"] != null ||
                 Config["Enable kill action"] != null || Config["Enable inventory clear action"] != null || Config["Enable blueprint reset action"] != null ||
                 Config["Enable metabolism reset action"] != null || Config["Enable hurt action"] != null || Config["Enable heal action"] != null ||
-                Config["Enable voice mute action"] != null || Config["Enable chat mute action"] != null || Config["Enable perms action"] != null ||
-                Config["Enable freeze action"] != null
+                Config["Enable mute action"] != null || Config["Enable perms action"] != null || Config["Enable freeze action"] != null
             )
                 result = true;
 
@@ -966,8 +958,8 @@ namespace Oxide.Plugins
                 { "playeradministration.ban", CPermBan },
                 { "playeradministration.kill", CPermKill },
                 { "playeradministration.perms", CPermPerms },
-                { "playeradministration.voicemute", CPermVoiceMute },
-                { "playeradministration.chatmute", CPermChatMute },
+                { "playeradministration.voicemute", CPermMute },
+                { "playeradministration.chatmute", CPermMute },
                 { "playeradministration.freeze", CPermFreeze },
                 { "playeradministration.clearinventory", CPermClearInventory },
                 { "playeradministration.resetblueprint", CPermResetBP },
@@ -977,6 +969,50 @@ namespace Oxide.Plugins
                 { "playeradministration.heal", CPermHeal },
                 { "playeradministration.teleport", CPermTeleport },
                 { "playeradministration.spectate", CPermSpectate }
+            };
+            LogDebug($"Old Perms: {StringDictToString(ref oldPerms)}");
+
+            foreach (KeyValuePair<string, string> item in oldPerms) {
+                string[] groups = permission.GetPermissionGroups(item.Key);
+                LogDebug($"Groups: {StringArrToString(ref groups)}");
+                string[] users = permission.GetPermissionUsers(item.Key);
+                LogDebug($"Users: {StringArrToString(ref users)}");
+
+                if (groups.Count() <= 0 && users.Count() <= 0) {
+                    LogDebug("Counts are zero");
+                    continue;
+                }
+
+                result = true;
+
+                foreach (string group in groups) {
+                    permission.RevokeGroupPermission(group, item.Key);
+                    permission.GrantGroupPermission(group, item.Value, this);
+                    LogInfo($"Fixed group permission: {group} (OLD) {item.Key} -> (NEW) {item.Value}");
+                }
+
+                foreach (string user in users) {
+                    string uid = user.Substring(0, user.IndexOf('('));
+                    permission.RevokeUserPermission(uid, item.Key);
+                    permission.GrantUserPermission(uid, item.Value, this);
+                    LogInfo($"Fixed user permission: {user} (OLD) {item.Key} -> (NEW) {item.Value}");
+                }
+            }
+
+            permission.SaveData();
+            return result;
+        }
+
+        /// <summary>
+        /// Upgrade the config to 1.5.19 if needed
+        /// </summary>
+        /// <returns></returns>
+        private bool UpgradeTo1519()
+        {
+            bool result = false;
+            Dictionary<string, string> oldPerms = new Dictionary<string, string>() {
+                { "playeradministration.access.voicemute", CPermMute },
+                { "playeradministration.access.chatmute", CPermMute }
             };
             LogDebug($"Old Perms: {StringDictToString(ref oldPerms)}");
 
@@ -1414,97 +1450,65 @@ namespace Oxide.Plugins
                     panelReasonGroup, CUserPageEdtReasonLbAnchor, CUserPageEdtReasonRtAnchor, CuiColor.TextAlt, string.Empty, 24, CUserPageReasonInputTextCmd
                 );
 
-                // Unmute voice, Mute voice
-                if (VerifyPermission(aUIObj.PlayerIdString, CPermVoiceMute) && player.IsConnected) {
-                    if (GetIsVoiceMuted(ref player)) {
+                // Unmute, Mute (And timed ones if BetterChat is available)
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermMute) && player.IsConnected) {
+                    if (GetIsMuted(ref player)) {
                         aUIObj.AddButton(
-                            actionPanel, CUserPageBtnVUnmuteLbAnchor, CUserPageBtnVUnmuteRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
-                            lang.GetMessage("Voice Unmute Button Text", this, aUIObj.PlayerIdString), $"{CVoiceUnmuteUserCmd} {aPlayerId}"
+                            actionPanel, CUserPageBtnUnmuteLbAnchor, CUserPageBtnUnmuteRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
+                            lang.GetMessage("Unmute Button Text", this, aUIObj.PlayerIdString), $"{CUnmuteUserCmd} {aPlayerId}"
                         );
                         aUIObj.AddButton(
-                            actionPanel, CUserPageBtnVMuteLbAnchor, CUserPageBtnVMuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                            lang.GetMessage("Voice Mute Button Text", this, aUIObj.PlayerIdString)
-                        );
-                    } else {
-                        aUIObj.AddButton(
-                            actionPanel, CUserPageBtnVUnmuteLbAnchor, CUserPageBtnVUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                            lang.GetMessage("Voice Unmute Button Text", this, aUIObj.PlayerIdString)
-                        );
-                        aUIObj.AddButton(
-                            actionPanel, CUserPageBtnVMuteLbAnchor, CUserPageBtnVMuteRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
-                            lang.GetMessage("Voice Mute Button Text", this, aUIObj.PlayerIdString), $"{CVoiceMuteUserCmd} {aPlayerId}"
-                        );
-                    }
-                } else {
-                    aUIObj.AddButton(
-                        actionPanel, CUserPageBtnVUnmuteLbAnchor, CUserPageBtnVUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                        lang.GetMessage("Voice Unmute Button Text", this, aUIObj.PlayerIdString)
-                    );
-                    aUIObj.AddButton(
-                        actionPanel, CUserPageBtnVMuteLbAnchor, CUserPageBtnVMuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                        lang.GetMessage("Voice Mute Button Text", this, aUIObj.PlayerIdString)
-                    );
-                }
-
-                // Unmute chat, Mute chat (And timed ones if BetterChat is available)
-                if (VerifyPermission(aUIObj.PlayerIdString, CPermChatMute) && player.IsConnected) {
-                    if (GetIsChatMuted(ref player)) {
-                        aUIObj.AddButton(
-                            actionPanel, CUserPageBtnCUnmuteLbAnchor, CUserPageBtnCUnmuteRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
-                            lang.GetMessage("Chat Unmute Button Text", this, aUIObj.PlayerIdString), $"{CChatUnmuteUserCmd} {aPlayerId}"
-                        );
-                        aUIObj.AddButton(
-                            actionPanel, CUserPageBtnCMuteLbAnchor, CUserPageBtnCMuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                            lang.GetMessage("Chat Mute Button Text", this, aUIObj.PlayerIdString)
+                            actionPanel, CUserPageBtnMuteLbAnchor, CUserPageBtnMuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                            lang.GetMessage("Mute Button Text", this, aUIObj.PlayerIdString)
                         );
 
                         if (BetterChatMute != null) {
                             aUIObj.AddButton(
-                                actionPanel, CUserPageBtnCMuteFifteenLbAnchor, CUserPageBtnCMuteFifteenRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                                lang.GetMessage("Chat Mute Button Text 15", this, aUIObj.PlayerIdString)
+                                actionPanel, CUserPageBtnMuteFifteenLbAnchor, CUserPageBtnMuteFifteenRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                                lang.GetMessage("Mute Button Text 15", this, aUIObj.PlayerIdString)
                             );
                             aUIObj.AddButton(
-                                actionPanel, CUserPageBtnCMuteThirtyLbAnchor, CUserPageBtnCMuteThirtyRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                                lang.GetMessage("Chat Mute Button Text 30", this, aUIObj.PlayerIdString)
+                                actionPanel, CUserPageBtnMuteThirtyLbAnchor, CUserPageBtnMuteThirtyRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                                lang.GetMessage("Mute Button Text 30", this, aUIObj.PlayerIdString)
                             );
                             aUIObj.AddButton(
-                                actionPanel, CUserPageBtnCMuteSixtyLbAnchor, CUserPageBtnCMuteSixtyRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                                lang.GetMessage("Chat Mute Button Text 60", this, aUIObj.PlayerIdString)
+                                actionPanel, CUserPageBtnMuteSixtyLbAnchor, CUserPageBtnMuteSixtyRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                                lang.GetMessage("Mute Button Text 60", this, aUIObj.PlayerIdString)
                             );
                         }
                     } else {
                         aUIObj.AddButton(
-                            actionPanel, CUserPageBtnCUnmuteLbAnchor, CUserPageBtnCUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                            lang.GetMessage("Chat Unmute Button Text", this, aUIObj.PlayerIdString)
+                            actionPanel, CUserPageBtnUnmuteLbAnchor, CUserPageBtnUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                            lang.GetMessage("Unmute Button Text", this, aUIObj.PlayerIdString)
                         );
                         aUIObj.AddButton(
-                            actionPanel, CUserPageBtnCMuteLbAnchor, CUserPageBtnCMuteRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
-                            lang.GetMessage("Chat Mute Button Text", this, aUIObj.PlayerIdString), $"{CChatMuteUserCmd} {aPlayerId} 0"
+                            actionPanel, CUserPageBtnMuteLbAnchor, CUserPageBtnMuteRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                            lang.GetMessage("Mute Button Text", this, aUIObj.PlayerIdString), $"{CMuteUserCmd} {aPlayerId} 0"
                         );
 
                         if (BetterChatMute != null) {
                             aUIObj.AddButton(
-                                actionPanel, CUserPageBtnCMuteFifteenLbAnchor, CUserPageBtnCMuteFifteenRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
-                                lang.GetMessage("Chat Mute Button Text 15", this, aUIObj.PlayerIdString), $"{CChatMuteUserCmd} {aPlayerId} 15"
+                                actionPanel, CUserPageBtnMuteFifteenLbAnchor, CUserPageBtnMuteFifteenRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                                lang.GetMessage("Mute Button Text 15", this, aUIObj.PlayerIdString), $"{CMuteUserCmd} {aPlayerId} 15"
                             );
                             aUIObj.AddButton(
-                                actionPanel, CUserPageBtnCMuteThirtyLbAnchor, CUserPageBtnCMuteThirtyRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
-                                lang.GetMessage("Chat Mute Button Text 30", this, aUIObj.PlayerIdString), $"{CChatMuteUserCmd} {aPlayerId} 30"
+                                actionPanel, CUserPageBtnMuteThirtyLbAnchor, CUserPageBtnMuteThirtyRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                                lang.GetMessage("Mute Button Text 30", this, aUIObj.PlayerIdString), $"{CMuteUserCmd} {aPlayerId} 30"
                             );
                             aUIObj.AddButton(
-                                actionPanel, CUserPageBtnCMuteSixtyLbAnchor, CUserPageBtnCMuteSixtyRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
-                                lang.GetMessage("Chat Mute Button Text 60", this, aUIObj.PlayerIdString), $"{CChatMuteUserCmd} {aPlayerId} 60"
+                                actionPanel, CUserPageBtnMuteSixtyLbAnchor, CUserPageBtnMuteSixtyRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
+                                lang.GetMessage("Mute Button Text 60", this, aUIObj.PlayerIdString), $"{CMuteUserCmd} {aPlayerId} 60"
                             );
                         }
                     }
                 } else {
                     aUIObj.AddButton(
-                        actionPanel, CUserPageBtnCUnmuteLbAnchor, CUserPageBtnCUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                        lang.GetMessage("Chat Unmute Button Text", this, aUIObj.PlayerIdString)
+                        actionPanel, CUserPageBtnUnmuteLbAnchor, CUserPageBtnUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Unmute Button Text", this, aUIObj.PlayerIdString)
                     );
                     aUIObj.AddButton(
-                        actionPanel, CUserPageBtnCMuteLbAnchor, CUserPageBtnCMuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                        lang.GetMessage("Chat Mute Button Text", this, aUIObj.PlayerIdString)
+                        actionPanel, CUserPageBtnMuteLbAnchor, CUserPageBtnMuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Mute Button Text", this, aUIObj.PlayerIdString)
                     );
                 }
 
@@ -1860,10 +1864,8 @@ namespace Oxide.Plugins
         private const string CMainPageBanByIdCmd = "playeradministration.mainpagebanbyid";
         private const string CUnbanUserCmd = "playeradministration.unbanuser";
         private const string CPermsCmd = "playeradministration.perms";
-        private const string CVoiceMuteUserCmd = "playeradministration.vmuteuser";
-        private const string CVoiceUnmuteUserCmd = "playeradministration.vunmuteuser";
-        private const string CChatMuteUserCmd = "playeradministration.cmuteuser";
-        private const string CChatUnmuteUserCmd = "playeradministration.cunmuteuser";
+        private const string CMuteUserCmd = "playeradministration.muteuser";
+        private const string CUnmuteUserCmd = "playeradministration.unmuteuser";
         private const string CFreezeCmd = "playeradministration.freeze";
         private const string CUnreezeCmd = "playeradministration.unfreeze";
         private const string CClearUserInventoryCmd = "playeradministration.clearuserinventory";
@@ -1905,8 +1907,7 @@ namespace Oxide.Plugins
         private const string CPermBan = "playeradministration.access.ban";
         private const string CPermKill = "playeradministration.access.kill";
         private const string CPermPerms = "playeradministration.access.perms";
-        private const string CPermVoiceMute = "playeradministration.access.voicemute";
-        private const string CPermChatMute = "playeradministration.access.chatmute";
+        private const string CPermMute = "playeradministration.access.mute";
         private const string CPermFreeze = "playeradministration.access.allowfreeze";
         private const string CPermClearInventory = "playeradministration.access.clearinventory";
         private const string CPermResetBP = "playeradministration.access.resetblueprint";
@@ -2044,45 +2045,40 @@ namespace Oxide.Plugins
         private static readonly CuiPoint CUserPageEdtReasonLbAnchor = new CuiPoint(0.005f, 0f);
         private static readonly CuiPoint CUserPageEdtReasonRtAnchor = new CuiPoint(0.995f, 1f);
         // Row 2
-        private static readonly CuiPoint CUserPageBtnVUnmuteLbAnchor = new CuiPoint(0.01f, 0.78f);
-        private static readonly CuiPoint CUserPageBtnVUnmuteRtAnchor = new CuiPoint(0.16f, 0.84f);
-        private static readonly CuiPoint CUserPageBtnVMuteLbAnchor = new CuiPoint(0.17f, 0.78f);
-        private static readonly CuiPoint CUserPageBtnVMuteRtAnchor = new CuiPoint(0.32f, 0.84f);
+        private static readonly CuiPoint CUserPageBtnUnmuteLbAnchor = new CuiPoint(0.01f, 0.78f);
+        private static readonly CuiPoint CUserPageBtnUnmuteRtAnchor = new CuiPoint(0.16f, 0.84f);
+        private static readonly CuiPoint CUserPageBtnMuteLbAnchor = new CuiPoint(0.17f, 0.78f);
+        private static readonly CuiPoint CUserPageBtnMuteRtAnchor = new CuiPoint(0.32f, 0.84f);
+        private static readonly CuiPoint CUserPageBtnMuteFifteenLbAnchor = new CuiPoint(0.33f, 0.78f);
+        private static readonly CuiPoint CUserPageBtnMuteFifteenRtAnchor = new CuiPoint(0.48f, 0.84f);
+        private static readonly CuiPoint CUserPageBtnMuteThirtyLbAnchor = new CuiPoint(0.49f, 0.78f);
+        private static readonly CuiPoint CUserPageBtnMuteThirtyRtAnchor = new CuiPoint(0.64f, 0.84f);
+        private static readonly CuiPoint CUserPageBtnMuteSixtyLbAnchor = new CuiPoint(0.65f, 0.78f);
+        private static readonly CuiPoint CUserPageBtnMuteSixtyRtAnchor = new CuiPoint(0.80f, 0.84f);
         // Row 3
-        private static readonly CuiPoint CUserPageBtnCUnmuteLbAnchor = new CuiPoint(0.01f, 0.70f);
-        private static readonly CuiPoint CUserPageBtnCUnmuteRtAnchor = new CuiPoint(0.16f, 0.76f);
-        private static readonly CuiPoint CUserPageBtnCMuteLbAnchor = new CuiPoint(0.17f, 0.70f);
-        private static readonly CuiPoint CUserPageBtnCMuteRtAnchor = new CuiPoint(0.32f, 0.76f);
-        private static readonly CuiPoint CUserPageBtnCMuteFifteenLbAnchor = new CuiPoint(0.33f, 0.70f);
-        private static readonly CuiPoint CUserPageBtnCMuteFifteenRtAnchor = new CuiPoint(0.48f, 0.76f);
-        private static readonly CuiPoint CUserPageBtnCMuteThirtyLbAnchor = new CuiPoint(0.49f, 0.70f);
-        private static readonly CuiPoint CUserPageBtnCMuteThirtyRtAnchor = new CuiPoint(0.64f, 0.76f);
-        private static readonly CuiPoint CUserPageBtnCMuteSixtyLbAnchor = new CuiPoint(0.65f, 0.70f);
-        private static readonly CuiPoint CUserPageBtnCMuteSixtyRtAnchor = new CuiPoint(0.80f, 0.76f);
+        private static readonly CuiPoint CUserPageBtnUnFreezeLbAnchor = new CuiPoint(0.01f, 0.70f);
+        private static readonly CuiPoint CUserPageBtnUnFreezeRtAnchor = new CuiPoint(0.16f, 0.76f);
+        private static readonly CuiPoint CUserPageBtnFreezeLbAnchor = new CuiPoint(0.17f, 0.70f);
+        private static readonly CuiPoint CUserPageBtnFreezeRtAnchor = new CuiPoint(0.32f, 0.76f);
         // Row 4
-        private static readonly CuiPoint CUserPageBtnUnFreezeLbAnchor = new CuiPoint(0.01f, 0.62f);
-        private static readonly CuiPoint CUserPageBtnUnFreezeRtAnchor = new CuiPoint(0.16f, 0.68f);
-        private static readonly CuiPoint CUserPageBtnFreezeLbAnchor = new CuiPoint(0.17f, 0.62f);
-        private static readonly CuiPoint CUserPageBtnFreezeRtAnchor = new CuiPoint(0.32f, 0.68f);
+        private static readonly CuiPoint CUserPageBtnClearInventoryLbAnchor = new CuiPoint(0.01f, 0.62f);
+        private static readonly CuiPoint CUserPageBtnClearInventoryRtAnchor = new CuiPoint(0.16f, 0.68f);
+        private static readonly CuiPoint CUserPageBtnResetBPLbAnchor = new CuiPoint(0.17f, 0.62f);
+        private static readonly CuiPoint CUserPageBtnResetBPRtAnchor = new CuiPoint(0.32f, 0.68f);
+        private static readonly CuiPoint CUserPageBtnResetMetabolismLbAnchor = new CuiPoint(0.33f, 0.62f);
+        private static readonly CuiPoint CUserPageBtnResetMetabolismRtAnchor = new CuiPoint(0.48f, 0.68f);
+        private static readonly CuiPoint CUserPageBtnRecoverMetabolismLbAnchor = new CuiPoint(0.49f, 0.62f);
+        private static readonly CuiPoint CUserPageBtnRecoverMetabolismRtAnchor = new CuiPoint(0.64f, 0.68f);
         // Row 5
-        private static readonly CuiPoint CUserPageBtnClearInventoryLbAnchor = new CuiPoint(0.01f, 0.54f);
-        private static readonly CuiPoint CUserPageBtnClearInventoryRtAnchor = new CuiPoint(0.16f, 0.60f);
-        private static readonly CuiPoint CUserPageBtnResetBPLbAnchor = new CuiPoint(0.17f, 0.54f);
-        private static readonly CuiPoint CUserPageBtnResetBPRtAnchor = new CuiPoint(0.32f, 0.60f);
-        private static readonly CuiPoint CUserPageBtnResetMetabolismLbAnchor = new CuiPoint(0.33f, 0.54f);
-        private static readonly CuiPoint CUserPageBtnResetMetabolismRtAnchor = new CuiPoint(0.48f, 0.60f);
-        private static readonly CuiPoint CUserPageBtnRecoverMetabolismLbAnchor = new CuiPoint(0.49f, 0.54f);
-        private static readonly CuiPoint CUserPageBtnRecoverMetabolismRtAnchor = new CuiPoint(0.64f, 0.60f);
+        private static readonly CuiPoint CUserPageBtnTeleportToLbAnchor = new CuiPoint(0.01f, 0.54f);
+        private static readonly CuiPoint CUserPageBtnTeleportToRtAnchor = new CuiPoint(0.16f, 0.60f);
+        private static readonly CuiPoint CUserPageBtnTeleportLbAnchor = new CuiPoint(0.17f, 0.54f);
+        private static readonly CuiPoint CUserPageBtnTeleportRtAnchor = new CuiPoint(0.32f, 0.60f);
+        private static readonly CuiPoint CUserPageBtnSpectateLbAnchor = new CuiPoint(0.33f, 0.54f);
+        private static readonly CuiPoint CUserPageBtnSpectateRtAnchor = new CuiPoint(0.48f, 0.60f);
         // Row 6
-        private static readonly CuiPoint CUserPageBtnTeleportToLbAnchor = new CuiPoint(0.01f, 0.46f);
-        private static readonly CuiPoint CUserPageBtnTeleportToRtAnchor = new CuiPoint(0.16f, 0.52f);
-        private static readonly CuiPoint CUserPageBtnTeleportLbAnchor = new CuiPoint(0.17f, 0.46f);
-        private static readonly CuiPoint CUserPageBtnTeleportRtAnchor = new CuiPoint(0.32f, 0.52f);
-        private static readonly CuiPoint CUserPageBtnSpectateLbAnchor = new CuiPoint(0.33f, 0.46f);
-        private static readonly CuiPoint CUserPageBtnSpectateRtAnchor = new CuiPoint(0.48f, 0.52f);
-        // Row 7
-        private static readonly CuiPoint CUserPageBtnPermsLbAnchor = new CuiPoint(0.01f, 0.38f);
-        private static readonly CuiPoint CUserPageBtnPermsRtAnchor = new CuiPoint(0.16f, 0.44f);
+        private static readonly CuiPoint CUserPageBtnPermsLbAnchor = new CuiPoint(0.01f, 0.46f);
+        private static readonly CuiPoint CUserPageBtnPermsRtAnchor = new CuiPoint(0.16f, 0.52f);
         // Row 11
         private static readonly CuiPoint CUserPageBtnHurt25LbAnchor = new CuiPoint(0.01f, 0.10f);
         private static readonly CuiPoint CUserPageBtnHurt25RtAnchor = new CuiPoint(0.16f, 0.16f);
@@ -2398,8 +2394,7 @@ namespace Oxide.Plugins
             permission.RegisterPermission(CPermBan, this);
             permission.RegisterPermission(CPermKill, this);
             permission.RegisterPermission(CPermPerms, this);
-            permission.RegisterPermission(CPermVoiceMute, this);
-            permission.RegisterPermission(CPermChatMute, this);
+            permission.RegisterPermission(CPermMute, this);
             permission.RegisterPermission(CPermFreeze, this);
             permission.RegisterPermission(CPermClearInventory, this);
             permission.RegisterPermission(CPermResetBP, this);
@@ -2419,6 +2414,9 @@ namespace Oxide.Plugins
 
             if (UpgradeTo156())
                 LogDebug("Upgraded the config to version 1.5.6");
+
+            if (UpgradeTo1519())
+                LogDebug("Upgraded the config to version 1.5.19");
         }
 
         void Unload()
@@ -2608,14 +2606,11 @@ namespace Oxide.Plugins
                     { "Kick Button Text", "Kick" },
                     { "Reason Input Label Text", "Reason:" },
 
-                    { "Voice Unmute Button Text", "Unmute Voice" },
-                    { "Voice Mute Button Text", "Mute Voice" },
-
-                    { "Chat Unmute Button Text", "Unmute Chat" },
-                    { "Chat Mute Button Text", "Mute Chat" },
-                    { "Chat Mute Button Text 15", "Mute Chat 15 Min" },
-                    { "Chat Mute Button Text 30", "Mute Chat 30 Min" },
-                    { "Chat Mute Button Text 60", "Mute Chat 60 Min" },
+                    { "Unmute Button Text", "Unmute" },
+                    { "Mute Button Text", "Mute" },
+                    { "Mute Button Text 15", "Mute 15 Min" },
+                    { "Mute Button Text 30", "Mute 30 Min" },
+                    { "Mute Button Text 60", "Mute 60 Min" },
 
                     { "UnFreeze Button Text", "UnFreeze" },
                     { "Freeze Button Text", "Freeze" },
@@ -2875,58 +2870,10 @@ namespace Oxide.Plugins
             }
         }
 
-        [Command(CVoiceUnmuteUserCmd)]
-        private void PlayerAdministrationVoiceUnmuteUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
+        [Command(CUnmuteUserCmd)]
+        private void PlayerAdministrationUnmuteUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
-            LogDebug("PlayerAdministrationVoiceUnmuteUserCallback was called");
-            ulong targetId;
-
-            if (!GetTargetFromArg(aArgs, out targetId))
-                return;
-
-            if (aPlayer.IsServer) {
-                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, false);
-                LogInfo($"{aPlayer.Name}: Voice unmuted user ID {targetId}");
-            } else {
-                BasePlayer player = BasePlayer.Find(aPlayer.Id);
-
-                if (!VerifyPermission(ref player, CPermVoiceMute, true))
-                    return;
-
-                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, false);
-                LogInfo($"{player.displayName}: Voice unmuted user ID {targetId}");
-                timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
-            }
-        }
-
-        [Command(CVoiceMuteUserCmd)]
-        private void PlayerAdministrationVoiceMuteUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
-        {
-            LogDebug("PlayerAdministrationVoiceMuteUserCallback was called");
-            ulong targetId;
-
-            if (!GetTargetFromArg(aArgs, out targetId))
-                return;
-
-            if (aPlayer.IsServer) {
-                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, true);
-                LogInfo($"{aPlayer.Name}: Voice muted user ID {targetId}");
-            } else {
-                BasePlayer player = BasePlayer.Find(aPlayer.Id);
-
-                if (!VerifyPermission(ref player, CPermVoiceMute, true))
-                    return;
-
-                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.SetPlayerFlag(BasePlayer.PlayerFlags.VoiceMuted, true);
-                LogInfo($"{player.displayName}: Voice muted user ID {targetId}");
-                timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
-            }
-        }
-
-        [Command(CChatUnmuteUserCmd)]
-        private void PlayerAdministrationChatUnmuteUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
-        {
-            LogDebug("PlayerAdministrationChatUnmuteUserCallback was called");
+            LogDebug("PlayerAdministrationUnmuteUserCallback was called");
             ulong targetId;
 
             if (!GetTargetFromArg(aArgs, out targetId))
@@ -2941,11 +2888,11 @@ namespace Oxide.Plugins
                     target?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, false);
                 }
 
-                LogInfo($"{aPlayer.Name}: Chat unmuted user ID {targetId}");
+                LogInfo($"{aPlayer.Name}: Unmuted user ID {targetId}");
             } else {
                 BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
-                if (!VerifyPermission(ref player, CPermChatMute, true))
+                if (!VerifyPermission(ref player, CPermMute, true))
                     return;
 
                 BasePlayer target = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
@@ -2956,15 +2903,15 @@ namespace Oxide.Plugins
                     target?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, false);
                 }
 
-                LogInfo($"{player.displayName}: Chat unmuted user ID {targetId}");
+                LogInfo($"{player.displayName}: Unmuted user ID {targetId}");
                 timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
             }
         }
 
-        [Command(CChatMuteUserCmd)]
-        private void PlayerAdministrationChatMuteUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
+        [Command(CMuteUserCmd)]
+        private void PlayerAdministrationMuteUserCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
-            LogDebug("PlayerAdministrationChatMuteUserCallback was called");
+            LogDebug("PlayerAdministrationMuteUserCallback was called");
             ulong targetId;
             float time;
 
@@ -2984,11 +2931,11 @@ namespace Oxide.Plugins
                     target?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, true);
                 }
 
-                LogInfo($"{aPlayer.Name}: Chat muted user ID {targetId}");
+                LogInfo($"{aPlayer.Name}: Muted user ID {targetId}");
             } else {
                 BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
-                if (!VerifyPermission(ref player, CPermChatMute, true))
+                if (!VerifyPermission(ref player, CPermMute, true))
                     return;
 
                 BasePlayer target = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
@@ -3003,7 +2950,7 @@ namespace Oxide.Plugins
                     target?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, true);
                 }
 
-                LogInfo($"{player.displayName}: Chat muted user ID {targetId}");
+                LogInfo($"{player.displayName}: Muted user ID {targetId}");
                 timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
             }
         }
@@ -3019,7 +2966,7 @@ namespace Oxide.Plugins
                 return;
 
             player.SendConsoleCommand($"{CFreezeUnfreezeCmd} {targetId}");
-            LogInfo($"{player.displayName}: Chat unfroze user ID {targetId}");
+            LogInfo($"{player.displayName}: Unfroze user ID {targetId}");
             // Let code execute, then reload screen
             timer.Once(0.1f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
@@ -3035,7 +2982,7 @@ namespace Oxide.Plugins
                 return;
 
             player.SendConsoleCommand($"{CFreezeFreezeCmd} {targetId}");
-            LogInfo($"{player.displayName}: Chat froze user ID {targetId}");
+            LogInfo($"{player.displayName}: Froze user ID {targetId}");
             // Let code execute, then reload screen
             timer.Once(0.1f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }

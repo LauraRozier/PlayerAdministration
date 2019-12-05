@@ -5,8 +5,7 @@
 - Banning/unbanning users
 - Kicking users
 - Killing users
-- Muting/unmuting a player's voice chat
-- Muting/unmuting a player's text chat
+- Muting/unmuting a player
 - Clearing the user's inventory
 - Resetting a user's blueprints
 - Resetting a user's metabolism (Identical to how a respawn sets a random metabolism)
@@ -39,8 +38,7 @@ Hint: To easily add all protections use the RCON command: `oxide.grant {user <us
 - **playeradministration.access.recovermetabolism** -- Allows the user to give any player a healthy metabolic state
 - **playeradministration.access.hurt** -- Allows the user to hurt any player
 - **playeradministration.access.heal** -- Allows the user to heal any player
-- **playeradministration.access.voicemute** -- Allows the user to mute the voice chat of any player
-- **playeradministration.access.chatmute** -- Allows the user to mute the text chat of any player
+- **playeradministration.access.mute** -- Allows the user to mute/unmute any player
 - **playeradministration.access.perms** -- Allows the user to use the "Permissions" button for any player
 - **playeradministration.access.allowfreeze** -- Allows the user to freeze and unfreeze any player
 - **playeradministration.access.teleport** -- Allows the user to teleport to any player
@@ -168,14 +166,11 @@ The default messages are in the `PlayerAdministration.json` file under the `oxid
   "Kick Button Text": "Kick",
   "Reason Input Label Text": "Reason:",
 
-  "Voice Unmute Button Text": "Unmute Voice",
-  "Voice Mute Button Text": "Mute Voice",
-
-  "Chat Unmute Button Text": "Unmute Chat",
-  "Chat Mute Button Text": "Mute Chat",
-  "Chat Mute Button Text 15": "Mute Chat 15 Min",
-  "Chat Mute Button Text 30": "Mute Chat 30 Min",
-  "Chat Mute Button Text 60": "Mute Chat 60 Min",
+  "Unmute Button Text": "Unmute",
+  "Mute Button Text": "Mute",
+  "Mute Button Text 15": "Mute 15 Min",
+  "Mute Button Text 30": "Mute 30 Min",
+  "Mute Button Text 60": "Mute 60 Min",
 
   "UnFreeze Button Text": "UnFreeze",
   "Freeze Button Text": "Freeze",
