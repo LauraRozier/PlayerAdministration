@@ -1,4 +1,4 @@
-﻿/* --- Contributor information ---
+/* --- Contributor information ---
  * Please follow the following set of guidelines when working on this plugin,
  * this to help others understand this file more easily.
  *
@@ -58,6 +58,11 @@ namespace Oxide.Plugins
         private Plugin DiscordMessages;
         [PluginReference]
         private Plugin BetterChatMute;
+        [PluginReference]
+        private Plugin Backpacks;
+        [PluginReference]
+        private Plugin InventoryViewer;
+
 #pragma warning restore IDE0044, CS0649
         #endregion Plugin References
 
@@ -159,12 +164,14 @@ namespace Oxide.Plugins
                 if (string.IsNullOrEmpty(aName))
                     aName = CuiHelper.GetGuid();
 
-                if (aInputField == null) {
+                if (aInputField == null)
+                {
                     FPluginInstance.LogError($"CustomCuiElementContainer::Add > Parameter 'aInputField' is null");
                     return string.Empty;
                 }
 
-                Add(new CuiElement {
+                Add(new CuiElement
+                {
                     Name = aName,
                     Parent = aParent,
                     FadeOut = aInputField.FadeOut,
@@ -198,7 +205,8 @@ namespace Oxide.Plugins
             /// <param name="aPlayer">The player this object is meant for</param>
             public Cui(BasePlayer aPlayer)
             {
-                if (aPlayer == null) {
+                if (aPlayer == null)
+                {
                     FPluginInstance.LogError("Cui::Cui > Parameter 'aPlayer' is null");
                     return;
                 }
@@ -241,8 +249,10 @@ namespace Oxide.Plugins
             public string AddPanel(
                 string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset,
                 bool aIndCursorEnabled, CuiColor aColor = null, string aName = "", string aPng = ""
-            ) {
-                if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null) {
+            )
+            {
+                if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null)
+                {
                     FPluginInstance.LogError($"Cui::AddPanel > One of the required parameters is null");
                     return string.Empty;
                 }
@@ -262,10 +272,14 @@ namespace Oxide.Plugins
                 if (!string.IsNullOrEmpty(aPng))
                     panel.Image = new CuiImageComponent { Png = aPng };
 
-                if (aColor != null) {
-                    if (panel.Image == null) {
+                if (aColor != null)
+                {
+                    if (panel.Image == null)
+                    {
                         panel.Image = new CuiImageComponent { Color = aColor.ToString() };
-                    } else {
+                    }
+                    else
+                    {
                         panel.Image.Color = aColor.ToString();
                     }
                 }
@@ -308,8 +322,10 @@ namespace Oxide.Plugins
             public string AddLabel(
                 string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset, CuiColor aColor,
                 string aText, string aName = "", int aFontSize = 14, TextAnchor aAlign = TextAnchor.UpperLeft
-            ) {
-                if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null || aColor == null) {
+            )
+            {
+                if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null || aColor == null)
+                {
                     FPluginInstance.LogError($"Cui::AddLabel > One of the required parameters is null");
                     return string.Empty;
                 }
@@ -382,11 +398,13 @@ namespace Oxide.Plugins
                 string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset,
                 CuiColor aButtonColor, CuiColor aTextColor, string aText, string aCommand = "", string aClose = "", string aName = "", int aFontSize = 14,
                 TextAnchor aAlign = TextAnchor.MiddleCenter
-            ) {
+            )
+            {
                 if (
                     aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null || aButtonColor == null ||
                     aTextColor == null
-                ) {
+                )
+                {
                     FPluginInstance.LogError($"Cui::AddButton > One of the required parameters is null");
                     return string.Empty;
                 }
@@ -465,8 +483,10 @@ namespace Oxide.Plugins
                 string aParent, CuiPoint aLeftBottomAnchor, CuiPoint aRightTopAnchor, CuiPoint aLeftBottomOffset, CuiPoint aRightTopOffset, CuiColor aColor,
                 string aText = "", int aCharsLimit = 100, string aCommand = "", bool aIndPassword = false, string aName = "", int aFontSize = 14,
                 TextAnchor aAlign = TextAnchor.MiddleLeft
-            ) {
-                if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null || aColor == null) {
+            )
+            {
+                if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null || aColor == null)
+                {
                     FPluginInstance.LogError($"Cui::AddInputField > One of the required parameters is null");
                     return string.Empty;
                 }
@@ -544,7 +564,8 @@ namespace Oxide.Plugins
             /// <returns></returns>
             public bool Draw() => CuiHelper.AddUi(FPlayer, CuiHelper.ToJson(FContainer));
 
-            public string JSON {
+            public string JSON
+            {
                 get { return CuiHelper.ToJson(FContainer, true); }
             }
         }
@@ -588,8 +609,10 @@ namespace Oxide.Plugins
             float margin = 0.09f;
             List<string> addedNames = new List<string>();
 
-            foreach (KeyValuePair<string, string> user in userRange) {
-                if (++col >= CMaxPlayerCols) {
+            foreach (KeyValuePair<string, string> user in userRange)
+            {
+                if (++col >= CMaxPlayerCols)
+                {
                     row++;
                     col = 0;
                 }
@@ -608,7 +631,8 @@ namespace Oxide.Plugins
 
                 string btnText = btnTextTemp;
 
-                while (addedNames.FindIndex(item => btnText.Equals(item, StringComparison.OrdinalIgnoreCase)) >= 0) {
+                while (addedNames.FindIndex(item => btnText.Equals(item, StringComparison.OrdinalIgnoreCase)) >= 0)
+                {
                     btnText = $"{btnTextTemp} {++suffix}";
                 }
 
@@ -623,7 +647,7 @@ namespace Oxide.Plugins
         /// Log an error message to the logfile
         /// </summary>
         /// <param name="aMessage"></param>
-        private void LogError(string aMessage) =>  LogToFile(string.Empty, $"[{DateTime.Now.ToString("hh:mm:ss")}] ERROR > {aMessage}", this);
+        private void LogError(string aMessage) => LogToFile(string.Empty, $"[{DateTime.Now.ToString("hh:mm:ss")}] ERROR > {aMessage}", this);
 
         /// <summary>
         /// Log an informational message to the logfile
@@ -637,8 +661,11 @@ namespace Oxide.Plugins
         /// <param name="aMessage"></param>
         private void LogDebug(string aMessage)
         {
-            if (CDebugEnabled)
+            if (CDebugEnabled) { 
                 LogToFile(string.Empty, $"[{DateTime.Now.ToString("hh:mm:ss")}] DEBUG > {aMessage}", this);
+                Console.WriteLine($"[{DateTime.Now.ToString("hh:mm:ss")}] DEBUG > {aMessage}");
+                Puts($"[{DateTime.Now.ToString("hh:mm:ss")}] DEBUG > {aMessage}");
+            }
         }
 
         /// <summary>
@@ -656,7 +683,8 @@ namespace Oxide.Plugins
             if (FConfigData.UsePermSystem && result && aPermission.Length > 0)
                 result = permission.UserHasPermission(aPlayer.UserIDString, aPermission);
 
-            if (aIndReport && !result) {
+            if (aIndReport && !result)
+            {
                 rust.SendChatMessage(aPlayer, string.Empty, lang.GetMessage("Permission Error Text", this, aPlayer.UserIDString));
                 LogError(string.Format(lang.GetMessage("Permission Error Log Text", this, aPlayer.UserIDString), aPlayer.displayName, aPermission));
             }
@@ -687,9 +715,12 @@ namespace Oxide.Plugins
         {
             List<KeyValuePair<string, string>> result;
 
-            if (aIndOffline) {
+            if (aIndOffline)
+            {
                 result = FOfflineUserList.ToList();
-            } else {
+            }
+            else
+            {
                 result = FOnlineUserList.ToList();
             }
 
@@ -700,7 +731,8 @@ namespace Oxide.Plugins
                     ).ToList();
 
             LogDebug("Retrieved the server user list");
-            result.Sort((a, b) => {
+            result.Sort((a, b) =>
+            {
                 int diff = string.Compare(a.Value, b.Value);
 
                 if (diff == 0)
@@ -721,7 +753,8 @@ namespace Oxide.Plugins
         {
             List<KeyValuePair<string, string>> result = new List<KeyValuePair<string, string>>();
 
-            foreach (ServerUsers.User user in ServerUsers.GetAll(ServerUsers.UserGroup.Banned)) {
+            foreach (ServerUsers.User user in ServerUsers.GetAll(ServerUsers.UserGroup.Banned))
+            {
                 result.Add(new KeyValuePair<string, string>(user.steamid.ToString(), user.username));
             }
 
@@ -732,7 +765,8 @@ namespace Oxide.Plugins
                     ).ToList();
 
             LogDebug("Retrieved the banned user list");
-            result.Sort((a, b) => {
+            result.Sort((a, b) =>
+            {
                 int diff = string.Compare(a.Value, b.Value);
 
                 if (diff == 0)
@@ -778,9 +812,12 @@ namespace Oxide.Plugins
         {
             bool isServerMuted = aPlayer.HasPlayerFlag(BasePlayer.PlayerFlags.ChatMute);
 
-            if (BetterChatMute != null) {
+            if (BetterChatMute != null)
+            {
                 return isServerMuted || (bool)BetterChatMute.Call("API_IsMuted", aPlayer.IPlayer);
-            } else {
+            }
+            else
+            {
                 return isServerMuted;
             }
         }
@@ -803,7 +840,8 @@ namespace Oxide.Plugins
         /// <param name="aIndIsBan">If this is true a ban message is sent, else a kick message is sent</param>
         private void SendDiscordKickBanMessage(string aAdminName, string aAdminId, string aTargetName, string aTargetId, string aReason, bool aIndIsBan)
         {
-            if (DiscordMessages != null) {
+            if (DiscordMessages != null)
+            {
                 if (CUnknownNameList.Contains(aTargetName.ToLower()))
                     aTargetName = aTargetId;
 
@@ -860,7 +898,8 @@ namespace Oxide.Plugins
         {
             StringBuilder result = new StringBuilder("{\n");
 
-            foreach (KeyValuePair<string, string> item in aObj) {
+            foreach (KeyValuePair<string, string> item in aObj)
+            {
                 result.Append($"'{item.Key}': '{item.Value}'\n");
             }
 
@@ -896,7 +935,8 @@ namespace Oxide.Plugins
             bool result = false;
             Config.Load();
 
-            if (Config["Use Permission System"] == null) {
+            if (Config["Use Permission System"] == null)
+            {
                 FConfigData.UsePermSystem = true;
                 result = true;
             }
@@ -927,12 +967,14 @@ namespace Oxide.Plugins
             bool result = false;
             Config.Load();
 
-            if (Config["Discord Webhook url for ban messages"] == null) {
+            if (Config["Discord Webhook url for ban messages"] == null)
+            {
                 FConfigData.BanMsgWebhookUrl = string.Empty;
                 result = true;
             }
 
-            if (Config["Discord Webhook url for kick messages"] == null) {
+            if (Config["Discord Webhook url for kick messages"] == null)
+            {
                 FConfigData.KickMsgWebhookUrl = string.Empty;
                 result = true;
             }
@@ -972,26 +1014,30 @@ namespace Oxide.Plugins
             };
             LogDebug($"Old Perms: {StringDictToString(ref oldPerms)}");
 
-            foreach (KeyValuePair<string, string> item in oldPerms) {
+            foreach (KeyValuePair<string, string> item in oldPerms)
+            {
                 string[] groups = permission.GetPermissionGroups(item.Key);
                 LogDebug($"Groups: {StringArrToString(ref groups)}");
                 string[] users = permission.GetPermissionUsers(item.Key);
                 LogDebug($"Users: {StringArrToString(ref users)}");
 
-                if (groups.Count() <= 0 && users.Count() <= 0) {
+                if (groups.Count() <= 0 && users.Count() <= 0)
+                {
                     LogDebug("Counts are zero");
                     continue;
                 }
 
                 result = true;
 
-                foreach (string group in groups) {
+                foreach (string group in groups)
+                {
                     permission.RevokeGroupPermission(group, item.Key);
                     permission.GrantGroupPermission(group, item.Value, this);
                     LogInfo($"Fixed group permission: {group} (OLD) {item.Key} -> (NEW) {item.Value}");
                 }
 
-                foreach (string user in users) {
+                foreach (string user in users)
+                {
                     string uid = user.Substring(0, user.IndexOf('('));
                     permission.RevokeUserPermission(uid, item.Key);
                     permission.GrantUserPermission(uid, item.Value, this);
@@ -1016,26 +1062,30 @@ namespace Oxide.Plugins
             };
             LogDebug($"Old Perms: {StringDictToString(ref oldPerms)}");
 
-            foreach (KeyValuePair<string, string> item in oldPerms) {
+            foreach (KeyValuePair<string, string> item in oldPerms)
+            {
                 string[] groups = permission.GetPermissionGroups(item.Key);
                 LogDebug($"Groups: {StringArrToString(ref groups)}");
                 string[] users = permission.GetPermissionUsers(item.Key);
                 LogDebug($"Users: {StringArrToString(ref users)}");
 
-                if (groups.Count() <= 0 && users.Count() <= 0) {
+                if (groups.Count() <= 0 && users.Count() <= 0)
+                {
                     LogDebug("Counts are zero");
                     continue;
                 }
 
                 result = true;
 
-                foreach (string group in groups) {
+                foreach (string group in groups)
+                {
                     permission.RevokeGroupPermission(group, item.Key);
                     permission.GrantGroupPermission(group, item.Value, this);
                     LogInfo($"Fixed group permission: {group} (OLD) {item.Key} -> (NEW) {item.Value}");
                 }
 
-                foreach (string user in users) {
+                foreach (string user in users)
+                {
                     string uid = user.Substring(0, user.IndexOf('('));
                     permission.RevokeUserPermission(uid, item.Key);
                     permission.GrantUserPermission(uid, item.Value, this);
@@ -1101,10 +1151,13 @@ namespace Oxide.Plugins
             );
             string panelBanByIdGroup = aUIObj.AddElement(panel, CBanByIdGroupPanel);
 
-            if (VerifyPermission(aUIObj.PlayerIdString, CPermBan)) {
+            if (VerifyPermission(aUIObj.PlayerIdString, CPermBan))
+            {
                 aUIObj.AddElement(panelBanByIdGroup, CBanByIdEdt);
                 aUIObj.AddElement(panel, CBanByIdActiveBtn);
-            } else {
+            }
+            else
+            {
                 aUIObj.AddElement(panel, CBanByIdInactiveBtn);
             }
 
@@ -1129,9 +1182,12 @@ namespace Oxide.Plugins
             string commandFmt = $"{CSwitchUiCmd} {CCmdArgPlayerPage} {{0}}";
             List<KeyValuePair<string, string>> userList = GetServerUserList(aIndFiltered, aUIObj.PlayerIdString, aPageType == UiPage.PlayersOffline);
 
-            if (aPageType == UiPage.PlayersOnline) {
+            if (aPageType == UiPage.PlayersOnline)
+            {
                 aBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersOnlineSearch : CCmdArgPlayersOnline)} {{0}}";
-            } else {
+            }
+            else
+            {
                 aBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersOfflineSearch : CCmdArgPlayersOffline)} {{0}}";
             }
 
@@ -1173,50 +1229,57 @@ namespace Oxide.Plugins
                 CUserBtnPageSearchInputTextCmd, false, string.Empty, 16
             );
 
-            switch (aPageType) {
-                case UiPage.PlayersOnline: {
-                    aUIObj.AddButton(
-                        panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiColor.Button, CuiColor.TextAlt,
-                        lang.GetMessage("Go Button Text", this, aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOnlineSearch} 0", string.Empty,
-                        string.Empty, 16
-                    );
-                    BuildUserButtons(ref aUIObj, panel, aPageType, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
-                    break;
-                }
-                case UiPage.PlayersOffline: {
-                    aUIObj.AddButton(
-                        panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiColor.Button, CuiColor.TextAlt,
-                        lang.GetMessage("Go Button Text", this, aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOfflineSearch} 0", string.Empty,
-                        string.Empty, 16
-                    );
-                    BuildUserButtons(ref aUIObj, panel, aPageType, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
-                    break;
-                }
-                default: {
-                    aUIObj.AddButton(
-                        panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiColor.Button, CuiColor.TextAlt,
-                        lang.GetMessage("Go Button Text", this, aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersBannedSearch} 0", string.Empty,
-                        string.Empty, 16
-                    );
+            switch (aPageType)
+            {
+                case UiPage.PlayersOnline:
+                    {
+                        aUIObj.AddButton(
+                            panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiColor.Button, CuiColor.TextAlt,
+                            lang.GetMessage("Go Button Text", this, aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOnlineSearch} 0", string.Empty,
+                            string.Empty, 16
+                        );
+                        BuildUserButtons(ref aUIObj, panel, aPageType, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
+                        break;
+                    }
+                case UiPage.PlayersOffline:
+                    {
+                        aUIObj.AddButton(
+                            panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiColor.Button, CuiColor.TextAlt,
+                            lang.GetMessage("Go Button Text", this, aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersOfflineSearch} 0", string.Empty,
+                            string.Empty, 16
+                        );
+                        BuildUserButtons(ref aUIObj, panel, aPageType, ref aPage, out npBtnCommandFmt, out userCount, aIndFiltered);
+                        break;
+                    }
+                default:
+                    {
+                        aUIObj.AddButton(
+                            panel, CUserBtnPageBtnSearchLbAnchor, CUserBtnPageBtnSearchRtAnchor, CuiColor.Button, CuiColor.TextAlt,
+                            lang.GetMessage("Go Button Text", this, aUIObj.PlayerIdString), $"{CSwitchUiCmd} {CCmdArgPlayersBannedSearch} 0", string.Empty,
+                            string.Empty, 16
+                        );
 
-                    string commandFmt = $"{CSwitchUiCmd} {CCmdArgPlayerPageBanned} {{0}}";
-                    List<KeyValuePair<string, string>> userList = GetBannedUserList(aIndFiltered, aUIObj.PlayerIdString);
-                    npBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersBannedSearch : CCmdArgPlayersBanned)} {{0}}";
-                    userCount = userList.Count;
+                        string commandFmt = $"{CSwitchUiCmd} {CCmdArgPlayerPageBanned} {{0}}";
+                        List<KeyValuePair<string, string>> userList = GetBannedUserList(aIndFiltered, aUIObj.PlayerIdString);
+                        npBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersBannedSearch : CCmdArgPlayersBanned)} {{0}}";
+                        userCount = userList.Count;
 
-                    if ((aPage != 0) && (userList.Count <= CMaxPlayerButtons))
-                        aPage = 0; // Reset page to 0 if user count is lower or equal to max button count
+                        if ((aPage != 0) && (userList.Count <= CMaxPlayerButtons))
+                            aPage = 0; // Reset page to 0 if user count is lower or equal to max button count
 
-                    AddPlayerButtons(ref aUIObj, panel, ref userList, commandFmt, aPage);
-                    LogDebug("Built the current page of banned user buttons");
-                    break;
-                }
+                        AddPlayerButtons(ref aUIObj, panel, ref userList, commandFmt, aPage);
+                        LogDebug("Built the current page of banned user buttons");
+                        break;
+                    }
             }
 
             // Decide whether or not to activate the "previous" button
-            if (aPage == 0) {
+            if (aPage == 0)
+            {
                 aUIObj.AddElement(panel, CUserBtnPagePreviousInactiveBtn);
-            } else {
+            }
+            else
+            {
                 aUIObj.AddButton(
                     panel, CUserBtnPageBtnPreviousLbAnchor, CUserBtnPageBtnPreviousRtAnchor, CuiColor.Button, CuiColor.TextAlt, "<<",
                     string.Format(npBtnCommandFmt, aPage - 1), string.Empty, string.Empty, 18
@@ -1224,12 +1287,15 @@ namespace Oxide.Plugins
             }
 
             // Decide whether or not to activate the "next" button
-            if (userCount > CMaxPlayerButtons * (aPage + 1)) {
+            if (userCount > CMaxPlayerButtons * (aPage + 1))
+            {
                 aUIObj.AddButton(
                     panel, CUserBtnPageBtnNextLbAnchor, CUserBtnPageBtnNextRtAnchor, CuiColor.Button, CuiColor.TextAlt, ">>",
                     string.Format(npBtnCommandFmt, aPage + 1), string.Empty, string.Empty, 18
                 );
-            } else {
+            }
+            else
+            {
                 aUIObj.AddElement(panel, CUserBtnPageNextInactiveBtn);
             }
 
@@ -1251,7 +1317,8 @@ namespace Oxide.Plugins
             string authLevel = ServerUsers.Get(aPlayerId)?.group.ToString() ?? "None";
 
             // Pre-calc last admin cheat
-            if (aPlayer.lastAdminCheatTime > 0f) {
+            if (aPlayer.lastAdminCheatTime > 0f)
+            {
                 TimeSpan lastCheatSinceStart = new TimeSpan(0, 0, (int)(Time.realtimeSinceStartup - aPlayer.lastAdminCheatTime));
                 lastCheatStr = $"{DateTime.UtcNow.Subtract(lastCheatSinceStart).ToString(@"yyyy\/MM\/dd HH:mm:ss")} UTC";
             }
@@ -1285,7 +1352,8 @@ namespace Oxide.Plugins
 
             LogDebug("AddUserPageInfoLabels > Generic info has been added.");
 
-            if (VerifyPermission(aUiUserId, CPermDetailInfo)) {
+            if (VerifyPermission(aUiUserId, CPermDetailInfo))
+            {
                 aUIObj.AddLabel(
                     aParent, CUserPageLblFlagLbAnchor, CUserPageLblFlagRtAnchor, CuiColor.TextAlt, string.Format(lang.GetMessage(
                         "Flags Label Format", this, aUiUserId), (aPlayer.IsFlying ? lang.GetMessage("Flying Label Text", this, aUiUserId) : string.Empty),
@@ -1311,7 +1379,8 @@ namespace Oxide.Plugins
                     TextAnchor.MiddleLeft
                 );
 
-                if (Economics != null) {
+                if (Economics != null)
+                {
                     aUIObj.AddLabel(
                         aParent, CUserPageLblBalanceLbAnchor, CUserPageLblBalanceRtAnchor, CuiColor.TextAlt,
                         string.Format(lang.GetMessage("Economics Balance Label Format", this, aUiUserId),
@@ -1320,7 +1389,8 @@ namespace Oxide.Plugins
                     LogDebug("AddUserPageInfoLabels > Economics info has been added.");
                 }
 
-                if (ServerRewards != null) {
+                if (ServerRewards != null)
+                {
                     aUIObj.AddLabel(
                         aParent, CUserPageLblRewardPointsLbAnchor, CUserPageLblRewardPointsRtAnchor, CuiColor.TextAlt,
                         string.Format(lang.GetMessage("ServerRewards Points Label Format", this, aUiUserId),
@@ -1403,7 +1473,8 @@ namespace Oxide.Plugins
             );
             LogDebug("BuildUserPage > Title lables have been added.");
 
-            if (aPageType == UiPage.PlayerPage) {
+            if (aPageType == UiPage.PlayerPage)
+            {
                 BasePlayer player = BasePlayer.FindByID(aPlayerId) ?? BasePlayer.FindSleeping(aPlayerId);
                 LogDebug("BuildUserPage > player = null? " + InternalAssert(player == null));
 
@@ -1417,24 +1488,30 @@ namespace Oxide.Plugins
 
                 // --- Build player action panel
                 // Ban, Kick
-                if (VerifyPermission(aUIObj.PlayerIdString, CPermBan)) {
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermBan))
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
                         lang.GetMessage("Ban Button Text", this, aUIObj.PlayerIdString), $"{CBanUserCmd} {aPlayerId}"
                     );
-                } else {
+                }
+                else
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Ban Button Text", this, aUIObj.PlayerIdString)
                     );
                 }
 
-                if (VerifyPermission(aUIObj.PlayerIdString, CPermKick) && player.IsConnected) {
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermKick) && player.IsConnected)
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnKickLbAnchor, CUserPageBtnKickRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
                         lang.GetMessage("Kick Button Text", this, aUIObj.PlayerIdString), $"{CKickUserCmd} {aPlayerId}"
                     );
-                } else {
+                }
+                else
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnKickLbAnchor, CUserPageBtnKickRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Kick Button Text", this, aUIObj.PlayerIdString)
@@ -1451,8 +1528,10 @@ namespace Oxide.Plugins
                 );
 
                 // Unmute, Mute (And timed ones if BetterChat is available)
-                if (VerifyPermission(aUIObj.PlayerIdString, CPermMute) && player.IsConnected) {
-                    if (GetIsMuted(ref player)) {
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermMute) && player.IsConnected)
+                {
+                    if (GetIsMuted(ref player))
+                    {
                         aUIObj.AddButton(
                             actionPanel, CUserPageBtnUnmuteLbAnchor, CUserPageBtnUnmuteRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
                             lang.GetMessage("Unmute Button Text", this, aUIObj.PlayerIdString), $"{CUnmuteUserCmd} {aPlayerId}"
@@ -1462,7 +1541,8 @@ namespace Oxide.Plugins
                             lang.GetMessage("Mute Button Text", this, aUIObj.PlayerIdString)
                         );
 
-                        if (BetterChatMute != null) {
+                        if (BetterChatMute != null)
+                        {
                             aUIObj.AddButton(
                                 actionPanel, CUserPageBtnMuteFifteenLbAnchor, CUserPageBtnMuteFifteenRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                                 lang.GetMessage("Mute Button Text 15", this, aUIObj.PlayerIdString)
@@ -1476,7 +1556,9 @@ namespace Oxide.Plugins
                                 lang.GetMessage("Mute Button Text 60", this, aUIObj.PlayerIdString)
                             );
                         }
-                    } else {
+                    }
+                    else
+                    {
                         aUIObj.AddButton(
                             actionPanel, CUserPageBtnUnmuteLbAnchor, CUserPageBtnUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                             lang.GetMessage("Unmute Button Text", this, aUIObj.PlayerIdString)
@@ -1486,7 +1568,8 @@ namespace Oxide.Plugins
                             lang.GetMessage("Mute Button Text", this, aUIObj.PlayerIdString), $"{CMuteUserCmd} {aPlayerId} 0"
                         );
 
-                        if (BetterChatMute != null) {
+                        if (BetterChatMute != null)
+                        {
                             aUIObj.AddButton(
                                 actionPanel, CUserPageBtnMuteFifteenLbAnchor, CUserPageBtnMuteFifteenRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
                                 lang.GetMessage("Mute Button Text 15", this, aUIObj.PlayerIdString), $"{CMuteUserCmd} {aPlayerId} 15"
@@ -1501,7 +1584,9 @@ namespace Oxide.Plugins
                             );
                         }
                     }
-                } else {
+                }
+                else
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnUnmuteLbAnchor, CUserPageBtnUnmuteRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Unmute Button Text", this, aUIObj.PlayerIdString)
@@ -1513,13 +1598,17 @@ namespace Oxide.Plugins
                 }
 
                 // Unfreeze, Freeze
-                if (Freeze == null) {
+                if (Freeze == null)
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Freeze Not Installed Button Text", this, aUIObj.PlayerIdString)
                     );
-                } else if (VerifyPermission(aUIObj.PlayerIdString, CPermFreeze) && player.IsConnected) {
-                    if (GetIsFrozen(aPlayerId)) {
+                }
+                else if (VerifyPermission(aUIObj.PlayerIdString, CPermFreeze) && player.IsConnected)
+                {
+                    if (GetIsFrozen(aPlayerId))
+                    {
                         aUIObj.AddButton(
                             actionPanel, CUserPageBtnUnFreezeLbAnchor, CUserPageBtnUnFreezeRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
                             lang.GetMessage("UnFreeze Button Text", this, aUIObj.PlayerIdString), $"{CUnreezeCmd} {aPlayerId}"
@@ -1528,7 +1617,9 @@ namespace Oxide.Plugins
                             actionPanel, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                             lang.GetMessage("Freeze Button Text", this, aUIObj.PlayerIdString)
                         );
-                    } else {
+                    }
+                    else
+                    {
                         aUIObj.AddButton(
                             actionPanel, CUserPageBtnUnFreezeLbAnchor, CUserPageBtnUnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                             lang.GetMessage("UnFreeze Button Text", this, aUIObj.PlayerIdString)
@@ -1538,7 +1629,9 @@ namespace Oxide.Plugins
                             lang.GetMessage("Freeze Button Text", this, aUIObj.PlayerIdString), $"{CFreezeCmd} {aPlayerId}"
                         );
                     }
-                } else {
+                }
+                else
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnUnFreezeLbAnchor, CUserPageBtnUnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("UnFreeze Button Text", this, aUIObj.PlayerIdString)
@@ -1550,48 +1643,60 @@ namespace Oxide.Plugins
                 }
 
                 // Clear inventory, Reset BP, Reset metabolism
-                if (VerifyPermission(aUIObj.PlayerIdString, CPermClearInventory)) {
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermClearInventory))
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnClearInventoryLbAnchor, CUserPageBtnClearInventoryRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
                         lang.GetMessage("Clear Inventory Button Text", this, aUIObj.PlayerIdString), $"{CClearUserInventoryCmd} {aPlayerId}"
                     );
-                } else {
+                }
+                else
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnClearInventoryLbAnchor, CUserPageBtnClearInventoryRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Clear Inventory Button Text", this, aUIObj.PlayerIdString)
                     );
                 }
 
-                if (VerifyPermission(aUIObj.PlayerIdString, CPermResetBP)) {
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermResetBP))
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnResetBPLbAnchor, CUserPageBtnResetBPRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
                         lang.GetMessage("Reset Blueprints Button Text", this, aUIObj.PlayerIdString), $"{CResetUserBPCmd} {aPlayerId}"
                     );
-                } else {
+                }
+                else
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnResetBPLbAnchor, CUserPageBtnResetBPRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Reset Blueprints Button Text", this, aUIObj.PlayerIdString)
                     );
                 }
 
-                if (VerifyPermission(aUIObj.PlayerIdString, CPermResetMetabolism)) {
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermResetMetabolism))
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnResetMetabolismLbAnchor, CUserPageBtnResetMetabolismRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
                         lang.GetMessage("Reset Metabolism Button Text", this, aUIObj.PlayerIdString), $"{CResetUserMetabolismCmd} {aPlayerId}"
                     );
-                } else {
+                }
+                else
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnResetMetabolismLbAnchor, CUserPageBtnResetMetabolismRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Reset Metabolism Button Text", this, aUIObj.PlayerIdString)
                     );
                 }
 
-                if (VerifyPermission(aUIObj.PlayerIdString, CPermRecoverMetabolism)) {
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermRecoverMetabolism))
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnRecoverMetabolismLbAnchor, CUserPageBtnRecoverMetabolismRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
                         lang.GetMessage("Recover Metabolism Button Text", this, aUIObj.PlayerIdString), $"{CRecoverUserMetabolismCmd} {aPlayerId}"
                     );
-                } else {
+                }
+                else
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnRecoverMetabolismLbAnchor, CUserPageBtnRecoverMetabolismRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Recover Metabolism Button Text", this, aUIObj.PlayerIdString)
@@ -1599,7 +1704,8 @@ namespace Oxide.Plugins
                 }
 
                 // Teleport to, Teleport, Spectate
-                if (VerifyPermission(aUIObj.PlayerIdString, CPermTeleport)) {
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermTeleport))
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnTeleportToLbAnchor, CUserPageBtnTeleportToRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
                         lang.GetMessage("Teleport To Player Button Text", this, aUIObj.PlayerIdString), $"{CTeleportToUserCmd} {aPlayerId}"
@@ -1608,7 +1714,9 @@ namespace Oxide.Plugins
                         actionPanel, CUserPageBtnTeleportLbAnchor, CUserPageBtnTeleportRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
                         lang.GetMessage("Teleport Player Button Text", this, aUIObj.PlayerIdString), $"{CTeleportUserCmd} {aPlayerId}"
                     );
-                } else {
+                }
+                else
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnTeleportToLbAnchor, CUserPageBtnTeleportToRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Teleport To Player Button Text", this, aUIObj.PlayerIdString)
@@ -1619,12 +1727,15 @@ namespace Oxide.Plugins
                     );
                 }
 
-                if (VerifyPermission(aUIObj.PlayerIdString, CPermSpectate)) {
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermSpectate))
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnSpectateLbAnchor, CUserPageBtnSpectateRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
                         lang.GetMessage("Spectate Player Button Text", this, aUIObj.PlayerIdString), $"{CSpectateUserCmd} {aPlayerId}"
                     );
-                } else {
+                }
+                else
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnSpectateLbAnchor, CUserPageBtnSpectateRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Spectate Player Button Text", this, aUIObj.PlayerIdString)
@@ -1632,25 +1743,44 @@ namespace Oxide.Plugins
                 }
 
                 // Perms
-                if (PermissionsManager == null) {
+                if (PermissionsManager == null)
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Perms Not Installed Button Text", this, aUIObj.PlayerIdString)
                     );
-                } else if (VerifyPermission(aUIObj.PlayerIdString, CPermPerms)) {
+                }
+                else if (VerifyPermission(aUIObj.PlayerIdString, CPermPerms))
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
                         lang.GetMessage("Perms Button Text", this, aUIObj.PlayerIdString), $"{CPermsCmd} {aPlayerId}"
                     );
-                } else {
+                }
+                else
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Perms Button Text", this, aUIObj.PlayerIdString)
                     );
                 }
 
+                // Backpacks & Inventory
+                bool hasPermBackpacks = Backpacks != null && VerifyPermission(aUIObj.PlayerIdString, CPermBackpacks);
+                aUIObj.AddButton(
+                    actionPanel, CUserPageBtnBackpacksLbAnchor, CUserPageBtnBackpacksRtAnchor, hasPermBackpacks ? CuiColor.ButtonSuccess : CuiColor.ButtonInactive, hasPermBackpacks ? CuiColor.TextAlt : CuiColor.Text,
+                    lang.GetMessage(Backpacks != null ? "Backpacks Button Text" : "Backpacks Not Installed Button Text", this, aUIObj.PlayerIdString), hasPermBackpacks ? $"{CBackpackViewCmd} {aPlayerId}" : ""
+                );
+                bool hasPermInventory = InventoryViewer != null && VerifyPermission(aUIObj.PlayerIdString, CPermInventory);
+                aUIObj.AddButton(
+                    actionPanel, CUserPageBtnInventoryLbAnchor, CUserPageBtnInventoryRtAnchor, hasPermInventory ? CuiColor.ButtonSuccess : CuiColor.ButtonInactive, hasPermInventory ? CuiColor.TextAlt : CuiColor.Text,
+                    lang.GetMessage(InventoryViewer != null ? "Inventory Button Text" : "Inventory Not Installed Button Text", this, aUIObj.PlayerIdString), hasPermInventory ? $"{CInventoryViewCmd} {aPlayerId}" : ""
+                );
+
+
                 // Hurt 25, Hurt 50, Hurt 75, Hurt 100, Kill
-                if (VerifyPermission(aUIObj.PlayerIdString, CPermHurt)) {
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermHurt))
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnHurt25LbAnchor, CUserPageBtnHurt25RtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
                         lang.GetMessage("Hurt 25 Button Text", this, aUIObj.PlayerIdString), $"{CHurtUserCmd} {aPlayerId} 25"
@@ -1667,7 +1797,9 @@ namespace Oxide.Plugins
                         actionPanel, CUserPageBtnHurt100LbAnchor, CUserPageBtnHurt100RtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
                         lang.GetMessage("Hurt 100 Button Text", this, aUIObj.PlayerIdString), $"{CHurtUserCmd} {aPlayerId} 100"
                     );
-                } else {
+                }
+                else
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnHurt25LbAnchor, CUserPageBtnHurt25RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Hurt 25 Button Text", this, aUIObj.PlayerIdString)
@@ -1686,12 +1818,15 @@ namespace Oxide.Plugins
                     );
                 }
 
-                if (VerifyPermission(aUIObj.PlayerIdString, CPermKill)) {
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermKill))
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnKillLbAnchor, CUserPageBtnKillRtAnchor, CuiColor.ButtonDanger, CuiColor.TextAlt,
                         lang.GetMessage("Kill Button Text", this, aUIObj.PlayerIdString), $"{CKillUserCmd} {aPlayerId}"
                     );
-                } else {
+                }
+                else
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnKillLbAnchor, CUserPageBtnKillRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Kill Button Text", this, aUIObj.PlayerIdString)
@@ -1699,7 +1834,8 @@ namespace Oxide.Plugins
                 }
 
                 // Heal 25, Heal 50, Heal 75, Heal 100, Heal wounds
-                if (VerifyPermission(aUIObj.PlayerIdString, CPermHeal)) {
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermHeal))
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnHeal25LbAnchor, CUserPageBtnHeal25RtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
                         lang.GetMessage("Heal 25 Button Text", this, aUIObj.PlayerIdString), $"{CHealUserCmd} {aPlayerId} 25"
@@ -1720,7 +1856,9 @@ namespace Oxide.Plugins
                         actionPanel, CUserPageBtnHealWoundsLbAnchor, CUserPageBtnHealWoundsRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
                         lang.GetMessage("Heal Wounds Button Text", this, aUIObj.PlayerIdString), $"{CHealUserCmd} {aPlayerId} 0"
                     );
-                } else {
+                }
+                else
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnHeal25LbAnchor, CUserPageBtnHeal25RtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Heal 25 Button Text", this, aUIObj.PlayerIdString)
@@ -1742,7 +1880,9 @@ namespace Oxide.Plugins
                         lang.GetMessage("Heal Wounds Button Text", this, aUIObj.PlayerIdString)
                     );
                 }
-            } else {
+            }
+            else
+            {
                 ServerUsers.User serverUser = ServerUsers.Get(aPlayerId);
                 aUIObj.AddLabel(
                     panel, CMainLblTitleLbAnchor, CMainLblTitleRtAnchor, CuiColor.TextAlt,
@@ -1759,12 +1899,15 @@ namespace Oxide.Plugins
                 );
 
                 // --- Build player action panel
-                if (VerifyPermission(aUIObj.PlayerIdString, CPermBan)) {
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermBan))
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiColor.Button, CuiColor.TextAlt,
                         lang.GetMessage("Unban Button Text", this, aUIObj.PlayerIdString), $"{CUnbanUserCmd} {aPlayerId}"
                     );
-                } else {
+                }
+                else
+                {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Unban Button Text", this, aUIObj.PlayerIdString)
@@ -1791,32 +1934,36 @@ namespace Oxide.Plugins
             BuildTabMenu(ref newUiLib, aPageType);
             LogDebug($"Elapsed time (BuildTabMenu): {(Time.realtimeSinceStartup - newUiLib.StartTime).ToString("F8")}");
 
-            switch (aPageType) {
-                case UiPage.Main: {
-                    BuildMainPage(ref newUiLib);
-                    break;
-                }
+            switch (aPageType)
+            {
+                case UiPage.Main:
+                    {
+                        BuildMainPage(ref newUiLib);
+                        break;
+                    }
                 case UiPage.PlayersOnline:
                 case UiPage.PlayersOffline:
-                case UiPage.PlayersBanned: {
-                    int page = 0;
+                case UiPage.PlayersBanned:
+                    {
+                        int page = 0;
 
-                    if (!string.IsNullOrEmpty(aArg))
-                        int.TryParse(aArg, out page);
+                        if (!string.IsNullOrEmpty(aArg))
+                            int.TryParse(aArg, out page);
 
-                    BuildUserBtnPage(ref newUiLib, aPageType, page, aIndFiltered);
-                    break;
-                }
+                        BuildUserBtnPage(ref newUiLib, aPageType, page, aIndFiltered);
+                        break;
+                    }
                 case UiPage.PlayerPage:
-                case UiPage.PlayerPageBanned: {
-                    ulong playerId = aPlayer.userID;
+                case UiPage.PlayerPageBanned:
+                    {
+                        ulong playerId = aPlayer.userID;
 
-                    if (!string.IsNullOrEmpty(aArg))
-                        ulong.TryParse(aArg, out playerId);
+                        if (!string.IsNullOrEmpty(aArg))
+                            ulong.TryParse(aArg, out playerId);
 
-                    BuildUserPage(ref newUiLib, aPageType, playerId);
-                    break;
-                }
+                        BuildUserPage(ref newUiLib, aPageType, playerId);
+                        break;
+                    }
             }
 
             LogDebug($"BuildUI JSON value: \n{newUiLib.JSON}");
@@ -1847,7 +1994,7 @@ namespace Oxide.Plugins
         #endregion
 
         #region Constants
-        private static readonly bool CDebugEnabled = false;
+        private static readonly bool CDebugEnabled = true;
         private const int CMaxPlayerCols = 5;
         private const int CMaxPlayerRows = 12;
         private const int CMaxPlayerButtons = CMaxPlayerCols * CMaxPlayerRows;
@@ -1881,6 +2028,8 @@ namespace Oxide.Plugins
         private const string CMainPageBanIdInputTextCmd = "playeradministration.mainpagebanidinputtext";
         private const string CUserBtnPageSearchInputTextCmd = "playeradministration.userbtnpagesearchinputtext";
         private const string CUserPageReasonInputTextCmd = "playeradministration.userpagereasoninputtext";
+        private const string CBackpackViewCmd = "playeradministration.viewbackpack";
+        private const string CInventoryViewCmd = "playeradministration.viewinventory";
         #endregion Local commands
 
         #region Foreign commands
@@ -1927,6 +2076,8 @@ namespace Oxide.Plugins
 
         #region Foreign permissions
         private const string CPermFreezeFrozen = "freeze.frozen";
+        private const string CPermBackpacks = "backpacks.admin";
+        private const string CPermInventory = "inventoryviewer.allowed";
         #endregion Foreign permissions
 
         /* Define layout */
@@ -2079,6 +2230,11 @@ namespace Oxide.Plugins
         // Row 6
         private static readonly CuiPoint CUserPageBtnPermsLbAnchor = new CuiPoint(0.01f, 0.46f);
         private static readonly CuiPoint CUserPageBtnPermsRtAnchor = new CuiPoint(0.16f, 0.52f);
+        private static readonly CuiPoint CUserPageBtnBackpacksLbAnchor = new CuiPoint(0.17f, 0.46f);
+        private static readonly CuiPoint CUserPageBtnBackpacksRtAnchor = new CuiPoint(0.32f, 0.52f);
+        private static readonly CuiPoint CUserPageBtnInventoryLbAnchor = new CuiPoint(0.33f, 0.46f);
+        private static readonly CuiPoint CUserPageBtnInventoryRtAnchor = new CuiPoint(0.48f, 0.52f);
+
         // Row 11
         private static readonly CuiPoint CUserPageBtnHurt25LbAnchor = new CuiPoint(0.01f, 0.10f);
         private static readonly CuiPoint CUserPageBtnHurt25RtAnchor = new CuiPoint(0.16f, 0.16f);
@@ -2421,7 +2577,8 @@ namespace Oxide.Plugins
 
         void Unload()
         {
-            foreach (BasePlayer player in Player.Players) {
+            foreach (BasePlayer player in Player.Players)
+            {
                 CuiHelper.DestroyUi(player, CBasePanelName);
 
                 if (FMainPageBanIdInputText.ContainsKey(player.UserIDString))
@@ -2441,7 +2598,8 @@ namespace Oxide.Plugins
 
         void OnServerInitialized()
         {
-            foreach (BasePlayer user in Player.Players) {
+            foreach (BasePlayer user in Player.Players)
+            {
                 if (user.IsNpc)
                     continue;
 
@@ -2451,7 +2609,8 @@ namespace Oxide.Plugins
                     FOnlineUserList[user.UserIDString] = user.displayName;
             }
 
-            foreach (BasePlayer user in Player.Sleepers) {
+            foreach (BasePlayer user in Player.Sleepers)
+            {
                 if (user.IsNpc)
                     continue;
 
@@ -2511,7 +2670,8 @@ namespace Oxide.Plugins
         {
             base.LoadConfig();
 
-            try {
+            try
+            {
                 FConfigData = Config.ReadObject<ConfigData>();
 
                 if (FConfigData == null)
@@ -2522,7 +2682,9 @@ namespace Oxide.Plugins
 
                 if (UpgradeTo1313())
                     LogDebug("Upgraded the config to version 1.3.13");
-            } catch {
+            }
+            catch
+            {
                 LoadDefaultConfig();
             }
 
@@ -2628,6 +2790,12 @@ namespace Oxide.Plugins
                     { "Perms Button Text", "Permissions" },
                     { "Perms Not Installed Button Text", "Perms Not Installed" },
 
+                    { "Backpacks Button Text", "View Backpack" },
+                    { "Backpacks Not Installed Button Text", "Backpacks Not Installed" },
+
+                    { "Inventory Button Text", "View Inventory" },
+                    { "Inventory Not Installed Button Text", "Inventory Viewer Not Installed" },
+
                     { "Hurt 25 Button Text", "Hurt 25" },
                     { "Hurt 50 Button Text", "Hurt 50" },
                     { "Hurt 75 Button Text", "Hurt 75" },
@@ -2659,7 +2827,7 @@ namespace Oxide.Plugins
                 return;
 
             LogInfo($"{player.displayName}: Opened the menu");
-            CuiHelper.AddUi(player, CuiHelper.ToJson(new CuiElementContainer {{ CBasePanel, Cui.ParentOverlay, CBasePanelName }}, false));
+            CuiHelper.AddUi(player, CuiHelper.ToJson(new CuiElementContainer { { CBasePanel, Cui.ParentOverlay, CBasePanelName } }, false));
             BuildUI(player, UiPage.Main);
         }
 
@@ -2670,7 +2838,7 @@ namespace Oxide.Plugins
 
             if (aPlayer.IsServer)
                 return;
-            
+
             CuiHelper.DestroyUi(BasePlayer.Find(aPlayer.Id), CBasePanelName);
 
             if (FMainPageBanIdInputText.ContainsKey(aPlayer.Id))
@@ -2691,43 +2859,53 @@ namespace Oxide.Plugins
 
             bool twoOrMore = aArgs.Count() >= 2;
 
-            switch (aArgs[0].ToLower()) {
-                case CCmdArgPlayersOnline: {
-                    BuildUI(player, UiPage.PlayersOnline, (twoOrMore ? aArgs[1] : string.Empty));
-                    break;
-                }
-                case CCmdArgPlayersOnlineSearch: {
-                    BuildUI(player, UiPage.PlayersOnline, (twoOrMore ? aArgs[1] : string.Empty), true);
-                    break;
-                }
-                case CCmdArgPlayersOffline: {
-                    BuildUI(player, UiPage.PlayersOffline, (twoOrMore ? aArgs[1] : string.Empty));
-                    break;
-                }
-                case CCmdArgPlayersOfflineSearch: {
-                    BuildUI(player, UiPage.PlayersOffline, (twoOrMore ? aArgs[1] : string.Empty), true);
-                    break;
-                }
-                case CCmdArgPlayersBanned: {
-                    BuildUI(player, UiPage.PlayersBanned, (twoOrMore ? aArgs[1] : string.Empty));
-                    break;
-                }
-                case CCmdArgPlayersBannedSearch: {
-                    BuildUI(player, UiPage.PlayersBanned, (twoOrMore ? aArgs[1] : string.Empty), true);
-                    break;
-                }
-                case CCmdArgPlayerPage: {
-                    BuildUI(player, UiPage.PlayerPage, (twoOrMore ? aArgs[1] : string.Empty));
-                    break;
-                }
-                case CCmdArgPlayerPageBanned: {
-                    BuildUI(player, UiPage.PlayerPageBanned, (twoOrMore ? aArgs[1] : string.Empty));
-                    break;
-                }
-                default: { // Main is the default for everything
-                    BuildUI(player, UiPage.Main);
-                    break;
-                }
+            switch (aArgs[0].ToLower())
+            {
+                case CCmdArgPlayersOnline:
+                    {
+                        BuildUI(player, UiPage.PlayersOnline, (twoOrMore ? aArgs[1] : string.Empty));
+                        break;
+                    }
+                case CCmdArgPlayersOnlineSearch:
+                    {
+                        BuildUI(player, UiPage.PlayersOnline, (twoOrMore ? aArgs[1] : string.Empty), true);
+                        break;
+                    }
+                case CCmdArgPlayersOffline:
+                    {
+                        BuildUI(player, UiPage.PlayersOffline, (twoOrMore ? aArgs[1] : string.Empty));
+                        break;
+                    }
+                case CCmdArgPlayersOfflineSearch:
+                    {
+                        BuildUI(player, UiPage.PlayersOffline, (twoOrMore ? aArgs[1] : string.Empty), true);
+                        break;
+                    }
+                case CCmdArgPlayersBanned:
+                    {
+                        BuildUI(player, UiPage.PlayersBanned, (twoOrMore ? aArgs[1] : string.Empty));
+                        break;
+                    }
+                case CCmdArgPlayersBannedSearch:
+                    {
+                        BuildUI(player, UiPage.PlayersBanned, (twoOrMore ? aArgs[1] : string.Empty), true);
+                        break;
+                    }
+                case CCmdArgPlayerPage:
+                    {
+                        BuildUI(player, UiPage.PlayerPage, (twoOrMore ? aArgs[1] : string.Empty));
+                        break;
+                    }
+                case CCmdArgPlayerPageBanned:
+                    {
+                        BuildUI(player, UiPage.PlayerPageBanned, (twoOrMore ? aArgs[1] : string.Empty));
+                        break;
+                    }
+                default:
+                    { // Main is the default for everything
+                        BuildUI(player, UiPage.Main);
+                        break;
+                    }
             }
         }
 
@@ -2740,11 +2918,14 @@ namespace Oxide.Plugins
             if (!GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            if (aPlayer.IsServer) {
-                
+            if (aPlayer.IsServer)
+            {
+
                 Player.Unban(targetId);
                 LogInfo($"{aPlayer.Name}: Unbanned user ID {targetId}");
-            } else {
+            }
+            else
+            {
                 BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
                 if (!VerifyPermission(ref player, CPermBan, true))
@@ -2765,8 +2946,10 @@ namespace Oxide.Plugins
             if (!GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            if (aPlayer.IsServer) {
-                if (permission.UserHasPermission(targetId.ToString(), CPermProtectBan)) {
+            if (aPlayer.IsServer)
+            {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectBan))
+                {
                     aPlayer.Reply(lang.GetMessage("Protection Active Text", this));
                     return;
                 }
@@ -2775,25 +2958,31 @@ namespace Oxide.Plugins
                 Player.Ban(targetId, banReasonMsg);
                 LogInfo($"{aPlayer.Name}: Banned user ID {targetId}");
                 SendDiscordKickBanMessage(aPlayer.Name, string.Empty, ServerUsers.Get(targetId).username, targetId.ToString(), banReasonMsg, true);
-            } else {
+            }
+            else
+            {
                 BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
                 if (!VerifyPermission(ref player, CPermBan, true))
                     return;
 
-                if (permission.UserHasPermission(targetId.ToString(), CPermProtectBan)) {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectBan))
+                {
                     rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, aPlayer.Id));
                     return;
                 }
 
                 string banReasonMsg;
 
-                if (FUserPageReasonInputText.ContainsKey(aPlayer.Id)) {
+                if (FUserPageReasonInputText.ContainsKey(aPlayer.Id))
+                {
                     banReasonMsg = FUserPageReasonInputText[aPlayer.Id].Trim();
 
                     if (string.IsNullOrEmpty(banReasonMsg))
                         banReasonMsg = lang.GetMessage("Ban Reason Message Text", this, targetId.ToString());
-                } else {
+                }
+                else
+                {
                     banReasonMsg = lang.GetMessage("Ban Reason Message Text", this, targetId.ToString());
                 }
 
@@ -2818,7 +3007,8 @@ namespace Oxide.Plugins
             )
                 return;
 
-            if (permission.UserHasPermission(targetId.ToString(), CPermProtectBan)) {
+            if (permission.UserHasPermission(targetId.ToString(), CPermProtectBan))
+            {
                 rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, aPlayer.Id));
                 return;
             }
@@ -2843,8 +3033,10 @@ namespace Oxide.Plugins
             BasePlayer targetPlayer = BasePlayer.FindByID(targetId);
             string kickReasonMsg = lang.GetMessage("Kick Reason Message Text", this, targetId.ToString());
 
-            if (aPlayer.IsServer) {
-                if (permission.UserHasPermission(targetId.ToString(), CPermProtectKick)) {
+            if (aPlayer.IsServer)
+            {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectKick))
+                {
                     aPlayer.Reply(lang.GetMessage("Protection Active Text", this));
                     return;
                 }
@@ -2852,17 +3044,20 @@ namespace Oxide.Plugins
                 targetPlayer?.Kick(kickReasonMsg);
                 LogInfo($"{aPlayer.Name}: Kicked user ID {targetId}");
                 SendDiscordKickBanMessage(aPlayer.Name, string.Empty, targetPlayer.displayName, targetPlayer.UserIDString, kickReasonMsg, false);
-            } else {
+            }
+            else
+            {
                 BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
                 if (!VerifyPermission(ref player, CPermKick, true))
                     return;
 
-                if (permission.UserHasPermission(targetId.ToString(), CPermProtectKick)) {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectKick))
+                {
                     rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, aPlayer.Id));
                     return;
                 }
-                
+
                 targetPlayer?.Kick(kickReasonMsg);
                 LogInfo($"{player.displayName}: Kicked user ID {targetId}");
                 SendDiscordKickBanMessage(player.displayName, aPlayer.Id, targetPlayer.displayName, targetPlayer.UserIDString, kickReasonMsg, false);
@@ -2879,17 +3074,23 @@ namespace Oxide.Plugins
             if (!GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            if (aPlayer.IsServer) {
+            if (aPlayer.IsServer)
+            {
                 BasePlayer target = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
 
-                if (BetterChatMute != null && target != null) {
+                if (BetterChatMute != null && target != null)
+                {
                     BetterChatMute.Call("API_Unmute", target.IPlayer, aPlayer);
-                } else {
+                }
+                else
+                {
                     target?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, false);
                 }
 
                 LogInfo($"{aPlayer.Name}: Unmuted user ID {targetId}");
-            } else {
+            }
+            else
+            {
                 BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
                 if (!VerifyPermission(ref player, CPermMute, true))
@@ -2897,9 +3098,12 @@ namespace Oxide.Plugins
 
                 BasePlayer target = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
 
-                if (BetterChatMute != null && target != null) {
+                if (BetterChatMute != null && target != null)
+                {
                     BetterChatMute.Call("API_Unmute", target.IPlayer, aPlayer);
-                } else {
+                }
+                else
+                {
                     target?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, false);
                 }
 
@@ -2918,21 +3122,30 @@ namespace Oxide.Plugins
             if (!GetTargetAmountFromArg(aArgs, out targetId, out time))
                 return;
 
-            if (aPlayer.IsServer) {
+            if (aPlayer.IsServer)
+            {
                 BasePlayer target = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
 
-                if (BetterChatMute != null && target != null) {
-                    if (time == 0f) {
+                if (BetterChatMute != null && target != null)
+                {
+                    if (time == 0f)
+                    {
                         BetterChatMute.Call("API_Mute", target.IPlayer, aPlayer);
-                    } else {
+                    }
+                    else
+                    {
                         BetterChatMute.Call("API_TimeMute", target.IPlayer, aPlayer, TimeSpan.FromMinutes(time));
                     }
-                } else {
+                }
+                else
+                {
                     target?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, true);
                 }
 
                 LogInfo($"{aPlayer.Name}: Muted user ID {targetId}");
-            } else {
+            }
+            else
+            {
                 BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
                 if (!VerifyPermission(ref player, CPermMute, true))
@@ -2940,13 +3153,19 @@ namespace Oxide.Plugins
 
                 BasePlayer target = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
 
-                if (BetterChatMute != null && target != null) {
-                    if (time == 0f) {
+                if (BetterChatMute != null && target != null)
+                {
+                    if (time == 0f)
+                    {
                         BetterChatMute.Call("API_Mute", target.IPlayer, aPlayer);
-                    } else {
+                    }
+                    else
+                    {
                         BetterChatMute.Call("API_TimeMute", target.IPlayer, aPlayer, TimeSpan.FromMinutes(time));
                     }
-                } else {
+                }
+                else
+                {
                     target?.SetPlayerFlag(BasePlayer.PlayerFlags.ChatMute, true);
                 }
 
@@ -2987,6 +3206,36 @@ namespace Oxide.Plugins
             timer.Once(0.1f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
+        [Command(CBackpackViewCmd)]
+        private void PlayerAdministrationViewBackpackCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
+        {
+            LogDebug("PlayerAdministrationViewBackpackCallback was called");
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
+            ulong targetId;
+
+            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermBackpacks, true) || !GetTargetFromArg(aArgs, out targetId))
+                return;
+
+            Backpacks.Call("ViewBackpack", player, string.Empty, new[] { targetId.ToString() });
+            LogInfo($"{player.displayName}: Viewed backpack of {targetId}");
+            PlayerAdministrationCloseUICallback(player.IPlayer, string.Empty, new[] { string.Empty });
+        }
+
+        [Command(CInventoryViewCmd)]
+        private void PlayerAdministrationViewInventoryCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
+        {
+            LogDebug("PlayerAdministrationViewInventoryCallback was called");
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
+            ulong targetId;
+
+            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermBackpacks, true) || !GetTargetFromArg(aArgs, out targetId))
+                return;
+
+            InventoryViewer.Call("ViewInventoryCommand", player, targetId.ToString(), new[] { targetId.ToString() });
+            LogInfo($"{player.displayName}: Viewed inventory of {targetId}");
+            PlayerAdministrationCloseUICallback(player.IPlayer, string.Empty, new[] { string.Empty });
+        }
+
         [Command(CClearUserInventoryCmd)]
         private void PlayerAdministrationClearUserInventoryCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
@@ -2996,26 +3245,31 @@ namespace Oxide.Plugins
             if (!GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            if (aPlayer.IsServer) {
-                if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
+            if (aPlayer.IsServer)
+            {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset))
+                {
                     aPlayer.Reply(lang.GetMessage("Protection Active Text", this));
                     return;
                 }
 
                 (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.inventory.Strip();
                 LogInfo($"{aPlayer.Name}: Cleared the inventory of user ID {targetId}");
-            } else {
+            }
+            else
+            {
                 BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
                 if (!VerifyPermission(ref player, CPermClearInventory, true))
                     return;
 
-                if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset))
+                {
                     rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, aPlayer.Id));
                     return;
                 }
 
-                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.inventory.Strip();
+              (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.inventory.Strip();
                 LogInfo($"{player.displayName}: Cleared the inventory of user ID {targetId}");
                 timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
             }
@@ -3030,26 +3284,31 @@ namespace Oxide.Plugins
             if (!GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            if (aPlayer.IsServer) {
-                if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
+            if (aPlayer.IsServer)
+            {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset))
+                {
                     aPlayer.Reply(lang.GetMessage("Protection Active Text", this));
                     return;
                 }
 
                 (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.blueprints.Reset();
                 LogInfo($"{aPlayer.Name}: Reset the blueprints of user ID {targetId}");
-            } else {
+            }
+            else
+            {
                 BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
                 if (!VerifyPermission(ref player, CPermResetBP, true))
                     return;
 
-                if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset))
+                {
                     rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, player.UserIDString));
                     return;
                 }
 
-                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.blueprints.Reset();
+              (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.blueprints.Reset();
                 LogInfo($"{player.displayName}: Reset the blueprints of user ID {targetId}");
                 timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
             }
@@ -3064,26 +3323,31 @@ namespace Oxide.Plugins
             if (!GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            if (aPlayer.IsServer) {
-                if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
+            if (aPlayer.IsServer)
+            {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset))
+                {
                     aPlayer.Reply(lang.GetMessage("Protection Active Text", this));
                     return;
                 }
 
                 (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.metabolism.Reset();
                 LogInfo($"{aPlayer.Name}: Reset the metabolism of user ID {targetId}");
-            } else {
+            }
+            else
+            {
                 BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
                 if (!VerifyPermission(ref player, CPermResetMetabolism, true))
                     return;
 
-                if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset)) {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectReset))
+                {
                     rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, aPlayer.Id));
                     return;
                 }
 
-                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.metabolism.Reset();
+              (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.metabolism.Reset();
                 LogInfo($"{player.displayName}: Reset the metabolism of user ID {targetId}");
                 timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
             }
@@ -3099,7 +3363,8 @@ namespace Oxide.Plugins
             if (!GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            if (!aPlayer.IsServer) {
+            if (!aPlayer.IsServer)
+            {
                 player = BasePlayer.Find(aPlayer.Id);
 
                 if (!VerifyPermission(ref player, CPermRecoverMetabolism, true))
@@ -3118,9 +3383,12 @@ namespace Oxide.Plugins
             playerState.temperature.value = (PlayerMetabolism.HotThreshold + PlayerMetabolism.ColdThreshold) / 2;
             playerState.wetness.value = playerState.wetness.min;
 
-            if (aPlayer.IsServer) {
+            if (aPlayer.IsServer)
+            {
                 LogInfo($"{aPlayer.Name}: Recovered the metabolism of user ID {targetId}");
-            } else {
+            }
+            else
+            {
                 LogInfo($"{player.displayName}: Recovered the metabolism of user ID {targetId}");
                 timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
             }
@@ -3138,10 +3406,13 @@ namespace Oxide.Plugins
 
             BasePlayer targetPlayer = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
 
-            if (targetPlayer.IsAlive()) {
+            if (targetPlayer.IsAlive())
+            {
                 player.Teleport(targetPlayer.transform.position);
                 LogInfo($"{player.displayName}: Teleported to user ID {targetId}");
-            } else {
+            }
+            else
+            {
                 aPlayer.Reply(lang.GetMessage("Dead Player Error Text", this, aPlayer.Id));
             }
 
@@ -3160,10 +3431,13 @@ namespace Oxide.Plugins
 
             BasePlayer targetPlayer = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
 
-            if (targetPlayer.IsAlive()) {
+            if (targetPlayer.IsAlive())
+            {
                 targetPlayer.Teleport(player.transform.position);
                 LogInfo($"{targetPlayer.displayName}: Teleported to admin {player.displayName}");
-            } else {
+            }
+            else
+            {
                 aPlayer.Reply(lang.GetMessage("Dead Player Error Text", this, aPlayer.Id));
             }
 
@@ -3217,26 +3491,31 @@ namespace Oxide.Plugins
             if (!GetTargetAmountFromArg(aArgs, out targetId, out amount))
                 return;
 
-            if (aPlayer.IsServer) {
-                if (permission.UserHasPermission(targetId.ToString(), CPermProtectHurt)) {
+            if (aPlayer.IsServer)
+            {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectHurt))
+                {
                     aPlayer.Reply(lang.GetMessage("Protection Active Text", this));
                     return;
                 }
 
                 (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Hurt(amount);
                 LogInfo($"{aPlayer.Name}: Hurt user ID {targetId} for {amount} points");
-            } else {
+            }
+            else
+            {
                 BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
                 if (!VerifyPermission(ref player, CPermHurt, true))
                     return;
 
-                if (permission.UserHasPermission(targetId.ToString(), CPermProtectHurt)) {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectHurt))
+                {
                     rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, aPlayer.Id));
                     return;
                 }
 
-                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Hurt(amount);
+              (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Hurt(amount);
                 LogInfo($"{player.displayName}: Hurt user ID {targetId} for {amount} points");
                 timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
             }
@@ -3251,26 +3530,31 @@ namespace Oxide.Plugins
             if (!GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            if (aPlayer.IsServer) {
-                if (permission.UserHasPermission(targetId.ToString(), CPermProtectKill)) {
+            if (aPlayer.IsServer)
+            {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectKill))
+                {
                     aPlayer.Reply(lang.GetMessage("Protection Active Text", this));
                     return;
                 }
 
                 (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Die();
                 LogInfo($"{aPlayer.Name}: Killed user ID {targetId}");
-            } else {
+            }
+            else
+            {
                 BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
                 if (!VerifyPermission(ref player, CPermKill, true))
                     return;
 
-                if (permission.UserHasPermission(targetId.ToString(), CPermProtectKill)) {
+                if (permission.UserHasPermission(targetId.ToString(), CPermProtectKill))
+                {
                     rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, player.UserIDString));
                     return;
                 }
 
-                (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Die();
+              (BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId))?.Die();
                 LogInfo($"{player.displayName}: Killed user ID {targetId}");
                 timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
             }
@@ -3288,13 +3572,16 @@ namespace Oxide.Plugins
 
             BasePlayer targetPlayer = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
 
-            if (aPlayer.IsServer) {
+            if (aPlayer.IsServer)
+            {
                 if (targetPlayer.IsWounded())
                     targetPlayer.StopWounded();
 
                 targetPlayer.Heal(amount);
                 LogInfo($"{aPlayer.Name}: Healed user ID {targetId} for {amount} points");
-            } else {
+            }
+            else
+            {
                 BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
                 if (!VerifyPermission(ref player, CPermHeal, true))
@@ -3316,16 +3603,20 @@ namespace Oxide.Plugins
         {
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
-            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0) {
+            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0)
+            {
                 if (FMainPageBanIdInputText.ContainsKey(aPlayer.Id))
                     FMainPageBanIdInputText.Remove(aPlayer.Id);
 
                 return;
             }
 
-            if (FMainPageBanIdInputText.ContainsKey(aPlayer.Id)) {
+            if (FMainPageBanIdInputText.ContainsKey(aPlayer.Id))
+            {
                 FMainPageBanIdInputText[aPlayer.Id] = aArgs[0];
-            } else {
+            }
+            else
+            {
                 FMainPageBanIdInputText.Add(aPlayer.Id, aArgs[0]);
             }
         }
@@ -3335,16 +3626,20 @@ namespace Oxide.Plugins
         {
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
-            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0) {
+            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0)
+            {
                 if (FUserBtnPageSearchInputText.ContainsKey(aPlayer.Id))
                     FUserBtnPageSearchInputText.Remove(aPlayer.Id);
 
                 return;
             }
 
-            if (FUserBtnPageSearchInputText.ContainsKey(aPlayer.Id)) {
+            if (FUserBtnPageSearchInputText.ContainsKey(aPlayer.Id))
+            {
                 FUserBtnPageSearchInputText[aPlayer.Id] = aArgs[0];
-            } else {
+            }
+            else
+            {
                 FUserBtnPageSearchInputText.Add(aPlayer.Id, aArgs[0]);
             }
         }
@@ -3353,17 +3648,21 @@ namespace Oxide.Plugins
         private void PlayerAdministrationUserPageReasonInputTextCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
-            
-            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0) {
+
+            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0)
+            {
                 if (FUserPageReasonInputText.ContainsKey(aPlayer.Id))
                     FUserPageReasonInputText.Remove(aPlayer.Id);
 
                 return;
             }
 
-            if (FUserPageReasonInputText.ContainsKey(aPlayer.Id)) {
+            if (FUserPageReasonInputText.ContainsKey(aPlayer.Id))
+            {
                 FUserPageReasonInputText[aPlayer.Id] = aArgs[0];
-            } else {
+            }
+            else
+            {
                 FUserPageReasonInputText.Add(aPlayer.Id, aArgs[0]);
             }
         }
