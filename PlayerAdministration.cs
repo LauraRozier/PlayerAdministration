@@ -1,4 +1,4 @@
-﻿/* --- Contributor information ---
+/* --- Contributor information ---
  * Please follow the following set of guidelines when working on this plugin,
  * this to help others understand this file more easily.
  *
@@ -40,7 +40,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.5.21")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.22")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -58,6 +58,11 @@ namespace Oxide.Plugins
         private Plugin DiscordMessages;
         [PluginReference]
         private Plugin BetterChatMute;
+        [PluginReference]
+        private Plugin Backpacks;
+        [PluginReference]
+        private Plugin InventoryViewer;
+
 #pragma warning restore IDE0044, CS0649
         #endregion Plugin References
 
@@ -623,7 +628,7 @@ namespace Oxide.Plugins
         /// Log an error message to the logfile
         /// </summary>
         /// <param name="aMessage"></param>
-        private void LogError(string aMessage) =>  LogToFile(string.Empty, $"[{DateTime.Now.ToString("hh:mm:ss")}] ERROR > {aMessage}", this);
+        private void LogError(string aMessage) => LogToFile(string.Empty, $"[{DateTime.Now.ToString("hh:mm:ss")}] ERROR > {aMessage}", this);
 
         /// <summary>
         /// Log an informational message to the logfile
@@ -1649,6 +1654,35 @@ namespace Oxide.Plugins
                     );
                 }
 
+                // Backpacks & Inventory
+                if (Backpacks == null) {
+                    aUIObj.AddButton(
+                    actionPanel, CUserPageBtnBackpacksLbAnchor, CUserPageBtnBackpacksRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                    lang.GetMessage("Backpacks Not Installed Button Text", this, aUIObj.PlayerIdString));
+                } else if (VerifyPermission(aUIObj.PlayerIdString, CPermBackpacks)) {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnBackpacksLbAnchor, CUserPageBtnBackpacksRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
+                        lang.GetMessage("Backpacks Button Text", this, aUIObj.PlayerIdString), $"{CBackpackViewCmd} {aPlayerId}");
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnBackpacksLbAnchor, CUserPageBtnBackpacksRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Backpacks Button Text", this, aUIObj.PlayerIdString));
+                }
+
+                if (InventoryViewer == null) {
+                    aUIObj.AddButton(
+                    actionPanel, CUserPageBtnInventoryLbAnchor, CUserPageBtnInventoryRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                    lang.GetMessage("Inventory Not Installed Button Text", this, aUIObj.PlayerIdString));
+                } else if (VerifyPermission(aUIObj.PlayerIdString, CPermInventory)) {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnInventoryLbAnchor, CUserPageBtnInventoryRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
+                        lang.GetMessage("Inventory Button Text", this, aUIObj.PlayerIdString), $"{CInventoryViewCmd} {aPlayerId}");
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnInventoryLbAnchor, CUserPageBtnInventoryRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Inventory Button Text", this, aUIObj.PlayerIdString));
+                }
+
                 // Hurt 25, Hurt 50, Hurt 75, Hurt 100, Kill
                 if (VerifyPermission(aUIObj.PlayerIdString, CPermHurt)) {
                     aUIObj.AddButton(
@@ -1881,6 +1915,8 @@ namespace Oxide.Plugins
         private const string CMainPageBanIdInputTextCmd = "playeradministration.mainpagebanidinputtext";
         private const string CUserBtnPageSearchInputTextCmd = "playeradministration.userbtnpagesearchinputtext";
         private const string CUserPageReasonInputTextCmd = "playeradministration.userpagereasoninputtext";
+        private const string CBackpackViewCmd = "playeradministration.viewbackpack";
+        private const string CInventoryViewCmd = "playeradministration.viewinventory";
         #endregion Local commands
 
         #region Foreign commands
@@ -1927,6 +1963,8 @@ namespace Oxide.Plugins
 
         #region Foreign permissions
         private const string CPermFreezeFrozen = "freeze.frozen";
+        private const string CPermBackpacks = "backpacks.admin";
+        private const string CPermInventory = "inventoryviewer.allowed";
         #endregion Foreign permissions
 
         /* Define layout */
@@ -2079,6 +2117,11 @@ namespace Oxide.Plugins
         // Row 6
         private static readonly CuiPoint CUserPageBtnPermsLbAnchor = new CuiPoint(0.01f, 0.46f);
         private static readonly CuiPoint CUserPageBtnPermsRtAnchor = new CuiPoint(0.16f, 0.52f);
+        private static readonly CuiPoint CUserPageBtnBackpacksLbAnchor = new CuiPoint(0.17f, 0.46f);
+        private static readonly CuiPoint CUserPageBtnBackpacksRtAnchor = new CuiPoint(0.32f, 0.52f);
+        private static readonly CuiPoint CUserPageBtnInventoryLbAnchor = new CuiPoint(0.33f, 0.46f);
+        private static readonly CuiPoint CUserPageBtnInventoryRtAnchor = new CuiPoint(0.48f, 0.52f);
+
         // Row 11
         private static readonly CuiPoint CUserPageBtnHurt25LbAnchor = new CuiPoint(0.01f, 0.10f);
         private static readonly CuiPoint CUserPageBtnHurt25RtAnchor = new CuiPoint(0.16f, 0.16f);
@@ -2628,6 +2671,12 @@ namespace Oxide.Plugins
                     { "Perms Button Text", "Permissions" },
                     { "Perms Not Installed Button Text", "Perms Not Installed" },
 
+                    { "Backpacks Button Text", "View Backpack" },
+                    { "Backpacks Not Installed Button Text", "Backpacks Not Installed" },
+
+                    { "Inventory Button Text", "View Inventory" },
+                    { "Inventory Not Installed Button Text", "Inventory Viewer Not Installed" },
+
                     { "Hurt 25 Button Text", "Hurt 25" },
                     { "Hurt 50 Button Text", "Hurt 50" },
                     { "Hurt 75 Button Text", "Hurt 75" },
@@ -2741,7 +2790,6 @@ namespace Oxide.Plugins
                 return;
 
             if (aPlayer.IsServer) {
-                
                 Player.Unban(targetId);
                 LogInfo($"{aPlayer.Name}: Unbanned user ID {targetId}");
             } else {
@@ -2862,7 +2910,7 @@ namespace Oxide.Plugins
                     rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, aPlayer.Id));
                     return;
                 }
-                
+
                 targetPlayer?.Kick(kickReasonMsg);
                 LogInfo($"{player.displayName}: Kicked user ID {targetId}");
                 SendDiscordKickBanMessage(player.displayName, aPlayer.Id, targetPlayer.displayName, targetPlayer.UserIDString, kickReasonMsg, false);
@@ -2985,6 +3033,34 @@ namespace Oxide.Plugins
             LogInfo($"{player.displayName}: Froze user ID {targetId}");
             // Let code execute, then reload screen
             timer.Once(0.1f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
+        }
+
+        [Command(CBackpackViewCmd)]
+        private void PlayerAdministrationViewBackpackCallback(IPlayer aPlayer, string aCommand, string[] aArgs) {
+            LogDebug("PlayerAdministrationViewBackpackCallback was called");
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
+            ulong targetId;
+
+            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermBackpacks, true) || !GetTargetFromArg(aArgs, out targetId))
+                return;
+
+            Backpacks.Call("ViewBackpack", player, string.Empty, new[] { targetId.ToString() });
+            LogInfo($"{player.displayName}: Viewed backpack of {targetId}");
+            PlayerAdministrationCloseUICallback(player.IPlayer, string.Empty, new[] { string.Empty });
+        }
+
+        [Command(CInventoryViewCmd)]
+        private void PlayerAdministrationViewInventoryCallback(IPlayer aPlayer, string aCommand, string[] aArgs) {
+            LogDebug("PlayerAdministrationViewInventoryCallback was called");
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
+            ulong targetId;
+
+            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermBackpacks, true) || !GetTargetFromArg(aArgs, out targetId))
+                return;
+
+            InventoryViewer.Call("ViewInventoryCommand", player, targetId.ToString(), new[] { targetId.ToString() });
+            LogInfo($"{player.displayName}: Viewed inventory of {targetId}");
+            PlayerAdministrationCloseUICallback(player.IPlayer, string.Empty, new[] { string.Empty });
         }
 
         [Command(CClearUserInventoryCmd)]
@@ -3353,7 +3429,7 @@ namespace Oxide.Plugins
         private void PlayerAdministrationUserPageReasonInputTextCallback(IPlayer aPlayer, string aCommand, string[] aArgs)
         {
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
-            
+
             if (aPlayer.IsServer || !VerifyPermission(ref player, CPermUiShow) || aArgs.Count() <= 0) {
                 if (FUserPageReasonInputText.ContainsKey(aPlayer.Id))
                     FUserPageReasonInputText.Remove(aPlayer.Id);

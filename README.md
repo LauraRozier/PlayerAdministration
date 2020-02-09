@@ -22,6 +22,8 @@
 - Use of PermissionsManager plugin to edit Oxide user permissions on a user
 - Use of DiscordMessages plugin to send a fancy message to Discord for each ban and kick
 - Use of BetterChatMute plugin to mute players in an improved manner
+- Use of Backpacks to view a players backpack
+- Use of Inventory Viewer to view a players inventory
 - Filtering through users via the "search" function (Case insensitive and selects both names and IDs that contain the text written in the input)
 
 ## Permissions
