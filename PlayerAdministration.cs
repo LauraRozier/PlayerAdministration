@@ -40,7 +40,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.5.20")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.21")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -881,9 +881,9 @@ namespace Oxide.Plugins
             .Replace("\n", " ")
             .Replace("\t", " ")
             .Replace("\v", "")
-            .Replace("\"", "\\\"")
-            .Replace("/", "\\/")
-            .Replace("\\", "\\\\");
+            .Replace("\"", "\u02EE")
+            .Replace("/", "\u2215")
+            .Replace("\\", "\u2216");
         #endregion Utility methods
 
         #region Upgrade methods
