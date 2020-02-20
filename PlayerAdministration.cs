@@ -40,7 +40,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.5.22")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.23")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -3055,7 +3055,7 @@ namespace Oxide.Plugins
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
             ulong targetId;
 
-            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermBackpacks, true) || !GetTargetFromArg(aArgs, out targetId))
+            if (aPlayer.IsServer || !VerifyPermission(ref player, CPermInventory, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
             InventoryViewer.Call("ViewInventoryCommand", player, targetId.ToString(), new[] { targetId.ToString() });
