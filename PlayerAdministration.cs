@@ -40,7 +40,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.5.23")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.24")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -583,9 +583,9 @@ namespace Oxide.Plugins
         /// <param name="aUserList">List of entities</param>
         /// <param name="aCommandFmt">Base format of the command to execute (Will be completed with the user ID</param>
         /// <param name="aPage">User list page</param>
-        private void AddPlayerButtons(ref Cui aUIObj, string aParent, ref List<KeyValuePair<string, string>> aUserList, string aCommandFmt, int aPage)
+        private void AddPlayerButtons(ref Cui aUIObj, string aParent, IEnumerable<KeyValuePair<ulong, string>> aUserList, string aCommandFmt, int aPage)
         {
-            List<KeyValuePair<string, string>> userRange = aUserList.Skip(aPage * CMaxPlayerButtons).Take(CMaxPlayerButtons).ToList();
+            IEnumerable<KeyValuePair<ulong, string>> userRange = aUserList.Skip(aPage * CMaxPlayerButtons).Take(CMaxPlayerButtons);
             Vector2 dimensions = new Vector2(0.194f, 0.06f);
             Vector2 offset = new Vector2(0.005f, 0.01f);
             int col = -1;
@@ -593,7 +593,7 @@ namespace Oxide.Plugins
             float margin = 0.09f;
             List<string> addedNames = new List<string>();
 
-            foreach (KeyValuePair<string, string> user in userRange) {
+            foreach (KeyValuePair<ulong, string> user in userRange) {
                 if (++col >= CMaxPlayerCols) {
                     row++;
                     col = 0;
@@ -609,7 +609,7 @@ namespace Oxide.Plugins
                 string btnCommand = string.Format(aCommandFmt, user.Key);
 
                 if (string.IsNullOrEmpty(btnTextTemp) || CUnknownNameList.Contains(btnTextTemp.ToLower()))
-                    btnTextTemp = user.Key;
+                    btnTextTemp = user.Key.ToString();
 
                 string btnText = btnTextTemp;
 
@@ -688,32 +688,24 @@ namespace Oxide.Plugins
         /// <param name="aUserId">User ID for retrieving filter text</param>
         /// <param name="aIndOffline">Retrieve the list of sleepers (offline players)</param>
         /// <returns></returns>
-        private List<KeyValuePair<string, string>> GetServerUserList(bool aIndFiltered, string aUserId, bool aIndOffline = false)
+        private IEnumerable<BasePlayer> GetServerUserList(bool aIndFiltered, string aUserId, bool aIndOffline = false)
         {
-            List<KeyValuePair<string, string>> result;
+            IEnumerable<BasePlayer> result;
 
             if (aIndOffline) {
-                result = FOfflineUserList.ToList();
+                result = Player.Players.Where(X => !X.IsNpc && !Player.IsBanned(X.userID));
             } else {
-                result = FOnlineUserList.ToList();
+                result = Player.Sleepers.Where(X => !X.IsNpc && !Player.IsBanned(X.userID));
             }
 
             if (aIndFiltered && FUserBtnPageSearchInputText.ContainsKey(aUserId))
                 result = result.Where(x =>
-                        x.Value.IndexOf(FUserBtnPageSearchInputText[aUserId], StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        x.Key.IndexOf(FUserBtnPageSearchInputText[aUserId], StringComparison.OrdinalIgnoreCase) >= 0
-                    ).ToList();
+                        x.UserIDString.IndexOf(FUserBtnPageSearchInputText[aUserId], StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        x.displayName.IndexOf(FUserBtnPageSearchInputText[aUserId], StringComparison.OrdinalIgnoreCase) >= 0
+                    );
 
             LogDebug("Retrieved the server user list");
-            result.Sort((a, b) => {
-                int diff = string.Compare(a.Value, b.Value);
-
-                if (diff == 0)
-                    diff = a.Key.CompareTo(b.Key);
-
-                return diff;
-            });
-            return result;
+            return result.OrderBy(x => x.displayName).ThenBy(x => x.userID);
         }
 
         /// <summary>
@@ -722,30 +714,18 @@ namespace Oxide.Plugins
         /// <param name="aIndFiltered">Indicates if the output should be filtered</param>
         /// <param name="aUserId">User ID for retrieving filter text</param>
         /// <returns></returns>
-        private List<KeyValuePair<string, string>> GetBannedUserList(bool aIndFiltered, string aUserId)
+        private IEnumerable<ServerUsers.User> GetBannedUserList(bool aIndFiltered, string aUserId)
         {
-            List<KeyValuePair<string, string>> result = new List<KeyValuePair<string, string>>();
-
-            foreach (ServerUsers.User user in ServerUsers.GetAll(ServerUsers.UserGroup.Banned)) {
-                result.Add(new KeyValuePair<string, string>(user.steamid.ToString(), user.username));
-            }
+            IEnumerable<ServerUsers.User> result = ServerUsers.GetAll(ServerUsers.UserGroup.Banned);
 
             if (aIndFiltered && FUserBtnPageSearchInputText.ContainsKey(aUserId))
                 result = result.Where(x =>
-                        x.Value.IndexOf(FUserBtnPageSearchInputText[aUserId], StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        x.Key.ToString().IndexOf(FUserBtnPageSearchInputText[aUserId], StringComparison.OrdinalIgnoreCase) >= 0
-                    ).ToList();
+                        x.username.IndexOf(FUserBtnPageSearchInputText[aUserId], StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        x.steamid.ToString().IndexOf(FUserBtnPageSearchInputText[aUserId], StringComparison.OrdinalIgnoreCase) >= 0
+                    );
 
             LogDebug("Retrieved the banned user list");
-            result.Sort((a, b) => {
-                int diff = string.Compare(a.Value, b.Value);
-
-                if (diff == 0)
-                    diff = a.Key.CompareTo(b.Key);
-
-                return diff;
-            });
-            return result;
+            return result.OrderBy(x => x.username).ThenBy(x => x.steamid);
         }
 
         /// <summary>
@@ -1132,7 +1112,7 @@ namespace Oxide.Plugins
         )
         {
             string commandFmt = $"{CSwitchUiCmd} {CCmdArgPlayerPage} {{0}}";
-            List<KeyValuePair<string, string>> userList = GetServerUserList(aIndFiltered, aUIObj.PlayerIdString, aPageType == UiPage.PlayersOffline);
+            IEnumerable<BasePlayer> userList = GetServerUserList(aIndFiltered, aUIObj.PlayerIdString, aPageType == UiPage.PlayersOffline);
 
             if (aPageType == UiPage.PlayersOnline) {
                 aBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersOnlineSearch : CCmdArgPlayersOnline)} {{0}}";
@@ -1140,12 +1120,12 @@ namespace Oxide.Plugins
                 aBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersOfflineSearch : CCmdArgPlayersOffline)} {{0}}";
             }
 
-            aUserCount = userList.Count;
+            aUserCount = userList.Count();
 
-            if ((aPage != 0) && (userList.Count <= CMaxPlayerButtons))
+            if ((aPage != 0) && (userList.Count() <= CMaxPlayerButtons))
                 aPage = 0; // Reset page to 0 if user count is lower or equal to max button count
-
-            AddPlayerButtons(ref aUIObj, aParent, ref userList, commandFmt, aPage);
+            
+            AddPlayerButtons(ref aUIObj, aParent, userList.Select(x => new KeyValuePair<ulong, string>(x.userID, x.displayName)), commandFmt, aPage);
             LogDebug("Built the current page of user buttons");
         }
 
@@ -1205,14 +1185,14 @@ namespace Oxide.Plugins
                     );
 
                     string commandFmt = $"{CSwitchUiCmd} {CCmdArgPlayerPageBanned} {{0}}";
-                    List<KeyValuePair<string, string>> userList = GetBannedUserList(aIndFiltered, aUIObj.PlayerIdString);
+                    IEnumerable<ServerUsers.User> userList = GetBannedUserList(aIndFiltered, aUIObj.PlayerIdString);
                     npBtnCommandFmt = $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersBannedSearch : CCmdArgPlayersBanned)} {{0}}";
-                    userCount = userList.Count;
+                    userCount = userList.Count();
 
-                    if ((aPage != 0) && (userList.Count <= CMaxPlayerButtons))
+                    if ((aPage != 0) && (userList.Count() <= CMaxPlayerButtons))
                         aPage = 0; // Reset page to 0 if user count is lower or equal to max button count
 
-                    AddPlayerButtons(ref aUIObj, panel, ref userList, commandFmt, aPage);
+                    AddPlayerButtons(ref aUIObj, panel, userList.Select(x => new KeyValuePair<ulong, string>(x.steamid, x.username)), commandFmt, aPage);
                     LogDebug("Built the current page of banned user buttons");
                     break;
                 }
@@ -1408,7 +1388,35 @@ namespace Oxide.Plugins
             );
             LogDebug("BuildUserPage > Title lables have been added.");
 
-            if (aPageType == UiPage.PlayerPage) {
+            if (aPageType == UiPage.PlayerPageBanned) {
+                ServerUsers.User serverUser = ServerUsers.Get(aPlayerId);
+                aUIObj.AddLabel(
+                    panel, CMainLblTitleLbAnchor, CMainLblTitleRtAnchor, CuiColor.TextAlt,
+                    string.Format(
+                        lang.GetMessage("User Page Title Format", this, aUIObj.PlayerIdString), serverUser.username,
+                        lang.GetMessage("Banned Label Text", this, aUIObj.PlayerIdString)
+                    ), string.Empty, 18, TextAnchor.MiddleLeft
+                );
+                // Add user info labels
+                aUIObj.AddLabel(
+                    infoPanel, CUserPageLblIdLbAnchor, CUserPageLblIdRtAnchor, CuiColor.TextAlt,
+                    string.Format(lang.GetMessage("Id Label Format", this, aUIObj.PlayerIdString), aPlayerId, string.Empty), string.Empty, 14,
+                    TextAnchor.MiddleLeft
+                );
+
+                // --- Build player action panel
+                if (VerifyPermission(aUIObj.PlayerIdString, CPermBan)) {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiColor.Button, CuiColor.TextAlt,
+                        lang.GetMessage("Unban Button Text", this, aUIObj.PlayerIdString), $"{CUnbanUserCmd} {aPlayerId}"
+                    );
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Unban Button Text", this, aUIObj.PlayerIdString)
+                    );
+                }
+            } else {
                 BasePlayer player = BasePlayer.FindByID(aPlayerId) ?? BasePlayer.FindSleeping(aPlayerId);
                 LogDebug("BuildUserPage > player = null? " + InternalAssert(player == null));
 
@@ -1774,34 +1782,6 @@ namespace Oxide.Plugins
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnHealWoundsLbAnchor, CUserPageBtnHealWoundsRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Heal Wounds Button Text", this, aUIObj.PlayerIdString)
-                    );
-                }
-            } else {
-                ServerUsers.User serverUser = ServerUsers.Get(aPlayerId);
-                aUIObj.AddLabel(
-                    panel, CMainLblTitleLbAnchor, CMainLblTitleRtAnchor, CuiColor.TextAlt,
-                    string.Format(
-                        lang.GetMessage("User Page Title Format", this, aUIObj.PlayerIdString), serverUser.username,
-                        lang.GetMessage("Banned Label Text", this, aUIObj.PlayerIdString)
-                    ), string.Empty, 18, TextAnchor.MiddleLeft
-                );
-                // Add user info labels
-                aUIObj.AddLabel(
-                    infoPanel, CUserPageLblIdLbAnchor, CUserPageLblIdRtAnchor, CuiColor.TextAlt,
-                    string.Format(lang.GetMessage("Id Label Format", this, aUIObj.PlayerIdString), aPlayerId, string.Empty), string.Empty, 14,
-                    TextAnchor.MiddleLeft
-                );
-
-                // --- Build player action panel
-                if (VerifyPermission(aUIObj.PlayerIdString, CPermBan)) {
-                    aUIObj.AddButton(
-                        actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiColor.Button, CuiColor.TextAlt,
-                        lang.GetMessage("Unban Button Text", this, aUIObj.PlayerIdString), $"{CUnbanUserCmd} {aPlayerId}"
-                    );
-                } else {
-                    aUIObj.AddButton(
-                        actionPanel, CUserPageBtnBanLbAnchor, CUserPageBtnBanRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
-                        lang.GetMessage("Unban Button Text", this, aUIObj.PlayerIdString)
                     );
                 }
             }
@@ -2424,8 +2404,6 @@ namespace Oxide.Plugins
         private Dictionary<string, string> FMainPageBanIdInputText = new Dictionary<string, string>();     // Format: <userId, text>
         private Dictionary<string, string> FUserBtnPageSearchInputText = new Dictionary<string, string>(); // Format: <userId, text>
         private Dictionary<string, string> FUserPageReasonInputText = new Dictionary<string, string>();    // Format: <userId, text>
-        private Dictionary<string, string> FOnlineUserList = new Dictionary<string, string>();             // Format: <userId, username>
-        private Dictionary<string, string> FOfflineUserList = new Dictionary<string, string>();            // Format: <userId, username>
         #endregion Variables
 
         #region Hooks
@@ -2477,45 +2455,7 @@ namespace Oxide.Plugins
                     FUserPageReasonInputText.Remove(player.UserIDString);
             }
 
-            FOnlineUserList.Clear();
-            FOfflineUserList.Clear();
             FPluginInstance = null;
-        }
-
-        void OnServerInitialized()
-        {
-            foreach (BasePlayer user in Player.Players) {
-                if (user.IsNpc)
-                    continue;
-
-                ServerUsers.User servUser = ServerUsers.Get(user.userID);
-
-                if (servUser == null || servUser?.group != ServerUsers.UserGroup.Banned)
-                    FOnlineUserList[user.UserIDString] = user.displayName;
-            }
-
-            foreach (BasePlayer user in Player.Sleepers) {
-                if (user.IsNpc)
-                    continue;
-
-                ServerUsers.User servUser = ServerUsers.Get(user.userID);
-
-                if (servUser == null || servUser?.group != ServerUsers.UserGroup.Banned)
-                    FOfflineUserList[user.UserIDString] = user.displayName;
-            }
-        }
-
-        void OnUserConnected(IPlayer aPlayer)
-        {
-            BasePlayer user = BasePlayer.Find(aPlayer.Id) ?? BasePlayer.FindSleeping(aPlayer.Id);
-
-            if (user.IsNpc)
-                return;
-
-            if (FOfflineUserList.ContainsKey(user.UserIDString))
-                FOfflineUserList.Remove(user.displayName);
-
-            FOnlineUserList[user.UserIDString] = user.displayName;
         }
 
         void OnUserDisconnected(IPlayer aPlayer)
@@ -2528,26 +2468,6 @@ namespace Oxide.Plugins
 
             if (FUserPageReasonInputText.ContainsKey(aPlayer.Id))
                 FUserPageReasonInputText.Remove(aPlayer.Id);
-
-            BasePlayer user = BasePlayer.Find(aPlayer.Id) ?? BasePlayer.FindSleeping(aPlayer.Id);
-
-
-            if (FOnlineUserList.ContainsKey(user.UserIDString))
-                FOnlineUserList.Remove(user.UserIDString);
-
-            if (user.IsNpc)
-                return;
-
-            FOfflineUserList[user.UserIDString] = user.displayName;
-        }
-
-        void OnUserNameUpdated(string aId, string aOldName, string aNewName)
-        {
-            if (FOnlineUserList.ContainsKey(aId))
-                FOnlineUserList[aId] = aNewName;
-
-            if (FOfflineUserList.ContainsKey(aId))
-                FOfflineUserList[aId] = aNewName;
         }
 
         protected override void LoadConfig()
