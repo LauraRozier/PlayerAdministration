@@ -40,7 +40,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.5.25")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.5.26")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -62,6 +62,8 @@ namespace Oxide.Plugins
         private Plugin Backpacks;
         [PluginReference]
         private Plugin InventoryViewer;
+        [PluginReference]
+        private Plugin Vanish;
 
 #pragma warning restore IDE0044, CS0649
         #endregion Plugin References
@@ -869,6 +871,58 @@ namespace Oxide.Plugins
             .Replace("\"", "\u02EE")
             .Replace("/", "\u2215")
             .Replace("\\", "\u2216");
+
+        /// <summary>
+        /// Teleport a player to the given potition. Kindly taken from NTeleportation
+        /// </summary>
+        /// <param name="aPlayer">The player to teleport</param>
+        /// <param name="aTarget">The target position</param>
+        private void Teleport(BasePlayer aPlayer, Vector3 aTarget)
+        {
+            if (!aPlayer.IsValid() || Vector3.Distance(aTarget, default(Vector3)) < 5f)
+                return;
+
+            try {
+                aPlayer.EnsureDismounted();
+
+                if (aPlayer.HasParent()) {
+                    aPlayer.SetParent(null, true, true);
+                }
+
+                if (aPlayer.IsConnected) {
+                    aPlayer.EndLooting();
+
+                    if (!aPlayer.IsSleeping()) {
+                        Interface.CallHook("OnPlayerSleep", aPlayer);
+                        aPlayer.SetPlayerFlag(BasePlayer.PlayerFlags.Sleeping, true);
+                        aPlayer.sleepStartTime = Time.time;
+                        BasePlayer.sleepingPlayerList.Add(aPlayer);
+                        BasePlayer.bots.Remove(aPlayer);
+                        aPlayer.CancelInvoke("InventoryUpdate");
+                        aPlayer.CancelInvoke("TeamUpdate");
+                    }
+                }
+
+                aPlayer.RemoveFromTriggers(); // Recommended to use vanilla method due to an issue with triggers
+                aPlayer.EnableServerFall(true); // Redundant, in OnEntityTakeDamage hook
+                aPlayer.Teleport(aTarget);
+
+                if (aPlayer.IsConnected && !Network.Net.sv.visibility.IsInside(aPlayer.net.group, aTarget)) {
+                    aPlayer.SetPlayerFlag(BasePlayer.PlayerFlags.ReceivingSnapshot, true);
+                    aPlayer.ClientRPCPlayer(null, aPlayer, "StartLoading");
+                    aPlayer.SendEntityUpdate();
+
+                    if (!(Vanish?.Call<bool>("IsInvisible", aPlayer) ?? false)) // fix for becoming networked briefly with vanish while teleporting
+                    {
+                        aPlayer.UpdateNetworkGroup(); // Building fix
+                        aPlayer.SendNetworkUpdateImmediate(false);
+                    }
+                }
+            } finally {
+                aPlayer.EnableServerFall(false);
+                aPlayer.ForceUpdateTriggers(); // Exploit fix for looting sleepers in safe zones
+            }
+        }
         #endregion Utility methods
 
         #region Upgrade methods
@@ -3134,8 +3188,8 @@ namespace Oxide.Plugins
 
             BasePlayer targetPlayer = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
 
-            if (targetPlayer.IsAlive()) {
-                player.Teleport(targetPlayer.transform.position);
+            if (player.IsAlive() && targetPlayer.IsAlive()) {
+                Teleport(player, targetPlayer.transform.position);
                 LogInfo($"{player.displayName}: Teleported to user ID {targetId}");
             } else {
                 aPlayer.Reply(lang.GetMessage("Dead Player Error Text", this, aPlayer.Id));
@@ -3156,8 +3210,8 @@ namespace Oxide.Plugins
 
             BasePlayer targetPlayer = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
 
-            if (targetPlayer.IsAlive()) {
-                targetPlayer.Teleport(player.transform.position);
+            if (player.IsAlive() && targetPlayer.IsAlive()) {
+                Teleport(targetPlayer, player.transform.position);
                 LogInfo($"{targetPlayer.displayName}: Teleported to admin {player.displayName}");
             } else {
                 aPlayer.Reply(lang.GetMessage("Dead Player Error Text", this, aPlayer.Id));
