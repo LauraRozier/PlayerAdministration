@@ -1,4 +1,4 @@
-#### *Hello all,
+#### Hello all,
 #### 
 #### I'm not going to be able to maintain this mod any longer.
 #### And modder can just grab it and have fun with it.
@@ -6,8 +6,8 @@
 #### If you're smart enough to understand the code, you're smart enough to maintain it.
 #### 
 #### I just hope you don't take it into some direction you'll regret later on.
-#### 
-#### Player Administration provides a simple-to-use GUI that helps admins moderate users.*
+
+*Player Administration* provides a simple-to-use GUI that helps admins moderate users.
 ## Features
 
 - Banning/unbanning users
