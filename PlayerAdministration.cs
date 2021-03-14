@@ -1,12 +1,14 @@
 /* --- Contributor information ---
  * Please follow the following set of guidelines when working on this plugin,
  * this to help others understand this file more easily.
+ * 
+ * NOTE: On Authors, new entries go BELOW the existing entries. As with any other software header comment.
  *
  * -- Authors --
- * Pho3niX90 <shan@jvn.sx> 2020-06 > current
- * Thimo (ThibmoRozier) <thibmorozier@live.nl> 2020-04
+ * Thimo (ThibmoRozier) <thibmorozier@live.nl> 2018-03-27 +
  * rfc1920 <no@email.com>
  * Mheetu <no@email.com>
+ * Pho3niX90 <shan@jvn.sx> 2020-06 +
  *
  * -- Naming --
  * Avoid using non-alphabetic characters, eg: _
@@ -41,7 +43,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "Pho3niX90", "1.6.03")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.6.03")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
