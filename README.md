@@ -53,11 +53,11 @@ Hint: To easily add all protections use the RCON command: `oxide.grant {user <us
 
 ## Chat Commands
 
-Binding keys and saving the keybinds:
- `bind p chat.say 0 /padmin`
-or:
- `bind p "chat.say 0 /padmin"`
-Then to save it:
+Binding keys and saving the keybinds:  
+ `bind p chat.say 0 /padmin`  
+or:  
+ `bind p "chat.say 0 /padmin"`  
+Then to save it:  
  `writecfg`
 
 - **/padmin** -- Show the player administration menu ***(requires `playeradministration.access.show` permission)***
@@ -101,8 +101,6 @@ Then to save it:
 ```
 
 ## Localization
-
-The default messages are in the `PlayerAdministration.json` file under the `oxide/lang/en` directory. To add support for another language, create a new language folder (ex. de for German) if not already created, copy the default language file to the new folder, and then customize the messages.
 
 ```json
 {
