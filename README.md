@@ -13,7 +13,7 @@
 - Healing a user
 - Teleporting yourself to a user
 - Teleporting a player to yourself
-- Spectating a player
+- Spectating a player **WARNING: This kills your player and makes you like a "ghost", respawn to exit spectate.**
 - The ability to see a user's vitals, status and steamID64
 - Use of Economics plugin to show player's current balance
 - Use of ServerRewards plugin to show player's current reward points
