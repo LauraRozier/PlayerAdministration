@@ -1,7 +1,7 @@
 /* --- Contributor information ---
  * Please follow the following set of guidelines when working on this plugin,
  * this to help others understand this file more easily.
- * 
+ *
  * NOTE: On Authors, new entries go BELOW the existing entries. As with any other software header comment.
  *
  * -- Authors --
@@ -43,7 +43,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.6.03")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.6.4")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -68,7 +68,7 @@ namespace Oxide.Plugins
         [PluginReference]
         private Plugin ServerArmour;
         [PluginReference]
-        private Plugin Clans;
+        private Plugin Godmode;
 
 #pragma warning restore IDE0044, CS0649
         #endregion Plugin References
@@ -772,10 +772,10 @@ namespace Oxide.Plugins
         /// <param name="aTargetId">The ID of the target player</param>
         /// <param name="aReason">The reason message</param>
         /// <param name="aIndIsBan">If this is true a ban message is sent, else a kick message is sent</param>
-        private void SendDiscordKickBanMessage(string aAdminName, ulong aAdminId, string aTargetName, string aTargetId, string aReason, bool aIndIsBan) {
+        private void SendDiscordKickBanMessage(string aAdminName, ulong aAdminId, string aTargetName, ulong aTargetId, string aReason, bool aIndIsBan) {
             if (DiscordMessages != null) {
                 if (CUnknownNameList.Contains(aTargetName.ToLower()))
-                    aTargetName = aTargetId;
+                    aTargetName = aTargetId.ToString();
 
                 object fields = new[]
                 {
@@ -859,7 +859,7 @@ namespace Oxide.Plugins
         /// <param name="playerId">The player ID that entered the reason.</param>
         /// <param name="targetId">The target ID the reason is for.</param>
         /// <returns></returns>
-        string GetReason(ulong playerId, string targetId = "", bool indIsKick = false) {
+        private string GetReason(ulong playerId, string targetId = "", bool indIsKick = false) {
             string reasonMsg;
 
             if (FUserPageReasonInputText.ContainsKey(playerId)) {
@@ -872,6 +872,18 @@ namespace Oxide.Plugins
             }
 
             return reasonMsg;
+        }
+
+        private void BroadcastKickBan(string aAdminId, ulong aTargetId, string aReason, bool aIndIsKick) {
+            string broadcastMessage = aIndIsKick
+                ? lang.GetMessage("Kick Broadcast Message Format", this, aAdminId)
+                : lang.GetMessage("Ban Broadcast Message Format", this, aAdminId);
+            string targetName = ServerUsers.Get(aTargetId)?.username;
+
+            if (string.IsNullOrEmpty(targetName) || CUnknownNameList.Contains(targetName.ToLower()))
+                targetName = aTargetId.ToString();
+
+            rust.BroadcastChat(string.Empty, String.Format(broadcastMessage, targetName, aReason));
         }
         #endregion Utility methods
 
@@ -1029,6 +1041,32 @@ namespace Oxide.Plugins
             }
 
             permission.SaveData();
+            return result;
+        }
+
+        /// <summary>
+        /// Upgrade the config to 1.6.4 if needed
+        /// </summary>
+        /// <returns></returns>
+        private bool UpgradeTo164() {
+            bool result = false;
+            Config.Load();
+
+            if (Config["Broadcast Kicks"] == null) {
+                FConfigData.BroadcastKicks = true;
+                result = true;
+            }
+
+            if (Config["Broadcast Bans"] == null) {
+                FConfigData.BroadcastBans = true;
+                result = true;
+            }
+
+            Config.Clear();
+
+            if (result)
+                Config.WriteObject(FConfigData);
+
             return result;
         }
         #endregion
@@ -1306,8 +1344,15 @@ namespace Oxide.Plugins
                         string.Format(lang.GetMessage("Economics Balance Label Format", this, aUIObj.PlayerIdString),
                         Math.Round((double)Economics.Call("Balance", aPlayerId), 2)), string.Empty, 14, TextAnchor.MiddleLeft
                     );
-                    LogDebug("AddUserPageInfoLabels > Economics info has been added.");
+                } else {
+                    aUIObj.AddLabel(
+                        aParent, CUserPageLblBalanceLbAnchor, CUserPageLblBalanceRtAnchor, CuiColor.TextAlt,
+                        string.Format(lang.GetMessage("Economics Balance Label Format", this, aUIObj.PlayerIdString), "N/A"), string.Empty, 14,
+                        TextAnchor.MiddleLeft
+                    );
                 }
+
+                LogDebug("AddUserPageInfoLabels > Economics info has been added.");
 
                 if (ServerRewards != null) {
                     aUIObj.AddLabel(
@@ -1315,9 +1360,31 @@ namespace Oxide.Plugins
                         string.Format(lang.GetMessage("ServerRewards Points Label Format", this, aUIObj.PlayerIdString),
                         (int)(ServerRewards.Call("CheckPoints", aPlayerId) ?? 0)), string.Empty, 14, TextAnchor.MiddleLeft
                     );
-                    LogDebug("AddUserPageInfoLabels > ServerRewards info has been added.");
+                } else {
+                    aUIObj.AddLabel(
+                        aParent, CUserPageLblRewardPointsLbAnchor, CUserPageLblRewardPointsRtAnchor, CuiColor.TextAlt,
+                        string.Format(lang.GetMessage("ServerRewards Points Label Format", this, aUIObj.PlayerIdString), "N/A"), string.Empty, 14,
+                        TextAnchor.MiddleLeft
+                    );
                 }
 
+                LogDebug("AddUserPageInfoLabels > ServerRewards info has been added.");
+
+                if (Godmode != null) {
+                    aUIObj.AddLabel(
+                        aParent, CUserPageLblGodmodeLbAnchor, CUserPageLblGodmodeRtAnchor, CuiColor.TextAlt,
+                        string.Format(lang.GetMessage("Godmode Status Label Format", this, aUIObj.PlayerIdString),
+                        Godmode.Call<bool>("IsGod", aPlayerId)), string.Empty, 14, TextAnchor.MiddleLeft
+                    );
+                } else {
+                    aUIObj.AddLabel(
+                        aParent, CUserPageLblGodmodeLbAnchor, CUserPageLblGodmodeRtAnchor, CuiColor.TextAlt,
+                        string.Format(lang.GetMessage("Godmode Status Label Format", this, aUIObj.PlayerIdString), "N/A"), string.Empty, 14,
+                        TextAnchor.MiddleLeft
+                    );
+                }
+
+                LogDebug("AddUserPageInfoLabels > Godmode info has been added.");
                 aUIObj.AddLabel(
                     aParent, CUserPageLblHealthLbAnchor, CUserPageLblHealthRtAnchor, CuiColor.TextAlt,
                     string.Format(lang.GetMessage("Health Label Format", this, aUIObj.PlayerIdString), aPlayer.health), string.Empty, 14, TextAnchor.MiddleLeft
@@ -1521,7 +1588,7 @@ namespace Oxide.Plugins
                     if (GetIsFrozen(aPlayerId)) {
                         aUIObj.AddButton(
                             actionPanel, CUserPageBtnUnFreezeLbAnchor, CUserPageBtnUnFreezeRtAnchor, CuiColor.ButtonSuccess, CuiColor.TextAlt,
-                            lang.GetMessage("UnFreeze Button Text", this, aUIObj.PlayerIdString), $"{CUnreezeCmd} {aPlayerId}"
+                            lang.GetMessage("UnFreeze Button Text", this, aUIObj.PlayerIdString), $"{CUnFreezeCmd} {aPlayerId}"
                         );
                         aUIObj.AddButton(
                             actionPanel, CUserPageBtnFreezeLbAnchor, CUserPageBtnFreezeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
@@ -1630,7 +1697,7 @@ namespace Oxide.Plugins
                     );
                 }
 
-                // Perms
+                // Perms & Backpacks & Inventory
                 if (PermissionsManager == null) {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnPermsLbAnchor, CUserPageBtnPermsRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
@@ -1648,7 +1715,6 @@ namespace Oxide.Plugins
                     );
                 }
 
-                // Backpacks & Inventory
                 if (Backpacks == null) {
                     aUIObj.AddButton(
                     actionPanel, CUserPageBtnBackpacksLbAnchor, CUserPageBtnBackpacksRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
@@ -1675,6 +1741,43 @@ namespace Oxide.Plugins
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnInventoryLbAnchor, CUserPageBtnInventoryRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Inventory Button Text", this, aUIObj.PlayerIdString));
+                }
+
+                // UnGodmode & Godmode
+                if (Godmode == null) {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnGodmodeLbAnchor, CUserPageBtnGodmodeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Godmode Not Installed Button Text", this, aUIObj.PlayerIdString)
+                    );
+                } else if (isPlayerConnected && VerifyPermission(aUIObj.PlayerId, CPermGodmode)) {
+                    if (Godmode.Call<bool>("IsGod", aPlayerId)) {
+                        aUIObj.AddButton(
+                            actionPanel, CUserPageBtnUnGodmodeLbAnchor, CUserPageBtnUnGodmodeRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
+                            lang.GetMessage("UnGodmode Button Text", this, aUIObj.PlayerIdString), $"{CUnGodmodeCmd} {aPlayerId}"
+                        );
+                        aUIObj.AddButton(
+                            actionPanel, CUserPageBtnGodmodeLbAnchor, CUserPageBtnGodmodeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                            lang.GetMessage("Godmode Button Text", this, aUIObj.PlayerIdString)
+                        );
+                    } else {
+                        aUIObj.AddButton(
+                            actionPanel, CUserPageBtnUnGodmodeLbAnchor, CUserPageBtnUnGodmodeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                            lang.GetMessage("UnGodmode Button Text", this, aUIObj.PlayerIdString)
+                        );
+                        aUIObj.AddButton(
+                            actionPanel, CUserPageBtnGodmodeLbAnchor, CUserPageBtnGodmodeRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
+                            lang.GetMessage("Godmode Button Text", this, aUIObj.PlayerIdString), $"{CGodmodeCmd} {aPlayerId}"
+                        );
+                    }
+                } else {
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnUnGodmodeLbAnchor, CUserPageBtnUnGodmodeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("UnGodmode Button Text", this, aUIObj.PlayerIdString)
+                    );
+                    aUIObj.AddButton(
+                        actionPanel, CUserPageBtnGodmodeLbAnchor, CUserPageBtnGodmodeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
+                        lang.GetMessage("Godmode Button Text", this, aUIObj.PlayerIdString)
+                    );
                 }
 
                 // Hurt 25, Hurt 50, Hurt 75, Hurt 100, Kill
@@ -1871,6 +1974,12 @@ namespace Oxide.Plugins
             [DefaultValue("")]
             [JsonProperty("Discord Webhook url for kick messages", DefaultValueHandling = DefaultValueHandling.Populate)]
             public string KickMsgWebhookUrl { get; set; }
+            [DefaultValue(true)]
+            [JsonProperty("Broadcast Kicks", DefaultValueHandling = DefaultValueHandling.Populate)]
+            public bool BroadcastKicks { get; set; }
+            [DefaultValue(true)]
+            [JsonProperty("Broadcast Bans", DefaultValueHandling = DefaultValueHandling.Populate)]
+            public bool BroadcastBans { get; set; }
         }
         #endregion
 
@@ -1895,7 +2004,7 @@ namespace Oxide.Plugins
         private const string CMuteUserCmd = "playeradministration.muteuser";
         private const string CUnmuteUserCmd = "playeradministration.unmuteuser";
         private const string CFreezeCmd = "playeradministration.freeze";
-        private const string CUnreezeCmd = "playeradministration.unfreeze";
+        private const string CUnFreezeCmd = "playeradministration.unfreeze";
         private const string CClearUserInventoryCmd = "playeradministration.clearuserinventory";
         private const string CResetUserBPCmd = "playeradministration.resetuserblueprints";
         private const string CResetUserMetabolismCmd = "playeradministration.resetusermetabolism";
@@ -1911,10 +2020,11 @@ namespace Oxide.Plugins
         private const string CUserPageReasonInputTextCmd = "playeradministration.userpagereasoninputtext";
         private const string CBackpackViewCmd = "playeradministration.viewbackpack";
         private const string CInventoryViewCmd = "playeradministration.viewinventory";
+        private const string CGodmodeCmd = "playeradministration.godmode";
+        private const string CUnGodmodeCmd = "playeradministration.ungodmode";
         #endregion Local commands
 
         #region Foreign commands
-        private const string CPermsPermsCmd = "perms player";
         private const string CFreezeFreezeCmd = "freeze";
         private const string CFreezeUnfreezeCmd = "unfreeze";
         #endregion Foreign commands
@@ -1959,6 +2069,7 @@ namespace Oxide.Plugins
         private const string CPermFreezeFrozen = "freeze.frozen";
         private const string CPermBackpacks = "backpacks.admin";
         private const string CPermInventory = "inventoryviewer.allowed";
+        private const string CPermGodmode = "godmode.admin";
         #endregion Foreign permissions
 
         /* Define layout */
@@ -2044,6 +2155,8 @@ namespace Oxide.Plugins
         private static readonly CuiPoint CUserPageLblBalanceRtAnchor = new CuiPoint(0.975f, 0.505f);
         private static readonly CuiPoint CUserPageLblRewardPointsLbAnchor = new CuiPoint(0.025f, 0.42f);
         private static readonly CuiPoint CUserPageLblRewardPointsRtAnchor = new CuiPoint(0.975f, 0.46f);
+        private static readonly CuiPoint CUserPageLblGodmodeLbAnchor = new CuiPoint(0.025f, 0.375f);
+        private static readonly CuiPoint CUserPageLblGodmodeRtAnchor = new CuiPoint(0.975f, 0.415f);
         // Bottom part
         private static readonly CuiPoint CUserPageLblHealthLbAnchor = new CuiPoint(0.025f, 0.195f);
         private static readonly CuiPoint CUserPageLblHealthRtAnchor = new CuiPoint(0.975f, 0.235f);
@@ -2115,6 +2228,11 @@ namespace Oxide.Plugins
         private static readonly CuiPoint CUserPageBtnBackpacksRtAnchor = new CuiPoint(0.32f, 0.52f);
         private static readonly CuiPoint CUserPageBtnInventoryLbAnchor = new CuiPoint(0.33f, 0.46f);
         private static readonly CuiPoint CUserPageBtnInventoryRtAnchor = new CuiPoint(0.48f, 0.52f);
+        // Row 7
+        private static readonly CuiPoint CUserPageBtnGodmodeLbAnchor = new CuiPoint(0.01f, 0.38f);
+        private static readonly CuiPoint CUserPageBtnGodmodeRtAnchor = new CuiPoint(0.16f, 0.44f);
+        private static readonly CuiPoint CUserPageBtnUnGodmodeLbAnchor = new CuiPoint(0.17f, 0.38f);
+        private static readonly CuiPoint CUserPageBtnUnGodmodeRtAnchor = new CuiPoint(0.32f, 0.44f);
 
         // Row 11
         private static readonly CuiPoint CUserPageBtnHurt25LbAnchor = new CuiPoint(0.01f, 0.10f);
@@ -2543,6 +2661,9 @@ namespace Oxide.Plugins
 
                 if (UpgradeTo1313())
                     LogDebug("Upgraded the config to version 1.3.13");
+
+                if (UpgradeTo164())
+                    LogDebug("Upgraded the config to version 1.6.4");
             } catch {
                 LoadDefaultConfig();
             }
@@ -2554,7 +2675,9 @@ namespace Oxide.Plugins
             FConfigData = new ConfigData {
                 UsePermSystem = true,
                 BanMsgWebhookUrl = string.Empty,
-                KickMsgWebhookUrl = string.Empty
+                KickMsgWebhookUrl = string.Empty,
+                BroadcastKicks = true,
+                BroadcastBans = true
             };
             LogDebug("Default config loaded");
         }
@@ -2569,6 +2692,9 @@ namespace Oxide.Plugins
                     { "Ban Reason Message Text", "Administrative decision" },
                     { "Protection Active Text", "Unable to perform this action, protection is enabled for this user" },
                     { "Dead Player Error Text", "Unable to perform this action, the target player is dead" },
+
+                    { "Kick Broadcast Message Format", "Player {0} has been kicked: {1}" },
+                    { "Ban Broadcast Message Format", "Player {0} has been banned: {1}" },
 
                     { "Never Label Text", "Never" },
                     { "Banned Label Text", " (Banned)" },
@@ -2611,6 +2737,7 @@ namespace Oxide.Plugins
                     { "Bleeding Label Format", "Bleeding: {0}" },
                     { "Radiation Label Format", "Radiation: {0}" },
                     { "Radiation Protection Label Format", "Protection: {0}" },
+                    { "Godmode Status Label Format", "Godmode active: {0}" },
 
                     { "Main Tab Text", "Main" },
                     { "Online Player Tab Text", "Online Players" },
@@ -2651,6 +2778,10 @@ namespace Oxide.Plugins
 
                     { "Inventory Button Text", "View Inventory" },
                     { "Inventory Not Installed Button Text", "Inventory Viewer Not Installed" },
+
+                    { "UnGodmode Button Text", "Disable Godmode" },
+                    { "Godmode Button Text", "Enable Godmode" },
+                    { "Godmode Not Installed Button Text", "Godmode Not Installed" },
 
                     { "Hurt 25 Button Text", "Hurt 25" },
                     { "Hurt 50 Button Text", "Hurt 50" },
@@ -2799,7 +2930,8 @@ namespace Oxide.Plugins
                 banReasonMsg = lang.GetMessage("Ban Reason Message Text", this, targetId.ToString());
                 Player.Ban(targetId, banReasonMsg);
                 LogInfo($"{aPlayer.Name}: Banned user ID {targetId}");
-                SendDiscordKickBanMessage(aPlayer.Name, 0, ServerUsers.Get(targetId).username, targetId.ToString(), banReasonMsg, true);
+                BroadcastKickBan(aPlayer.Id, targetId, banReasonMsg, false);
+                SendDiscordKickBanMessage(aPlayer.Name, 0, ServerUsers.Get(targetId)?.username ?? targetId.ToString(), targetId, banReasonMsg, true);
                 return;
             }
 
@@ -2809,20 +2941,24 @@ namespace Oxide.Plugins
                 return;
 
             if (permission.UserHasPermission(targetId.ToString(), CPermProtectBan)) {
-                rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, player.UserIDString));
+                rust.SendChatMessage(player, string.Empty, lang.GetMessage("Protection Active Text", this, aPlayer.Id));
                 return;
             }
 
             banReasonMsg = GetReason(player.userID, targetId.ToString());
 
             if (ServerArmour != null) {
+                //API_BanPlayer(player, playerId, reason, length, ignoreSearch);
                 ServerArmour.Call("API_BanPlayer", targetId, banReasonMsg, "30y");
-            } else { //API_BanPlayer(player, playerId, reason, length, ignoreSearch);
+            } else {
                 Player.Ban(targetId, banReasonMsg);
             }
 
             LogInfo($"{player.displayName}: Banned user ID {targetId}");
-            SendDiscordKickBanMessage(player.displayName, player.userID, ServerUsers.Get(targetId).username, targetId.ToString(), banReasonMsg, true);
+            BroadcastKickBan(aPlayer.Id, targetId, banReasonMsg, false);
+            SendDiscordKickBanMessage(
+                player.displayName, player.userID, ServerUsers.Get(targetId)?.username ?? targetId.ToString(), targetId, banReasonMsg, true
+            );
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
@@ -2848,9 +2984,11 @@ namespace Oxide.Plugins
 
             string banReasonMsg = lang.GetMessage("Ban Reason Message Text", this, targetId.ToString());
             Player.Ban(targetId, banReasonMsg);
-            ServerUsers.User targetPlayer = ServerUsers.Get(targetId);
             LogInfo($"{player.displayName}: Banned user ID {targetId}");
-            SendDiscordKickBanMessage(player.displayName, player.userID, targetPlayer.username, targetId.ToString(), banReasonMsg, true);
+            BroadcastKickBan(aPlayer.Id, targetId, banReasonMsg, false);
+            SendDiscordKickBanMessage(
+                player.displayName, player.userID, ServerUsers.Get(targetId)?.username ?? targetId.ToString(), targetId, banReasonMsg, true
+            );
             timer.Once(0.01f, () => BuildUI(player, UiPage.Main));
         }
 
@@ -2874,7 +3012,8 @@ namespace Oxide.Plugins
                 kickReasonMsg = lang.GetMessage("Kick Reason Message Text", this, targetId.ToString());
                 targetPlayer?.Kick(kickReasonMsg);
                 LogInfo($"{aPlayer.Name}: Kicked user ID {targetId}");
-                SendDiscordKickBanMessage(aPlayer.Name, 0, targetPlayer.displayName, targetPlayer.UserIDString, kickReasonMsg, false);
+                BroadcastKickBan(aPlayer.Id, targetId, kickReasonMsg, true);
+                SendDiscordKickBanMessage(aPlayer.Name, 0, targetPlayer.displayName, targetId, kickReasonMsg, false);
                 return;
             }
 
@@ -2891,7 +3030,8 @@ namespace Oxide.Plugins
             kickReasonMsg = GetReason(player.userID, targetId.ToString(), true);
             targetPlayer?.Kick(kickReasonMsg);
             LogInfo($"{player.displayName}: Kicked user ID {targetId}");
-            SendDiscordKickBanMessage(player.displayName, player.userID, targetPlayer.displayName, targetPlayer.UserIDString, kickReasonMsg, false);
+            BroadcastKickBan(aPlayer.Id, targetId, kickReasonMsg, true);
+            SendDiscordKickBanMessage(player.displayName, player.userID, targetPlayer.displayName, targetId, kickReasonMsg, false);
             timer.Once(0.01f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
@@ -2980,7 +3120,7 @@ namespace Oxide.Plugins
             }
         }
 
-        [Command(CUnreezeCmd)]
+        [Command(CUnFreezeCmd)]
         private void PlayerAdministrationUnfreezeCallback(IPlayer aPlayer, string aCommand, string[] aArgs) {
             if (aPlayer.IsServer)
                 return;
@@ -3048,6 +3188,42 @@ namespace Oxide.Plugins
             InventoryViewer.Call("ViewInventoryCommand", player, targetId.ToString(), new[] { targetId.ToString() });
             LogInfo($"{player.displayName}: Viewed inventory of {targetId}");
             PlayerAdministrationCloseUICallback(player.IPlayer, string.Empty, new[] { string.Empty });
+        }
+
+        [Command(CGodmodeCmd)]
+        private void PlayerAdministrationGodmodeCallback(IPlayer aPlayer, string aCommand, string[] aArgs) {
+            if (aPlayer.IsServer)
+                return;
+
+            LogDebug("PlayerAdministrationGodmodeCallback was called");
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
+            ulong targetId;
+
+            if (!VerifyPermission(ref player, CPermGodmode, true) || !GetTargetFromArg(aArgs, out targetId))
+                return;
+
+            Godmode.Call("EnableGodmode", targetId);
+            LogInfo($"{player.displayName}: Enabled GodMode for {targetId}");
+            // Let code execute, then reload screen
+            timer.Once(0.1f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
+        }
+
+        [Command(CUnGodmodeCmd)]
+        private void PlayerAdministrationUnGodmodeCallback(IPlayer aPlayer, string aCommand, string[] aArgs) {
+            if (aPlayer.IsServer)
+                return;
+
+            LogDebug("PlayerAdministrationUnGodmodeCallback was called");
+            BasePlayer player = BasePlayer.Find(aPlayer.Id);
+            ulong targetId;
+
+            if (!VerifyPermission(ref player, CPermGodmode, true) || !GetTargetFromArg(aArgs, out targetId))
+                return;
+
+            Godmode.Call("DisableGodmode", targetId);
+            LogInfo($"{player.displayName}: Disabled GodMode for {targetId}");
+            // Let code execute, then reload screen
+            timer.Once(0.1f, () => BuildUI(player, UiPage.PlayerPage, targetId.ToString()));
         }
 
         [Command(CClearUserInventoryCmd)]

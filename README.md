@@ -23,6 +23,7 @@
 - Use of BetterChatMute plugin to mute players in an improved manner
 - Use of Backpacks to view a players backpack
 - Use of Inventory Viewer to view a players inventory
+- Use of Godmode to enable/disable godmode for players
 - Filtering through users via the "search" function (Case insensitive and selects both names and IDs that contain the text written in the input)
 
 ## Permissions
@@ -87,6 +88,10 @@ Then to save it:
 - **playeradministration.tptouser <Player ID>** -- Teleport to a player ***(requires `playeradministration.access.teleport` permission)***
 - **playeradministration.tpuser <Player ID>** -- Teleport a player to you ***(requires `playeradministration.access.teleport` permission)***
 - **playeradministration.spectateuser <Player ID>** -- Spectate a player ***(requires `playeradministration.access.spectate` permission)*** **Note: This will kill your character by the game's design!**
+- **playeradministration.viewbackpack <Player ID>** -- View the backpack of a player ***(requires `backpacks.admin` permission)***
+- **playeradministration.viewinventory <Player ID>** -- View the inventory of a player ***(requires `inventoryviewer.allowed` permission)***
+- **playeradministration.godmode <Player ID>** -- Enable Godmode for a player ***(requires `godmode.admin` permission)***
+- **playeradministration.ungodmode <Player ID>** -- Disable Godmode for a player ***(requires `godmode.admin` permission)***
 
 ## Configuration
 
@@ -96,7 +101,9 @@ Then to save it:
 {
   "Use Permission System": true,
   "Discord Webhook url for ban messages": "",
-  "Discord Webhook url for kick messages": ""
+  "Discord Webhook url for kick messages": "",
+  "Broadcast Kicks": true,
+  "Broadcast Bans": true
 }
 ```
 
@@ -110,6 +117,9 @@ Then to save it:
   "Ban Reason Message Text": "Administrative decision",
   "Protection Active Text": "Unable to perform this action, protection is enabled for this user",
   "Dead Player Error Text": "Unable to perform this action, the target player is dead",
+
+  "Kick Broadcast Message Format": "Player {0} has been kicked: {1}",
+  "Ban Broadcast Message Format": "Player {0} has been banned: {1}",
 
   "Never Label Text": "Never",
   "Banned Label Text": " (Banned)",
@@ -152,6 +162,7 @@ Then to save it:
   "Bleeding Label Format": "Bleeding: {0}",
   "Radiation Label Format": "Radiation: {0}",
   "Radiation Protection Label Format": "Protection: {0}",
+  "Godmode Status Label Format": "Godmode active: {0}",
 
   "Main Tab Text": "Main",
   "Online Player Tab Text": "Online Players",
@@ -186,6 +197,10 @@ Then to save it:
 
   "Perms Button Text": "Permissions",
   "Perms Not Installed Button Text": "Perms Not Installed",
+
+  "Godmode Not Installed Button Text": "Godmode Not Installed",
+  "UnGodmode Button Text": "Disable Godmode",
+  "Godmode Button Text": "Enable Godmode",
 
   "Hurt 25 Button Text": "Hurt 25",
   "Hurt 50 Button Text": "Hurt 50",
