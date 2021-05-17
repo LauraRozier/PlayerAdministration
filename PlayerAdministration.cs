@@ -43,7 +43,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.6.4")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.6.5")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -1342,7 +1342,7 @@ namespace Oxide.Plugins
                     aUIObj.AddLabel(
                         aParent, CUserPageLblBalanceLbAnchor, CUserPageLblBalanceRtAnchor, CuiColor.TextAlt,
                         string.Format(lang.GetMessage("Economics Balance Label Format", this, aUIObj.PlayerIdString),
-                        Math.Round((double)Economics.Call("Balance", aPlayerId), 2)), string.Empty, 14, TextAnchor.MiddleLeft
+                        Math.Round((double)(Economics.Call("Balance", aPlayerId) ?? 0), 2)), string.Empty, 14, TextAnchor.MiddleLeft
                     );
                 } else {
                     aUIObj.AddLabel(
@@ -1374,7 +1374,7 @@ namespace Oxide.Plugins
                     aUIObj.AddLabel(
                         aParent, CUserPageLblGodmodeLbAnchor, CUserPageLblGodmodeRtAnchor, CuiColor.TextAlt,
                         string.Format(lang.GetMessage("Godmode Status Label Format", this, aUIObj.PlayerIdString),
-                        Godmode.Call<bool>("IsGod", aPlayerId)), string.Empty, 14, TextAnchor.MiddleLeft
+                        (bool)(Godmode.Call("IsGod", aPlayerId) ?? false)), string.Empty, 14, TextAnchor.MiddleLeft
                     );
                 } else {
                     aUIObj.AddLabel(
