@@ -43,7 +43,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.6.5")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.6.6")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -164,12 +164,23 @@ namespace Oxide.Plugins
         /// </summary>
         private class CustomCuiElementContainer : CuiElementContainer
         {
+            private readonly Action<string> LogError;
+
+            /// <summary>
+            /// Constructor
+            /// </summary>
+            /// <param name="aLogErrorFunc">Error logging procedure</param>
+            /// <returns></returns>
+            public CustomCuiElementContainer(Action<string> aLogErrorFunc) : base() {
+                LogError = aLogErrorFunc;
+            }
+
             public string Add(CuiInputField aInputField, string aParent = Cui.ParentHud, string aName = "") {
                 if (string.IsNullOrEmpty(aName))
                     aName = CuiHelper.GetGuid();
 
                 if (aInputField == null) {
-                    FPluginInstance.LogError($"CustomCuiElementContainer::Add > Parameter 'aInputField' is null");
+                    LogError($"CustomCuiElementContainer::Add > Parameter 'aInputField' is null");
                     return string.Empty;
                 }
 
@@ -195,7 +206,10 @@ namespace Oxide.Plugins
             public const string ParentHud = "Hud";
             public const string ParentOverlay = "Overlay";
 
-            private readonly CustomCuiElementContainer FContainer = new CustomCuiElementContainer();
+            private readonly Action<string> LogDebug;
+            private readonly Action<string> LogInfo;
+            private readonly Action<string> LogError;
+            private readonly CustomCuiElementContainer FContainer;
             private readonly BasePlayer FPlayer;
             public readonly ulong PlayerId;
             public readonly string PlayerIdString;
@@ -205,16 +219,25 @@ namespace Oxide.Plugins
             /// Constructor
             /// </summary>
             /// <param name="aPlayer">The player this object is meant for</param>
-            public Cui(BasePlayer aPlayer) {
+            /// <param name="aLogDebugFunc">Debug logging procedure</param>
+            /// <param name="aLogInfoFunc">Info logging procedure</param>
+            /// <param name="aLogErrorFunc">Error logging procedure</param>
+            /// <returns></returns>
+            public Cui(BasePlayer aPlayer, Action<string> aLogDebugFunc, Action<string> aLogInfoFunc, Action<string> aLogErrorFunc) {
+                LogDebug = aLogDebugFunc;
+                LogInfo = aLogInfoFunc;
+                LogError = aLogErrorFunc;
+
                 if (aPlayer == null) {
-                    FPluginInstance.LogError("Cui::Cui > Parameter 'aPlayer' is null");
+                    LogError("Cui::Cui > Parameter 'aPlayer' is null");
                     return;
                 }
 
+                FContainer = new CustomCuiElementContainer(aLogErrorFunc);
                 FPlayer = aPlayer;
                 PlayerId = aPlayer.userID;
                 PlayerIdString = aPlayer.UserIDString;
-                FPluginInstance.LogDebug("Cui instance created");
+                LogDebug("Cui instance created");
             }
 
             /// <summary>
@@ -251,7 +274,7 @@ namespace Oxide.Plugins
                 bool aIndCursorEnabled, CuiColor aColor = null, string aName = "", string aPng = ""
             ) {
                 if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null) {
-                    FPluginInstance.LogError($"Cui::AddPanel > One of the required parameters is null");
+                    LogError($"Cui::AddPanel > One of the required parameters is null");
                     return string.Empty;
                 }
 
@@ -277,7 +300,7 @@ namespace Oxide.Plugins
                     }
                 }
 
-                FPluginInstance.LogDebug("Added panel to container");
+                LogDebug("Added panel to container");
                 return FContainer.Add(panel, aParent, string.IsNullOrEmpty(aName) ? null : aName);
             }
 
@@ -317,11 +340,11 @@ namespace Oxide.Plugins
                 string aText, string aName = "", int aFontSize = 14, TextAnchor aAlign = TextAnchor.UpperLeft
             ) {
                 if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null || aColor == null) {
-                    FPluginInstance.LogError($"Cui::AddLabel > One of the required parameters is null");
+                    LogError($"Cui::AddLabel > One of the required parameters is null");
                     return string.Empty;
                 }
 
-                FPluginInstance.LogDebug("Added label to container");
+                LogDebug("Added label to container");
                 return FContainer.Add(
                     new CuiLabel {
                         Text =
@@ -393,11 +416,11 @@ namespace Oxide.Plugins
                     aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null || aButtonColor == null ||
                     aTextColor == null
                 ) {
-                    FPluginInstance.LogError($"Cui::AddButton > One of the required parameters is null");
+                    LogError($"Cui::AddButton > One of the required parameters is null");
                     return string.Empty;
                 }
 
-                FPluginInstance.LogDebug("Added button to container");
+                LogDebug("Added button to container");
                 return FContainer.Add(
                     new CuiButton {
                         Button =
@@ -472,11 +495,11 @@ namespace Oxide.Plugins
                 TextAnchor aAlign = TextAnchor.MiddleLeft
             ) {
                 if (aLeftBottomAnchor == null || aRightTopAnchor == null || aLeftBottomOffset == null || aRightTopOffset == null || aColor == null) {
-                    FPluginInstance.LogError($"Cui::AddInputField > One of the required parameters is null");
+                    LogError($"Cui::AddInputField > One of the required parameters is null");
                     return string.Empty;
                 }
 
-                FPluginInstance.LogDebug("Added input field to container");
+                LogDebug("Added input field to container");
                 return FContainer.Add(
                     new CuiInputField {
                         InputField =
@@ -602,7 +625,7 @@ namespace Oxide.Plugins
                 CuiPoint rtAnchor = new CuiPoint(calcLeft + dimensions.x, calcTop);
                 int suffix = 0;
 
-                string btnTextTemp = EscapeString(user.Value ?? "");
+                string btnTextTemp = EscapeString(user.Value ?? string.Empty);
                 string btnCommand = string.Format(aCommandFmt, user.Key);
 
                 if (string.IsNullOrEmpty(btnTextTemp) || CUnknownNameList.Contains(btnTextTemp.ToLower()))
@@ -638,8 +661,10 @@ namespace Oxide.Plugins
         /// </summary>
         /// <param name="aMessage"></param>
         private void LogDebug(string aMessage) {
+#pragma warning disable CS0162
             if (CDebugEnabled)
                 LogToFile(string.Empty, $"[{DateTime.Now.ToString("hh:mm:ss")}] DEBUG > {aMessage}", this);
+#pragma warning restore CS0162
         }
 
         /// <summary>
@@ -725,7 +750,7 @@ namespace Oxide.Plugins
         /// <returns></returns>
         private bool GetTargetFromArg(string[] aArgs, out ulong aTarget) {
             aTarget = 0;
-            return aArgs.Count() > 0 && ulong.TryParse(aArgs[0], out aTarget);
+            return aArgs.Length > 0 && ulong.TryParse(aArgs[0], out aTarget);
         }
 
         /// <summary>
@@ -738,7 +763,7 @@ namespace Oxide.Plugins
         private bool GetTargetAmountFromArg(string[] aArgs, out ulong aTarget, out float aAmount) {
             aTarget = 0;
             aAmount = 0;
-            return aArgs.Count() >= 2 && ulong.TryParse(aArgs[0], out aTarget) && float.TryParse(aArgs[1], out aAmount);
+            return aArgs.Length >= 2 && ulong.TryParse(aArgs[0], out aTarget) && float.TryParse(aArgs[1], out aAmount);
         }
 
         /// <summary>
@@ -832,7 +857,7 @@ namespace Oxide.Plugins
             foreach (KeyValuePair<string, string> item in aObj)
                 result.Append($"'{item.Key}': '{item.Value}'\n");
 
-            result.Append("}");
+            result.Append('}');
             return result.ToString();
         }
 
@@ -841,17 +866,17 @@ namespace Oxide.Plugins
         /// </summary>
         /// <param name="aStr"></param>
         /// <returns></returns>
-        private string EscapeString(string aStr) => aStr.Replace("\0", "")
-            .Replace("\a", "")
-            .Replace("\b", "")
-            .Replace("\f", "")
-            .Replace("\r", "")
-            .Replace("\n", " ")
-            .Replace("\t", " ")
-            .Replace("\v", "")
-            .Replace("\"", "\u02EE")
-            .Replace("/", "\u2215")
-            .Replace("\\", "\u2216");
+        private string EscapeString(string aStr) => aStr.Replace("\0", string.Empty)
+            .Replace("\a", string.Empty)
+            .Replace("\b", string.Empty)
+            .Replace("\f", string.Empty)
+            .Replace("\r", string.Empty)
+            .Replace('\n', ' ')
+            .Replace('\t', ' ')
+            .Replace("\v", string.Empty)
+            .Replace('"', '\u02EE')
+            .Replace('/', '\u2215')
+            .Replace('\\', '\u2216');
 
         /// <summary>
         /// Gets the reason from the input box on the players screen.
@@ -976,7 +1001,7 @@ namespace Oxide.Plugins
                 string[] users = permission.GetPermissionUsers(item.Key);
                 LogDebug($"Users: {StringArrToString(ref users)}");
 
-                if (groups.Count() <= 0 && users.Count() <= 0) {
+                if (groups.Length + users.Length <= 0) {
                     LogDebug("Counts are zero");
                     continue;
                 }
@@ -1019,7 +1044,7 @@ namespace Oxide.Plugins
                 string[] users = permission.GetPermissionUsers(item.Key);
                 LogDebug($"Users: {StringArrToString(ref users)}");
 
-                if (groups.Count() <= 0 && users.Count() <= 0) {
+                if (groups.Length + users.Length <= 0) {
                     LogDebug("Counts are zero");
                     continue;
                 }
@@ -1147,7 +1172,7 @@ namespace Oxide.Plugins
             ref Cui aUIObj, string aParent, UiPage aPageType, ref int aPage, out string aBtnCommandFmt, out int aUserCount, bool aIndFiltered
         ) {
             string commandFmt = $"{CSwitchUiCmd} {CCmdArgPlayerPage} {{0}}";
-            IEnumerable<KeyValuePair<ulong, string>> userList = GetServerUserList(aIndFiltered, aUIObj.PlayerId, aPageType == UiPage.PlayersOffline); 
+            IEnumerable<KeyValuePair<ulong, string>> userList = GetServerUserList(aIndFiltered, aUIObj.PlayerId, aPageType == UiPage.PlayersOffline);
 
             aBtnCommandFmt = aPageType == UiPage.PlayersOnline
                 ? $"{CSwitchUiCmd} {(aIndFiltered ? CCmdArgPlayersOnlineSearch : CCmdArgPlayersOnline)} {{0}}"
@@ -1917,7 +1942,7 @@ namespace Oxide.Plugins
         /// <param name="aIndFiltered">Indicates if the output should be filtered</param>
         private void BuildUI(BasePlayer aPlayer, UiPage aPageType, string aArg = "", bool aIndFiltered = false) {
             // Initiate the new UI and panel
-            Cui newUiLib = new Cui(aPlayer);
+            Cui newUiLib = new Cui(aPlayer, LogDebug, LogInfo, LogError);
             newUiLib.AddElement(CBasePanelName, CMainPanel, CMainPanelName);
             BuildTabMenu(ref newUiLib, aPageType);
             LogDebug($"Elapsed time (BuildTabMenu): {(Time.realtimeSinceStartup - newUiLib.StartTime).ToString("F8")}");
@@ -1984,7 +2009,7 @@ namespace Oxide.Plugins
         #endregion
 
         #region Constants
-        private static readonly bool CDebugEnabled = false;
+        private const bool CDebugEnabled = false;
         private const int CMaxPlayerCols = 5;
         private const int CMaxPlayerRows = 12;
         private const int CMaxPlayerButtons = CMaxPlayerCols * CMaxPlayerRows;
@@ -2516,7 +2541,6 @@ namespace Oxide.Plugins
         #endregion Constants
 
         #region Variables
-        private static PlayerAdministration FPluginInstance;
         private ConfigData FConfigData;
         private Dictionary<ulong, string> FMainPageBanIdInputText = new Dictionary<ulong, string>();     // Format: <userId, text>
         private Dictionary<ulong, string> FUserBtnPageSearchInputText = new Dictionary<ulong, string>(); // Format: <userId, text>
@@ -2549,7 +2573,6 @@ namespace Oxide.Plugins
             permission.RegisterPermission(CPermProtectKick, this);
             permission.RegisterPermission(CPermProtectKill, this);
             permission.RegisterPermission(CPermProtectReset, this);
-            FPluginInstance = this;
 
             if (UpgradeTo156())
                 LogDebug("Upgraded the config to version 1.5.6");
@@ -2574,7 +2597,6 @@ namespace Oxide.Plugins
 
             FOnlineUserList.Clear();
             FOfflineUserList.Clear();
-            FPluginInstance = null;
         }
 
         void OnServerInitialized() {
@@ -3085,7 +3107,7 @@ namespace Oxide.Plugins
                 BasePlayer target = BasePlayer.FindByID(targetId) ?? BasePlayer.FindSleeping(targetId);
 
                 if (BetterChatMute != null && target != null) {
-                    if (time == 0f) {
+                    if (time.Equals(0f)) {
                         BetterChatMute.Call("API_Mute", target.IPlayer, aPlayer, true, false);
                     } else {
                         BetterChatMute.Call("API_TimeMute", target.IPlayer, aPlayer, TimeSpan.FromMinutes(time), true, false);
@@ -3106,7 +3128,7 @@ namespace Oxide.Plugins
                 if (BetterChatMute != null && target != null) {
                     string inputReason = GetReason(player.userID, targetId.ToString());
 
-                    if (time == 0f) {
+                    if (time.Equals(0f)) {
                         BetterChatMute.Call("API_Mute", target.IPlayer, aPlayer, inputReason, true, false);
                     } else {
                         BetterChatMute.Call("API_TimeMute", target.IPlayer, aPlayer, TimeSpan.FromMinutes(time), inputReason, true, false);
@@ -3555,7 +3577,7 @@ namespace Oxide.Plugins
 
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
-            if (aArgs.Count() <= 0 || !VerifyPermission(ref player, CPermUiShow)) {
+            if (aArgs.Length <= 0 || !VerifyPermission(ref player, CPermUiShow)) {
                 if (FMainPageBanIdInputText.ContainsKey(player.userID))
                     FMainPageBanIdInputText.Remove(player.userID);
 
@@ -3576,7 +3598,7 @@ namespace Oxide.Plugins
 
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
-            if (aArgs.Count() <= 0 || !VerifyPermission(ref player, CPermUiShow)) {
+            if (aArgs.Length <= 0 || !VerifyPermission(ref player, CPermUiShow)) {
                 if (FUserBtnPageSearchInputText.ContainsKey(player.userID))
                     FUserBtnPageSearchInputText.Remove(player.userID);
 
@@ -3597,7 +3619,7 @@ namespace Oxide.Plugins
 
             BasePlayer player = BasePlayer.Find(aPlayer.Id);
 
-            if (aArgs.Count() <= 0 || !VerifyPermission(ref player, CPermUiShow)) {
+            if (aArgs.Length <= 0 || !VerifyPermission(ref player, CPermUiShow)) {
                 if (FUserPageReasonInputText.ContainsKey(player.userID))
                     FUserPageReasonInputText.Remove(player.userID);
 
