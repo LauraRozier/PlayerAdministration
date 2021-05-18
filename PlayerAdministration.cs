@@ -43,7 +43,7 @@ using RustLib = Oxide.Game.Rust.Libraries.Rust;
 
 namespace Oxide.Plugins
 {
-    [Info("PlayerAdministration", "ThibmoRozier", "1.6.6")]
+    [Info("PlayerAdministration", "ThibmoRozier", "1.6.7")]
     [Description("Allows server admins to moderate users using a GUI from within the game.")]
     public class PlayerAdministration : CovalencePlugin
     {
@@ -207,7 +207,6 @@ namespace Oxide.Plugins
             public const string ParentOverlay = "Overlay";
 
             private readonly Action<string> LogDebug;
-            private readonly Action<string> LogInfo;
             private readonly Action<string> LogError;
             private readonly CustomCuiElementContainer FContainer;
             private readonly BasePlayer FPlayer;
@@ -223,9 +222,8 @@ namespace Oxide.Plugins
             /// <param name="aLogInfoFunc">Info logging procedure</param>
             /// <param name="aLogErrorFunc">Error logging procedure</param>
             /// <returns></returns>
-            public Cui(BasePlayer aPlayer, Action<string> aLogDebugFunc, Action<string> aLogInfoFunc, Action<string> aLogErrorFunc) {
+            public Cui(BasePlayer aPlayer, Action<string> aLogDebugFunc, Action<string> aLogErrorFunc) {
                 LogDebug = aLogDebugFunc;
-                LogInfo = aLogInfoFunc;
                 LogError = aLogErrorFunc;
 
                 if (aPlayer == null) {
@@ -648,13 +646,13 @@ namespace Oxide.Plugins
         /// Log an error message to the logfile
         /// </summary>
         /// <param name="aMessage"></param>
-        private void LogError(string aMessage) => LogToFile(string.Empty, $"[{DateTime.Now.ToString("hh:mm:ss")}] ERROR > {aMessage}", this);
+        private void LogError(string aMessage) => LogToFile(string.Empty, $"[{DateTime.Now:hh:mm:ss}] ERROR > {aMessage}", this);
 
         /// <summary>
         /// Log an informational message to the logfile
         /// </summary>
         /// <param name="aMessage"></param>
-        private void LogInfo(string aMessage) => LogToFile(string.Empty, $"[{DateTime.Now.ToString("hh:mm:ss")}] INFO > {aMessage}", this);
+        private void LogInfo(string aMessage) => LogToFile(string.Empty, $"[{DateTime.Now:hh:mm:ss}] INFO > {aMessage}", this);
 
         /// <summary>
         /// Log a debugging message to the logfile
@@ -663,7 +661,7 @@ namespace Oxide.Plugins
         private void LogDebug(string aMessage) {
 #pragma warning disable CS0162
             if (CDebugEnabled)
-                LogToFile(string.Empty, $"[{DateTime.Now.ToString("hh:mm:ss")}] DEBUG > {aMessage}", this);
+                LogToFile(string.Empty, $"[{DateTime.Now:hh:mm:ss}] DEBUG > {aMessage}", this);
 #pragma warning restore CS0162
         }
 
@@ -829,15 +827,6 @@ namespace Oxide.Plugins
                 );
             }
         }
-
-        /// <summary>
-        /// Custom internal version of Assert
-        /// </summary>
-        /// <param name="aEval"></param>
-        /// <param name="aTrueMsg"></param>
-        /// <param name="aFalseMsg"></param>
-        /// <returns></returns>
-        private string InternalAssert(bool aEval, string aTrueMsg = "True", string aFalseMsg = "False") => aEval ? aTrueMsg : aFalseMsg;
 
         /// <summary>
         /// Transform a string array into a printable string.
@@ -1155,7 +1144,7 @@ namespace Oxide.Plugins
             }
 
             LogDebug("Built the main page");
-            LogDebug($"Elapsed time (BuildMainPage): {(Time.realtimeSinceStartup - aUIObj.StartTime).ToString("F8")}");
+            LogDebug($"Elapsed time (BuildMainPage): {Time.realtimeSinceStartup - aUIObj.StartTime:F8}");
         }
 
         /// <summary>
@@ -1275,7 +1264,7 @@ namespace Oxide.Plugins
             }
 
             LogDebug("Built the user button page");
-            LogDebug($"Elapsed time (BuildUserBtnPage): {(Time.realtimeSinceStartup - aUIObj.StartTime).ToString("F8")}");
+            LogDebug($"Elapsed time (BuildUserBtnPage): {Time.realtimeSinceStartup - aUIObj.StartTime:F8}");
         }
 
         /// <summary>
@@ -1292,7 +1281,7 @@ namespace Oxide.Plugins
             // Pre-calc last admin cheat
             if (aPlayer.lastAdminCheatTime > 0f) {
                 TimeSpan lastCheatSinceStart = new TimeSpan(0, 0, (int)(Time.realtimeSinceStartup - aPlayer.lastAdminCheatTime));
-                lastCheatStr = $"{DateTime.UtcNow.Subtract(lastCheatSinceStart).ToString(@"yyyy\/MM\/dd HH:mm:ss")} UTC";
+                lastCheatStr = $"{DateTime.UtcNow.Subtract(lastCheatSinceStart):yyyy-MM-dd HH:mm:ss} UTC";
             }
 
             LogDebug("AddUserPageInfoLabels > Time since last admin cheat has been determined.");
@@ -1395,7 +1384,7 @@ namespace Oxide.Plugins
 
                 LogDebug("AddUserPageInfoLabels > ServerRewards info has been added.");
 
-                if (Godmode != null) {
+                if (Godmode != null && Godmode.Version.Major >= 4 && Godmode.Version.Minor >= 2 && Godmode.Version.Patch >= 9) {
                     aUIObj.AddLabel(
                         aParent, CUserPageLblGodmodeLbAnchor, CUserPageLblGodmodeRtAnchor, CuiColor.TextAlt,
                         string.Format(lang.GetMessage("Godmode Status Label Format", this, aUIObj.PlayerIdString),
@@ -1769,13 +1758,13 @@ namespace Oxide.Plugins
                 }
 
                 // UnGodmode & Godmode
-                if (Godmode == null) {
+                if (Godmode == null || !(Godmode.Version.Major >= 4 && Godmode.Version.Minor >= 2 && Godmode.Version.Patch >= 9)) {
                     aUIObj.AddButton(
                         actionPanel, CUserPageBtnGodmodeLbAnchor, CUserPageBtnGodmodeRtAnchor, CuiColor.ButtonInactive, CuiColor.Text,
                         lang.GetMessage("Godmode Not Installed Button Text", this, aUIObj.PlayerIdString)
                     );
                 } else if (isPlayerConnected && VerifyPermission(aUIObj.PlayerId, CPermGodmode)) {
-                    if (Godmode.Call<bool>("IsGod", aPlayerId)) {
+                    if ((bool)(Godmode.Call("IsGod", aPlayerId) ?? false)) {
                         aUIObj.AddButton(
                             actionPanel, CUserPageBtnUnGodmodeLbAnchor, CUserPageBtnUnGodmodeRtAnchor, CuiColor.ButtonWarning, CuiColor.TextAlt,
                             lang.GetMessage("UnGodmode Button Text", this, aUIObj.PlayerIdString), $"{CUnGodmodeCmd} {aPlayerId}"
@@ -1930,7 +1919,7 @@ namespace Oxide.Plugins
             }
 
             LogDebug("Built user information page");
-            LogDebug($"Elapsed time (BuildUserPage): {(Time.realtimeSinceStartup - aUIObj.StartTime).ToString("F8")}");
+            LogDebug($"Elapsed time (BuildUserPage): {Time.realtimeSinceStartup - aUIObj.StartTime:F8}");
         }
 
         /// <summary>
@@ -1942,10 +1931,10 @@ namespace Oxide.Plugins
         /// <param name="aIndFiltered">Indicates if the output should be filtered</param>
         private void BuildUI(BasePlayer aPlayer, UiPage aPageType, string aArg = "", bool aIndFiltered = false) {
             // Initiate the new UI and panel
-            Cui newUiLib = new Cui(aPlayer, LogDebug, LogInfo, LogError);
+            Cui newUiLib = new Cui(aPlayer, LogDebug, LogError);
             newUiLib.AddElement(CBasePanelName, CMainPanel, CMainPanelName);
             BuildTabMenu(ref newUiLib, aPageType);
-            LogDebug($"Elapsed time (BuildTabMenu): {(Time.realtimeSinceStartup - newUiLib.StartTime).ToString("F8")}");
+            LogDebug($"Elapsed time (BuildTabMenu): {Time.realtimeSinceStartup - newUiLib.StartTime:F8}");
 
             switch (aPageType) {
                 case UiPage.Main: {
@@ -1978,9 +1967,9 @@ namespace Oxide.Plugins
             LogDebug($"BuildUI JSON value: \n{newUiLib.JSON}");
             // Cleanup any old/active UI and draw the new one
             CuiHelper.DestroyUi(aPlayer, CMainPanelName);
-            LogDebug($"Elapsed time (CuiHelper.DestroyUi): {(Time.realtimeSinceStartup - newUiLib.StartTime).ToString("F8")}");
+            LogDebug($"Elapsed time (CuiHelper.DestroyUi): {Time.realtimeSinceStartup - newUiLib.StartTime:F8}");
             newUiLib.Draw();
-            LogDebug($"Elapsed time (newUiLib.Draw): {(Time.realtimeSinceStartup - newUiLib.StartTime).ToString("F8")}");
+            LogDebug($"Elapsed time (newUiLib.Draw): {Time.realtimeSinceStartup - newUiLib.StartTime:F8}");
         }
         #endregion GUI build methods
 
@@ -2542,13 +2531,14 @@ namespace Oxide.Plugins
 
         #region Variables
         private ConfigData FConfigData;
-        private Dictionary<ulong, string> FMainPageBanIdInputText = new Dictionary<ulong, string>();     // Format: <userId, text>
-        private Dictionary<ulong, string> FUserBtnPageSearchInputText = new Dictionary<ulong, string>(); // Format: <userId, text>
-        private Dictionary<ulong, string> FUserPageReasonInputText = new Dictionary<ulong, string>();    // Format: <userId, text>
-        private Dictionary<ulong, string> FOnlineUserList = new Dictionary<ulong, string>();             // Format: <userId, username>
-        private Dictionary<ulong, string> FOfflineUserList = new Dictionary<ulong, string>();            // Format: <userId, username>
+        private readonly Dictionary<ulong, string> FMainPageBanIdInputText = new Dictionary<ulong, string>();     // Format: <userId, text>
+        private readonly Dictionary<ulong, string> FUserBtnPageSearchInputText = new Dictionary<ulong, string>(); // Format: <userId, text>
+        private readonly Dictionary<ulong, string> FUserPageReasonInputText = new Dictionary<ulong, string>();    // Format: <userId, text>
+        private readonly Dictionary<ulong, string> FOnlineUserList = new Dictionary<ulong, string>();             // Format: <userId, username>
+        private readonly Dictionary<ulong, string> FOfflineUserList = new Dictionary<ulong, string>();            // Format: <userId, username>
         #endregion Variables
 
+#pragma warning disable IDE0051, IDE0060 // Remove unused private members, unused parameter
         #region Hooks
         void Loaded() {
             LoadConfig();
@@ -3633,5 +3623,6 @@ namespace Oxide.Plugins
             }
         }
         #endregion Text Update Callbacks
+#pragma warning restore IDE0051, IDE0060 // Remove unused private members, unused parameter
     }
 }
