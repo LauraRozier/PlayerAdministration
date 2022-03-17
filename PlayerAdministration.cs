@@ -1277,6 +1277,16 @@ namespace Oxide.Plugins
         private void AddUserPageInfoLabels(ref Cui aUIObj, string aParent, ulong aPlayerId, ref BasePlayer aPlayer) {
             string lastCheatStr = lang.GetMessage("Never Label Text", this, aUIObj.PlayerIdString);
             string authLevel = ServerUsers.Get(aPlayerId)?.group.ToString() ?? "None";
+           
+            string CpAddress = lang.GetMessage("OffLine Label Text", this, aUIObj.PlayerIdString);
+            string CpPing = lang.GetMessage("OffLine Label Text", this, aUIObj.PlayerIdString);
+
+            // Recover & pre-process user conenction data(player should be connected so calls are safe)
+            if (aPlayer.IsConnected)
+            {
+                CpAddress = aPlayer.net.connection.ipaddress.Split(':')[0];
+                CpPing = Network.Net.sv.GetAveragePing(aPlayer.net.connection).ToString();
+            }
 
             string CpAddress = lang.GetMessage("OffLine Label Text", this, aUIObj.PlayerIdString);
             string CpPing = lang.GetMessage("OffLine Label Text", this, aUIObj.PlayerIdString);
@@ -2733,6 +2743,7 @@ namespace Oxide.Plugins
                     { "Ban Broadcast Message Format", "Player {0} has been banned: {1}" },
 
                     { "Never Label Text", "Never" },
+                    { "OffLine Label Text", "Offline" },
                     { "Banned Label Text", " (Banned)" },
                     { "Dev Label Text", " (Developer)" },
                     { "Connected Label Text", "Connected" },
