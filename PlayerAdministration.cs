@@ -1277,6 +1277,16 @@ namespace Oxide.Plugins
         private void AddUserPageInfoLabels(ref Cui aUIObj, string aParent, ulong aPlayerId, ref BasePlayer aPlayer) {
             string lastCheatStr = lang.GetMessage("Never Label Text", this, aUIObj.PlayerIdString);
             string authLevel = ServerUsers.Get(aPlayerId)?.group.ToString() ?? "None";
+           
+            string CpAddress = lang.GetMessage("OffLine Label Text", this, aUIObj.PlayerIdString);
+            string CpPing = lang.GetMessage("OffLine Label Text", this, aUIObj.PlayerIdString);
+
+            // Recover & pre-process user conenction data(player should be connected so calls are safe)
+            if (aPlayer.IsConnected)
+            {
+                CpAddress = aPlayer.net.connection.ipaddress.Split(':')[0];
+                CpPing = Network.Net.sv.GetAveragePing(aPlayer.net.connection).ToString();
+            }
 
             // Pre-calc last admin cheat
             if (aPlayer.lastAdminCheatTime > 0f) {
@@ -1351,6 +1361,16 @@ namespace Oxide.Plugins
                     string.Format(lang.GetMessage("Idle Time Label Format", this, aUIObj.PlayerIdString), Math.Round(aPlayer.IdleTime, 2)), string.Empty, 14,
                     TextAnchor.MiddleLeft
                 );
+                aUIObj.AddLabel(
+                    aParent, CUserPageLblUsrNetAddrLbAnchor, CUserPageLblUsrNetAddrRtAnchor, CuiColor.TextAlt,
+                    string.Format(lang.GetMessage("Player Address Label Format", this, aUIObj.PlayerIdString), CpAddress), string.Empty, 14,
+                    TextAnchor.MiddleLeft
+                );
+                aUIObj.AddLabel(
+                  aParent, CUserPageLblUsrAvrPingLbAnchor, CUserPageLblUsrAvrPingRtAnchor, CuiColor.TextAlt,
+                  string.Format(lang.GetMessage("Player Ping Label Format", this, aUIObj.PlayerIdString), CpPing), string.Empty, 14,
+                  TextAnchor.MiddleLeft
+              );
 
                 if (Economics != null) {
                     aUIObj.AddLabel(
@@ -2165,12 +2185,17 @@ namespace Oxide.Plugins
         private static readonly CuiPoint CUserPageLblAdminCheatRtAnchor = new CuiPoint(0.975f, 0.605f);
         private static readonly CuiPoint CUserPageLblIdleLbAnchor = new CuiPoint(0.025f, 0.51f);
         private static readonly CuiPoint CUserPageLblIdleRtAnchor = new CuiPoint(0.975f, 0.55f);
-        private static readonly CuiPoint CUserPageLblBalanceLbAnchor = new CuiPoint(0.025f, 0.465f);
-        private static readonly CuiPoint CUserPageLblBalanceRtAnchor = new CuiPoint(0.975f, 0.505f);
-        private static readonly CuiPoint CUserPageLblRewardPointsLbAnchor = new CuiPoint(0.025f, 0.42f);
-        private static readonly CuiPoint CUserPageLblRewardPointsRtAnchor = new CuiPoint(0.975f, 0.46f);
-        private static readonly CuiPoint CUserPageLblGodmodeLbAnchor = new CuiPoint(0.025f, 0.375f);
-        private static readonly CuiPoint CUserPageLblGodmodeRtAnchor = new CuiPoint(0.975f, 0.415f);
+        private static readonly CuiPoint CUserPageLblUsrNetAddrLbAnchor = new CuiPoint(0.025f, 0.465f);
+        private static readonly CuiPoint CUserPageLblUsrNetAddrRtAnchor = new CuiPoint(0.975f, 0.505f);
+        private static readonly CuiPoint CUserPageLblUsrAvrPingLbAnchor = new CuiPoint(0.025f, 0.42f);
+        private static readonly CuiPoint CUserPageLblUsrAvrPingRtAnchor = new CuiPoint(0.975f, 0.46f);
+
+        private static readonly CuiPoint CUserPageLblBalanceLbAnchor = new CuiPoint(0.025f, 0.375f);
+        private static readonly CuiPoint CUserPageLblBalanceRtAnchor = new CuiPoint(0.975f, 0.415f);
+        private static readonly CuiPoint CUserPageLblRewardPointsLbAnchor = new CuiPoint(0.025f, 0.33f);
+        private static readonly CuiPoint CUserPageLblRewardPointsRtAnchor = new CuiPoint(0.975f, 0.37f);
+        private static readonly CuiPoint CUserPageLblGodmodeLbAnchor = new CuiPoint(0.025f, 0.285f);
+        private static readonly CuiPoint CUserPageLblGodmodeRtAnchor = new CuiPoint(0.975f, 0.325f);
         // Bottom part
         private static readonly CuiPoint CUserPageLblHealthLbAnchor = new CuiPoint(0.025f, 0.195f);
         private static readonly CuiPoint CUserPageLblHealthRtAnchor = new CuiPoint(0.975f, 0.235f);
@@ -2709,6 +2734,7 @@ namespace Oxide.Plugins
                     { "Ban Broadcast Message Format", "Player {0} has been banned: {1}" },
 
                     { "Never Label Text", "Never" },
+                    { "OffLine Label Text", "Offline" },
                     { "Banned Label Text", " (Banned)" },
                     { "Dev Label Text", " (Developer)" },
                     { "Connected Label Text", "Connected" },
@@ -2738,6 +2764,8 @@ namespace Oxide.Plugins
                     { "Rotation Label Format", "Rotation: {0}" },
                     { "Last Admin Cheat Label Format", "Last admin cheat: {0}" },
                     { "Idle Time Label Format", "Idle time: {0} seconds" },
+                    { "Player Ping Label Format", "Avr. Ping: {0} ms" },
+                    { "Player Address Label Format", "IP Address: {0} " },
                     { "Economics Balance Label Format", "Balance: {0} coins" },
                     { "ServerRewards Points Label Format", "Reward points: {0}" },
                     { "Health Label Format", "Health: {0}" },
