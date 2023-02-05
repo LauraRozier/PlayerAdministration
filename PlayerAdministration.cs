@@ -3207,7 +3207,7 @@ namespace Oxide.Plugins
             if (!VerifyPermission(ref player, CPermBackpacks, true) || !GetTargetFromArg(aArgs, out targetId))
                 return;
 
-            Backpacks.Call("ViewBackpack", player, string.Empty, new[] { targetId.ToString() });
+            player.SendConsoleCommand($"chat.say \"/viewbackpack {targetId}\"");
             LogInfo($"{player.displayName}: Viewed backpack of {targetId}");
             PlayerAdministrationCloseUICallback(player.IPlayer, string.Empty, new[] { string.Empty });
         }
